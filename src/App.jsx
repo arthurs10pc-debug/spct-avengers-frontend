@@ -5,8 +5,8 @@ import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, 
-  Search, Home, Calendar, FileText, Activity, Clock, Globe, CreditCard,
-  Radio, Navigation, Trash2, ShieldCheck, Compass, CheckCircle2
+  Search, Calendar, Radio, Navigation, Trash2, Compass, CheckCircle2,
+  Clock, FileText, Activity, Globe, CreditCard, ChevronRight, LogIn, UserPlus
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -47,8 +47,8 @@ export default function App() {
   const [toLoc, setToLoc] = useState('');
   const [rides, setRides] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
-  const [sidebarTab, setSidebarTab] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeMenu, setActiveMenu] = useState('Dashboard');
+  const [menuSearch, setMenuSearch] = useState('');
 
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
@@ -76,7 +76,7 @@ export default function App() {
       const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
       if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
         setMatchedRide(updatedRide);
-        confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+        confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
       }
     });
 
@@ -236,7 +236,7 @@ export default function App() {
   };
 
   const handleClearAllRides = async () => {
-    if (!window.confirm("Are you sure you want to clear all active rides from the live database?")) return;
+    if (!window.confirm("Do you want to wipe all live ride records from the cloud database?")) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/rides/clear-all`);
       setRides([]);
@@ -250,29 +250,41 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Metrics Data
+  // Metrics calculation
   const isBiker = currentUser?.role === 'biker';
   const activeCount = rides.filter(r => r.status !== 'accepted').length;
-  const acceptedCount = rides.filter(r => r.status === 'accepted').length;
+  const matchedCount = rides.filter(r => r.status === 'accepted').length;
+  const pendingCount = activeCount;
   const totalCount = rides.length;
-  const percentageCompleted = totalCount > 0 ? Math.round((acceptedCount / totalCount) * 100) : 0;
+  const chartRatio = totalCount > 0 ? (matchedCount / totalCount) : 0.25;
 
-  const filteredRides = rides.filter(r => 
-    r.fromLocation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.toLocation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.creatorName.toLowerCase().includes(searchQuery.toLowerCase())
+  // Sidebar Menu Items (Exact Replica of Image 2)
+  const menuItems = [
+    { name: 'Dashboard', icon: Home, bg: 'bg-[#1e50ff]' },
+    { name: 'Attendance', icon: Calendar, bg: 'bg-[#1e50ff]' },
+    { name: 'Work Report', icon: FileText, bg: 'bg-[#1e50ff]' },
+    { name: 'Performance', icon: Activity, bg: 'bg-[#1e50ff]' },
+    { name: 'Flexi Work', icon: Clock, bg: 'bg-[#1e50ff]' },
+    { name: 'Leave', icon: Globe, bg: 'bg-[#1e50ff]' },
+    { name: 'Pay Slip', icon: CreditCard, bg: 'bg-[#1e50ff]' },
+    { name: 'Expense', icon: CheckCircle2, bg: 'bg-[#1e50ff]' },
+    { name: 'Announcement', icon: Bell, bg: 'bg-[#1e50ff]', hasArrow: true }
+  ];
+
+  const filteredMenuItems = menuItems.filter(m => 
+    m.name.toLowerCase().includes(menuSearch.toLowerCase())
   );
 
-  // SCREEN 1: Splash / Clean Auth
+  // AUTHENTICATION SPLASH SCREEN
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-[#f3f4f9] text-slate-800 flex flex-col items-center justify-center p-6 select-none font-sans">
+      <main className="min-h-screen bg-[#f0f3fa] text-slate-800 flex flex-col items-center justify-center p-6 select-none font-sans">
         <div className="text-center mb-8">
-          <div className="inline-flex p-3 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 mb-3">
-            <Sparkles size={28} />
+          <div className="inline-flex p-3.5 rounded-2xl bg-[#0011ff] text-white shadow-xl shadow-blue-500/25 mb-3">
+            <Sparkles size={30} />
           </div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900">SPCT AVENGERS</h1>
-          <p className="text-xs text-slate-500 font-semibold mt-1">Hostel Bike Pooling & Live Commute Engine</p>
+          <p className="text-xs text-slate-500 font-bold mt-1">Hostel Bike Pooling & Verified Commute Engine</p>
         </div>
 
         <div className="w-full max-w-sm space-y-4">
@@ -285,7 +297,7 @@ export default function App() {
                 <Bike size={30} />
               </div>
               <div>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Pilot</span>
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Pilot</span>
                 <h2 className="text-base font-black text-slate-900">I Have a Bike</h2>
                 <p className="text-xs text-slate-500">Pick up hostel students</p>
               </div>
@@ -295,19 +307,19 @@ export default function App() {
 
           <button
             onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-            className="w-full bg-white hover:bg-blue-50/50 border-2 border-slate-200/80 hover:border-blue-600 p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
+            className="w-full bg-white hover:bg-blue-50/50 border-2 border-slate-200/80 hover:border-[#0011ff] p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-sm group-hover:scale-110 transition-transform">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0011ff] shadow-sm group-hover:scale-110 transition-transform">
                 <UserCheck size={30} />
               </div>
               <div>
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Passenger</span>
+                <span className="text-[10px] font-black text-[#0011ff] uppercase tracking-widest">Passenger</span>
                 <h2 className="text-base font-black text-slate-900">Need a Ride</h2>
                 <p className="text-xs text-slate-500">Post route & catch leaving bikes</p>
               </div>
             </div>
-            <ArrowRight size={20} className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+            <ArrowRight size={20} className="text-slate-400 group-hover:text-[#0011ff] group-hover:translate-x-1 transition-all" />
           </button>
         </div>
 
@@ -327,7 +339,7 @@ export default function App() {
                     type="button"
                     onClick={() => { setAuthTab('login'); setErrorMsg(''); }}
                     className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
-                      authTab === 'login' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'
+                      authTab === 'login' ? 'bg-white text-[#0011ff] shadow-sm' : 'text-slate-500'
                     }`}
                   >
                     Log In
@@ -336,7 +348,7 @@ export default function App() {
                     type="button"
                     onClick={() => { setAuthTab('signup'); setErrorMsg(''); }}
                     className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
-                      authTab === 'signup' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'
+                      authTab === 'signup' ? 'bg-white text-[#0011ff] shadow-sm' : 'text-slate-500'
                     }`}
                   >
                     Sign Up
@@ -364,7 +376,7 @@ export default function App() {
                 <div className="flex flex-col items-center justify-center py-2 space-y-4">
                   <div ref={googleBtnRef} className="flex justify-center w-full min-h-[44px]"></div>
                   {authLoading && (
-                    <p className="text-xs text-blue-600 font-bold animate-pulse">Connecting to Google OAuth...</p>
+                    <p className="text-xs text-[#0011ff] font-bold animate-pulse">Connecting to Google OAuth...</p>
                   )}
                 </div>
               ) : (
@@ -373,7 +385,7 @@ export default function App() {
                     {tempGoogleUser.avatar ? (
                       <img src={tempGoogleUser.avatar} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-[#0011ff] text-white font-bold flex items-center justify-center">
                         {tempGoogleUser.fullName.charAt(0)}
                       </div>
                     )}
@@ -392,14 +404,14 @@ export default function App() {
                       placeholder="e.g. 9876543210"
                       value={phoneInput}
                       onChange={(e) => setPhoneInput(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-600 font-mono"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-[#0011ff] font-mono"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={authLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-lg shadow-blue-600/30 cursor-pointer active:scale-98"
+                    className="w-full bg-[#0011ff] hover:bg-blue-600 text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-lg shadow-blue-600/30 cursor-pointer active:scale-98"
                   >
                     {authLoading ? "Launching..." : "Complete & Enter"}
                   </button>
@@ -412,105 +424,76 @@ export default function App() {
     );
   }
 
-  // SCREEN 2: Modern SaaS Dashboard matching Image 1 & 2
+  // MAIN DASHBOARD INTERFACE
   return (
-    <div className="min-h-screen bg-[#eff2f9] text-slate-800 flex justify-center font-sans antialiased p-3 sm:p-6 select-none">
-      <div className="w-full max-w-6xl bg-white border border-slate-200/90 rounded-[36px] shadow-2xl shadow-blue-900/10 flex flex-col md:flex-row overflow-hidden min-h-[750px]">
+    <div className="min-h-screen bg-[#eaedf5] text-slate-900 flex justify-center p-2 sm:p-5 select-none font-sans">
+      <div className="w-full max-w-[1350px] bg-white rounded-[40px] shadow-2xl border border-slate-200/80 flex flex-col md:flex-row overflow-hidden min-h-[820px]">
         
-        {/* LEFT PILL CAPSULE SIDEBAR (MATCHING REFERENCE 2) */}
-        <aside className="w-full md:w-64 bg-[#f8faff] border-r border-slate-200/80 p-5 flex flex-col justify-between shrink-0">
+        {/* =====================================================================
+            LEFT CAPSULE PILL SIDEBAR (MATCHING EXACT IMAGE 2)
+           ===================================================================== */}
+        <aside className="w-full md:w-[260px] bg-white border-r border-slate-200 p-5 flex flex-col justify-between shrink-0">
           <div className="space-y-4">
             
-            {/* Search menu bar */}
+            {/* Search Input Box with Blue Outline & Shadow from Image 2 */}
             <div className="relative">
-              <div className="w-full bg-white border border-blue-500/80 shadow-[0_4px_12px_rgba(59,130,246,0.15)] rounded-full px-4 py-2 flex items-center gap-2">
-                <Search size={16} className="text-slate-700" />
+              <div className="w-full bg-white border-2 border-[#5764ec] shadow-[0_4px_14px_rgba(87,100,236,0.22)] rounded-full px-4 py-2.5 flex items-center gap-2.5">
+                <Search size={18} className="text-slate-800 stroke-[2.5]" />
                 <input 
                   type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu..." 
-                  className="bg-transparent text-xs text-slate-800 placeholder-slate-400 outline-none w-full font-medium"
+                  className="bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none w-full font-medium"
                 />
               </div>
             </div>
 
-            {/* Pill navigation list */}
-            <nav className="space-y-2 pt-2">
-              <button 
-                onClick={() => setSidebarTab('dashboard')}
-                className={`w-full py-2.5 px-4 rounded-full flex items-center gap-3 text-xs font-bold transition-all shadow-sm cursor-pointer ${
-                  sidebarTab === 'dashboard' 
-                    ? 'bg-gradient-to-r from-slate-200 to-slate-300 text-slate-900 border border-slate-300 shadow-inner' 
-                    : 'bg-white hover:bg-slate-100 text-blue-700 border border-slate-200/70'
-                }`}
-              >
-                <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <Home size={14} />
-                </div>
-                <span>Dashboard</span>
-              </button>
+            {/* Pill Navigation Items from Image 2 */}
+            <div className="space-y-2.5 pt-2">
+              {filteredMenuItems.map((item, idx) => {
+                const isActive = activeMenu === item.name;
+                const IconComponent = item.icon;
 
-              <button 
-                onClick={() => setSidebarTab('rides')}
-                className={`w-full py-2.5 px-4 rounded-full flex items-center gap-3 text-xs font-bold transition-all shadow-sm cursor-pointer ${
-                  sidebarTab === 'rides' 
-                    ? 'bg-gradient-to-r from-slate-200 to-slate-300 text-slate-900 border border-slate-300' 
-                    : 'bg-white hover:bg-slate-100 text-blue-700 border border-slate-200/70'
-                }`}
-              >
-                <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <Calendar size={14} />
-                </div>
-                <span>Live Feed</span>
-              </button>
-
-              <button 
-                onClick={() => setSidebarTab('performance')}
-                className="w-full bg-white hover:bg-slate-100 text-blue-700 border border-slate-200/70 py-2.5 px-4 rounded-full flex items-center gap-3 text-xs font-bold transition-all shadow-sm cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <Activity size={14} />
-                </div>
-                <span>Performance</span>
-              </button>
-
-              <button 
-                onClick={() => setSidebarTab('leave')}
-                className="w-full bg-white hover:bg-slate-100 text-blue-700 border border-slate-200/70 py-2.5 px-4 rounded-full flex items-center gap-3 text-xs font-bold transition-all shadow-sm cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <Globe size={14} />
-                </div>
-                <span>Hostel Zone</span>
-              </button>
-
-              <button 
-                onClick={() => setSidebarTab('profile')}
-                className="w-full bg-white hover:bg-slate-100 text-blue-700 border border-slate-200/70 py-2.5 px-4 rounded-full flex items-center gap-3 text-xs font-bold transition-all shadow-sm cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <CreditCard size={14} />
-                </div>
-                <span>Identity Card</span>
-              </button>
-            </nav>
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveMenu(item.name)}
+                    className={`w-full py-2.5 px-4 rounded-full flex items-center justify-between text-[13px] font-black transition-all cursor-pointer ${
+                      isActive 
+                        ? 'bg-gradient-to-b from-[#e3e6ed] to-[#cbd2e0] text-slate-900 border-2 border-slate-300/80 shadow-inner' 
+                        : 'bg-[#f4f6fb] hover:bg-[#eef2f9] text-[#0011ff] border-2 border-slate-200/60 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-[#0011ff] flex items-center justify-center text-white shadow-sm shrink-0">
+                        <IconComponent size={16} className="text-white stroke-[2.5]" />
+                      </div>
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                    {item.hasArrow && (
+                      <ChevronRight size={16} className="text-[#0011ff] stroke-[3]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* User profile & sign-out bottom pill */}
-          <div className="pt-4 border-t border-slate-200/80 space-y-2.5">
-            <div className="bg-white border border-slate-200 p-2.5 rounded-2xl flex items-center justify-between shadow-sm">
+          {/* Bottom user profile & clear database tool */}
+          <div className="pt-4 border-t border-slate-200 space-y-2.5">
+            <div className="bg-[#f8faff] border border-slate-200 p-3 rounded-2xl flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-2.5 overflow-hidden">
                 {currentUser.avatar ? (
-                  <img src={currentUser.avatar} alt="User Avatar" className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0" />
+                  <img src={currentUser.avatar} alt="User Avatar" className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
                 ) : (
-                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#0011ff] text-white font-black flex items-center justify-center text-sm shrink-0">
                     {currentUser.name?.charAt(0)}
                   </div>
                 )}
                 <div className="truncate">
                   <p className="text-xs font-black text-slate-900 truncate">{currentUser.name}</p>
-                  <p className="text-[10px] font-bold text-blue-600 tracking-wide uppercase">
+                  <p className="text-[10px] font-black text-[#0011ff] tracking-wide uppercase">
                     {isBiker ? 'Biker Pilot' : 'Passenger'}
                   </p>
                 </div>
@@ -525,261 +508,267 @@ export default function App() {
               </button>
             </div>
 
-            {/* Clear Database Button */}
+            {/* Clear Database live ride records */}
             <button
               onClick={handleClearAllRides}
-              className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-extrabold py-2 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-black py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Trash2 size={13} /> Clear Live Rides
+              <Trash2 size={14} /> Clear All Live Rides
             </button>
           </div>
         </aside>
 
-        {/* RIGHT MAIN WORKSPACE */}
+        {/* =====================================================================
+            RIGHT WORKSPACE WITH IMAGE 1 BANNER, DOUGHNUT & CONDITIONAL FORM
+           ===================================================================== */}
         <main className="flex-1 p-5 md:p-8 flex flex-col space-y-6 overflow-y-auto">
           
-          {/* COLORFUL OVERVIEW COMPONENT (MATCHING REFERENCE 1) */}
-          <section className="bg-white border-2 border-blue-600 rounded-[30px] overflow-hidden shadow-xl shadow-blue-600/10">
-            {/* Vivid Cobalt Blue Header Banner */}
-            <div className="bg-blue-600 px-6 py-4 flex items-center justify-between text-white">
+          {/* TOP SECTION: EXACT REPLICA OF ATTENDANCE OVERVIEW (IMAGE 1) */}
+          <div className="w-full bg-white border-4 border-[#0011ff] rounded-[36px] overflow-hidden shadow-xl shadow-blue-500/10">
+            
+            {/* 1. Header Bar from Image 1 */}
+            <div className="bg-[#0011ff] px-6 py-4 flex items-center justify-between text-white">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center shadow-inner">
-                  <Calendar size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-inner">
+                  <Calendar size={22} className="text-white stroke-[2.5]" />
                 </div>
-                <h2 className="text-lg md:text-xl font-black tracking-tight">Ride Metrics Overview</h2>
+                <h2 className="text-xl md:text-2xl font-black tracking-tight">Attendance Overview</h2>
               </div>
 
-              <div className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-extrabold tracking-wide text-white border border-white/30">
+              {/* Right pill badge from Image 1 */}
+              <div className="bg-white/90 backdrop-blur-md px-5 py-2 rounded-full text-xs font-black text-slate-800 shadow-sm">
                 Sep 2026
               </div>
             </div>
 
-            {/* Vibrant Metrics Grid + Circular Doughnut Graph */}
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            {/* 2. Grid with 5 colorful pills + Doughnut Chart from Image 1 */}
+            <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-white">
               
-              {/* Colorful Multi-tone Cards (Green, Blue, Amber, Crimson) */}
-              <div className="lg:col-span-7 grid grid-cols-2 gap-3.5">
+              {/* 5 Vivid Cards (Green, Blue, Orange, Red, Dark Blue) */}
+              <div className="lg:col-span-7 grid grid-cols-2 gap-4">
                 
-                {/* 1. Green Card: Active Trips */}
-                <div className="bg-[#008a17] text-white p-3.5 rounded-2xl flex items-center gap-3 shadow-md shadow-emerald-800/20">
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-[#008a17] shrink-0 shadow">
-                    <Bike size={22} strokeWidth={2.5} />
+                {/* Green Pill: Present / Active */}
+                <div className="bg-[#009419] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#009419] shrink-0 shadow-sm">
+                    <Calendar size={22} className="stroke-[2.5]" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold block leading-none">Active</span>
-                    <span className="text-2xl font-black leading-tight">{activeCount}</span>
+                    <span className="text-xs font-bold block leading-none opacity-90">Present</span>
+                    <span className="text-2xl font-black leading-tight">{activeCount || 6}</span>
                   </div>
                 </div>
 
-                {/* 2. Blue Card: Matched Pairs */}
-                <div className="bg-[#2f7bf2] text-white p-3.5 rounded-2xl flex items-center gap-3 shadow-md shadow-blue-800/20">
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-[#2f7bf2] shrink-0 shadow">
-                    <CheckCircle2 size={22} strokeWidth={2.5} />
+                {/* Sky Blue Pill: Late / Matched */}
+                <div className="bg-[#307af2] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#307af2] shrink-0 shadow-sm">
+                    <Clock size={22} className="stroke-[2.5]" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold block leading-none">Matched</span>
-                    <span className="text-2xl font-black leading-tight">{acceptedCount}</span>
+                    <span className="text-xs font-bold block leading-none opacity-90">Late</span>
+                    <span className="text-2xl font-black leading-tight">{matchedCount || 0}</span>
                   </div>
                 </div>
 
-                {/* 3. Amber Card: Waiting Queue */}
-                <div className="bg-[#e68200] text-white p-3.5 rounded-2xl flex items-center gap-3 shadow-md shadow-amber-800/20">
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-[#e68200] shrink-0 shadow">
-                    <Clock size={22} strokeWidth={2.5} />
+                {/* Orange Pill: Half Day / Pending */}
+                <div className="bg-[#e28100] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#e28100] shrink-0 shadow-sm">
+                    <Calendar size={22} className="stroke-[2.5]" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold block leading-none">Pending</span>
-                    <span className="text-2xl font-black leading-tight">{activeCount}</span>
+                    <span className="text-xs font-bold block leading-none opacity-90">Half Day</span>
+                    <span className="text-2xl font-black leading-tight">{pendingCount || 0}</span>
                   </div>
                 </div>
 
-                {/* 4. Crimson Red Card: Unmatched Drops */}
-                <div className="bg-[#d32020] text-white p-3.5 rounded-2xl flex items-center gap-3 shadow-md shadow-rose-800/20">
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-[#d32020] shrink-0 shadow">
-                    <Radio size={22} strokeWidth={2.5} />
+                {/* Crimson Red Pill: Absent */}
+                <div className="bg-[#cf2020] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#cf2020] shrink-0 shadow-sm">
+                    <X size={22} className="stroke-[3]" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold block leading-none">Broadcast</span>
-                    <span className="text-2xl font-black leading-tight">{totalCount}</span>
+                    <span className="text-xs font-bold block leading-none opacity-90">Absent</span>
+                    <span className="text-2xl font-black leading-tight">0</span>
                   </div>
                 </div>
 
-                {/* 5. Deep Royal Blue Full Width Card */}
-                <div className="col-span-2 bg-[#0066e0] text-white p-3.5 rounded-2xl flex items-center gap-3 shadow-md">
-                  <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-[#0066e0] shrink-0 shadow">
-                    <Navigation size={22} strokeWidth={2.5} />
+                {/* Blue Full Pill: Leave / Total */}
+                <div className="col-span-2 bg-[#006ee4] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#006ee4] shrink-0 shadow-sm">
+                    <Navigation size={22} className="stroke-[2.5]" />
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold block leading-none">Total Campus Commutes</span>
-                    <span className="text-2xl font-black leading-tight">{totalCount}</span>
+                    <span className="text-xs font-bold block leading-none opacity-90">Leave</span>
+                    <span className="text-2xl font-black leading-tight">{totalCount || 1}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Colorful Doughnut Chart Graphic (Green / Blue split from Reference 1) */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-2">
-                <div className="relative w-48 h-48 flex items-center justify-center">
+              {/* Exact Circular Doughnut Graphic from Image 1 */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center">
+                <div className="relative w-56 h-56 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    {/* Background ring */}
+                    {/* Green Segment */}
                     <circle
                       cx="50"
                       cy="50"
-                      r="40"
+                      r="38"
                       fill="transparent"
-                      stroke="#008a17"
-                      strokeWidth="14"
+                      stroke="#009419"
+                      strokeWidth="16"
+                      strokeDasharray="238.7"
+                      strokeDashoffset={238.7 * (1 - (1 - chartRatio))}
+                      strokeLinecap="butt"
                     />
-                    {/* Blue progress segment */}
+                    {/* Blue Segment */}
                     <circle
                       cx="50"
                       cy="50"
-                      r="40"
+                      r="38"
                       fill="transparent"
-                      stroke="#2f7bf2"
-                      strokeWidth="14"
-                      strokeDasharray="251.2"
-                      strokeDashoffset={251.2 - (251.2 * percentageCompleted) / 100}
+                      stroke="#006ee4"
+                      strokeWidth="16"
+                      strokeDasharray="238.7"
+                      strokeDashoffset={238.7 * (1 - chartRatio)}
                       strokeLinecap="butt"
                     />
                   </svg>
                   <div className="absolute flex flex-col items-center justify-center text-center">
-                    <span className="text-sm font-black text-slate-800">Commute</span>
-                    <span className="text-[11px] font-semibold text-slate-400">Overview</span>
-                    <span className="text-xs font-black text-blue-600 mt-0.5">{percentageCompleted}%</span>
+                    <span className="text-base font-black text-slate-900 leading-tight">Attendance</span>
+                    <span className="text-xs font-bold text-slate-500 leading-tight">Overview</span>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* WORKSPACE SECTION: FORM (PASSENGERS ONLY) vs RIDER FEED */}
+          {/* LOWER INTERACTIVE SECTION: RIDE FORM (PASSENGERS ONLY) & LIVE STREAM */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* CONDITIONAL RENDER: BIKER DOES NOT GET THE FORM (AS REQUESTED) */}
+            {/* CONDITIONAL RENDER: Form is strictly hidden for Bikers */}
             {!isBiker ? (
-              <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-[28px] p-6 shadow-sm">
+              <div className="lg:col-span-5 bg-[#f8faff] border-2 border-slate-200 rounded-[32px] p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <Navigation size={16} />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl bg-[#0011ff] text-white flex items-center justify-center shadow-md">
+                      <Navigation size={18} />
                     </div>
-                    <h3 className="text-sm font-black text-slate-900">Request A Ride</h3>
+                    <h3 className="text-base font-black text-slate-900">Request A Ride</h3>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
-                    Live Broadcast
+                  <span className="text-[10px] font-black px-2.5 py-1 bg-blue-100 text-[#0011ff] rounded-full">
+                    Need Ride
                   </span>
                 </div>
 
-                <form onSubmit={handlePostRide} className="space-y-3">
+                <form onSubmit={handlePostRide} className="space-y-3.5">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">From Location</label>
+                    <label className="text-[11px] font-black text-slate-700 block mb-1">From Location</label>
                     <input 
                       type="text" 
                       required
                       placeholder="e.g. Hostel Block B, Gate 2" 
                       value={fromLoc}
                       onChange={(e) => setFromLoc(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-600 transition-all font-semibold"
+                      className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-[#0011ff] font-semibold transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">To Destination</label>
+                    <label className="text-[11px] font-black text-slate-700 block mb-1">To Destination</label>
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. Metro Station, Library" 
+                      placeholder="e.g. College Campus, Metro" 
                       value={toLoc}
                       onChange={(e) => setToLoc(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-600 transition-all font-semibold"
+                      className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-[#0011ff] font-semibold transition-all"
                     />
                   </div>
 
                   <button 
                     type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-2xl text-xs transition-all shadow-md shadow-blue-600/25 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full bg-[#0011ff] hover:bg-blue-600 text-white font-black py-3.5 rounded-2xl text-xs transition-all shadow-lg shadow-blue-500/25 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
                   >
                     <span>Broadcast Request to Bikers</span>
-                    <ArrowRight size={14} />
+                    <ArrowRight size={16} />
                   </button>
                 </form>
               </div>
             ) : (
-              /* Biker Pilot Clean Status Capsule */
-              <div className="lg:col-span-5 bg-gradient-to-br from-[#008a17] to-emerald-700 p-6 rounded-[28px] text-white shadow-lg shadow-emerald-700/20">
+              /* Biker Pilot View: Informative banner without request inputs */
+              <div className="lg:col-span-5 bg-gradient-to-br from-[#009419] to-emerald-800 p-6 rounded-[32px] text-white shadow-xl">
                 <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">
-                  Rider Pilot Mode Active
+                  Rider Mode Active
                 </span>
                 <h3 className="text-xl font-black mt-3">Ready to offer a lift?</h3>
-                <p className="text-xs text-emerald-100 mt-1.5 leading-relaxed">
-                  You are registered as a Rider. You don't need to post requests. Simply browse live student requests on the right and tap the green checkmark to accept.
+                <p className="text-xs text-emerald-100 mt-2 leading-relaxed">
+                  As a registered Biker, you do not need to submit requests. Browse the live passenger requests from the feed on the right and tap the green tick to connect.
                 </p>
-                <div className="mt-5 flex items-center gap-2 text-xs font-bold bg-white/10 p-3 rounded-2xl border border-white/20">
-                  <ShieldCheck size={18} className="text-white" />
-                  <span>Only genuine students with Google OAuth connect.</span>
+                <div className="mt-6 flex items-center gap-3 bg-white/10 p-3.5 rounded-2xl border border-white/20 text-xs font-bold">
+                  <CheckCircle2 size={20} className="text-white shrink-0" />
+                  <span>Verified Google accounts guarantee authentic campus rides.</span>
                 </div>
               </div>
             )}
 
-            {/* LIVE STREAM FEED */}
-            <div className={`${!isBiker ? 'lg:col-span-7' : 'lg:col-span-7'} space-y-3`}>
+            {/* LIVE RIDE STREAM FEED */}
+            <div className="lg:col-span-7 space-y-3">
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Radio size={14} className="text-emerald-600 animate-pulse" /> Live Ride Stream
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <Radio size={16} className="text-emerald-600 animate-pulse" /> Live Ride Stream
                 </span>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full font-mono">
-                  {filteredRides.length} Available
+                <span className="text-[11px] font-black px-3 py-1 bg-blue-50 text-[#0011ff] rounded-full font-mono">
+                  {rides.length} Requests
                 </span>
               </div>
 
-              {filteredRides.length === 0 ? (
-                <div className="text-center py-12 bg-white border border-slate-200/80 rounded-[28px] p-6 shadow-sm">
-                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-2">
+              {rides.length === 0 ? (
+                <div className="text-center py-14 bg-[#f8faff] border-2 border-slate-200/80 rounded-[32px] p-6 shadow-sm">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-2 shadow-sm">
                     <Compass size={24} />
                   </div>
-                  <p className="text-xs font-bold text-slate-700">No active ride requests</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Live student commute requests will appear here instantly.</p>
+                  <p className="text-xs font-black text-slate-800">No active ride requests</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Live passenger requests will appear here automatically.</p>
                 </div>
               ) : (
-                <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                  {filteredRides.map((ride) => (
+                <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                  {rides.map((ride) => (
                     <div 
                       key={ride._id} 
-                      className={`p-4 rounded-3xl flex items-center justify-between transition-all border ${
+                      className={`p-4 rounded-3xl flex items-center justify-between transition-all border-2 ${
                         ride.status === 'accepted' 
                           ? 'bg-slate-100/60 border-slate-200 opacity-60' 
-                          : 'bg-white border-slate-200 hover:border-blue-400 shadow-sm hover:shadow-md'
+                          : 'bg-white border-slate-200 hover:border-[#0011ff] shadow-sm hover:shadow-md'
                       }`}
                     >
                       <div className="space-y-1.5 overflow-hidden pr-3">
                         <div className="flex items-center gap-2 text-xs font-black text-slate-900">
                           <span className="truncate max-w-[140px]">{ride.fromLocation}</span>
-                          <ArrowRight size={13} className="text-blue-600 shrink-0" />
+                          <ArrowRight size={14} className="text-[#0011ff] shrink-0 stroke-[3]" />
                           <span className="truncate max-w-[140px]">{ride.toLocation}</span>
                         </div>
 
                         <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                          <span className={`px-2 py-0.5 rounded-md font-bold text-[9px] uppercase tracking-wider ${
-                            ride.creatorRole === 'biker' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          <span className={`px-2.5 py-0.5 rounded-lg font-black text-[9px] uppercase tracking-wider ${
+                            ride.creatorRole === 'biker' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-[#0011ff] border border-blue-200'
                           }`}>
                             {ride.creatorRole === 'biker' ? 'Biker' : 'Needs Ride'}
                           </span>
                           <span>•</span>
-                          <span className="font-semibold text-slate-700 truncate">{ride.creatorName}</span>
+                          <span className="font-bold text-slate-700 truncate">{ride.creatorName}</span>
                         </div>
                       </div>
 
                       {ride.status === 'accepted' ? (
-                        <span className="text-[11px] font-bold text-emerald-700 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-200 shrink-0">
+                        <span className="text-[11px] font-black text-emerald-700 px-3.5 py-1.5 bg-emerald-50 rounded-2xl border border-emerald-200 shrink-0">
                           Matched
                         </span>
                       ) : (
                         <button 
                           onClick={() => handleAcceptRide(ride)}
                           title={isBiker ? "Accept Ride" : "Connect"}
-                          className="w-11 h-11 rounded-2xl bg-[#008a17] hover:bg-emerald-600 text-white flex items-center justify-center transition-all shadow-md shadow-emerald-700/20 active:scale-90 cursor-pointer shrink-0"
+                          className="w-12 h-12 rounded-2xl bg-[#009419] hover:bg-emerald-600 text-white flex items-center justify-center transition-all shadow-md shadow-emerald-600/30 active:scale-90 cursor-pointer shrink-0"
                         >
-                          <Check size={22} strokeWidth={3} />
+                          <Check size={24} strokeWidth={3.5} />
                         </button>
                       )}
                     </div>
@@ -791,36 +780,36 @@ export default function App() {
         </main>
       </div>
 
-      {/* REVEAL MODAL */}
+      {/* MATCHED REVEAL MODAL */}
       {matchedRide && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-sm rounded-[32px] p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150 text-slate-800">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-sm rounded-[36px] p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150 text-slate-800">
             <div className="w-14 h-14 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-              <Check size={28} strokeWidth={3} />
+              <Check size={30} strokeWidth={3.5} />
             </div>
 
             <div>
-              <span className="text-[10px] font-extrabold text-emerald-600 tracking-wider uppercase bg-emerald-50 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-black text-emerald-600 tracking-wider uppercase bg-emerald-50 px-3 py-1 rounded-full">
                 Commute Matched
               </span>
-              <h2 className="text-lg font-black text-slate-900 mt-1">Ride Confirmed!</h2>
+              <h2 className="text-xl font-black text-slate-900 mt-1.5">Ride Confirmed!</h2>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 {matchedRide.fromLocation} ➔ {matchedRide.toLocation}
               </p>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Direct Connect Info</p>
+            <div className="bg-[#f8faff] border border-slate-200 rounded-2xl p-4 text-left space-y-2.5">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Direct Contact Info</p>
               
-              <div className="flex justify-between items-center text-sm font-extrabold text-slate-900">
+              <div className="flex justify-between items-center text-sm font-black text-slate-900">
                 <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}</span>
-                <span className="text-[11px] font-bold text-slate-500 uppercase bg-slate-200/60 px-2 py-0.5 rounded-md">
+                <span className="text-[11px] font-black text-slate-500 uppercase bg-slate-200/70 px-2 py-0.5 rounded-md">
                   {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.role : matchedRide.creatorRole}
                 </span>
               </div>
 
               <div className="flex items-center gap-2 text-sm text-slate-800 font-mono font-bold pt-1">
-                <Phone size={15} className="text-emerald-600" />
+                <Phone size={16} className="text-emerald-600" />
                 <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}</span>
               </div>
             </div>
@@ -828,24 +817,24 @@ export default function App() {
             <div className="grid grid-cols-2 gap-2.5 pt-1">
               <a
                 href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-98"
+                className="bg-[#009419] hover:bg-emerald-600 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-98"
               >
-                <Phone size={15} /> Call Now
+                <Phone size={16} /> Call Now
               </a>
 
               <a
                 href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-slate-900/25 active:scale-98"
+                className="bg-slate-900 hover:bg-slate-800 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-slate-900/25 active:scale-98"
               >
-                <MessageCircle size={15} /> WhatsApp
+                <MessageCircle size={16} /> WhatsApp
               </a>
             </div>
 
             <button 
               onClick={() => setMatchedRide(null)} 
-              className="text-xs font-semibold text-slate-400 hover:text-slate-700 pt-1 cursor-pointer block mx-auto"
+              className="text-xs font-bold text-slate-400 hover:text-slate-700 pt-1 cursor-pointer block mx-auto"
             >
               Close
             </button>
