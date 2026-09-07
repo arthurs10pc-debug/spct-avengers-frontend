@@ -5,11 +5,21 @@ import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, Sparkles, MessageCircle, AlertCircle, X, 
-  Navigation, Trash2, Radio
+  Navigation, Trash2, ChevronDown
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
+
+const PRESET_LOCATIONS = [
+  "Vaishnodevi Circle",
+  "Silver Oak University",
+  "Thaltej",
+  "Iskon circle",
+  "Tambul",
+  "Zundal Circle",
+  "Kathiyavadi Pan Parlour"
+];
 
 const parseJwt = (token) => {
   try {
@@ -47,11 +57,30 @@ export default function App() {
 
   const [fromLoc, setFromLoc] = useState('');
   const [toLoc, setToLoc] = useState('');
+  const [showFromDropdown, setShowFromDropdown] = useState(false);
+  const [showToDropdown, setShowToDropdown] = useState(false);
+
   const [rides, setRides] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
 
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
+  const fromContainerRef = useRef(null);
+  const toContainerRef = useRef(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (fromContainerRef.current && !fromContainerRef.current.contains(e.target)) {
+        setShowFromDropdown(false);
+      }
+      if (toContainerRef.current && !toContainerRef.current.contains(e.target)) {
+        setShowToDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, {
@@ -216,6 +245,8 @@ export default function App() {
 
     setFromLoc('');
     setToLoc('');
+    setShowFromDropdown(false);
+    setShowToDropdown(false);
   };
 
   const handleAcceptRide = (ride) => {
@@ -379,12 +410,12 @@ export default function App() {
     );
   }
 
-  // CLEANED WORKSPACE: STRICT ROLE SEPARATION
+  // WORKSPACE
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '960px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
         
-        {/* Top Navbar */}
+        {/* Header */}
         <header style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {currentUser.avatar ? (
@@ -415,15 +446,12 @@ export default function App() {
           </div>
         </header>
 
-        {/* Workspace Body */}
+        {/* Content */}
         <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* =========================================================================
-              1. PASSENGER VIEW: "FROM -> TO" FORM IS ACTIVE + THEIR REQUESTS
-             ========================================================================= */}
+          {/* ================= PASSENGER VIEW ================= */}
           {!isBiker && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Form Card */}
               <div style={{ backgroundColor: '#f8faff', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -431,33 +459,92 @@ export default function App() {
                   </div>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>Request A Ride</h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Broadcast your trip to available riders</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Pick a popular spot or type your custom route</p>
                   </div>
                 </div>
 
-                <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
+                <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  {/* FROM LOCATION WITH DROPDOWN */}
+                  <div ref={fromContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>From Location</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. Hostel Block B, Main Gate" 
-                      value={fromLoc}
-                      onChange={(e) => setFromLoc(e.target.value)}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '600' }}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="e.g. Hostel Block B, Main Gate" 
+                        value={fromLoc}
+                        onFocus={() => setShowFromDropdown(true)}
+                        onChange={(e) => {
+                          setFromLoc(e.target.value);
+                          setShowFromDropdown(true);
+                        }}
+                        style={{ width: '100%', padding: '12px 36px 12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '600' }}
+                      />
+                      <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                    </div>
+
+                    {showFromDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 40, maxHeight: '180px', overflowY: 'auto' }}>
+                        <div style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Select Location</div>
+                        {PRESET_LOCATIONS.map((loc, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setFromLoc(loc);
+                              setShowFromDropdown(false);
+                            }}
+                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <MapPin size={13} color="#0011ff" />
+                            <span>{loc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
+                  {/* TO DESTINATION WITH DROPDOWN */}
+                  <div ref={toContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>To Destination</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. Metro Station, Campus 2" 
-                      value={toLoc}
-                      onChange={(e) => setToLoc(e.target.value)}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '600' }}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="e.g. Metro Station, Campus 2" 
+                        value={toLoc}
+                        onFocus={() => setShowToDropdown(true)}
+                        onChange={(e) => {
+                          setToLoc(e.target.value);
+                          setShowToDropdown(true);
+                        }}
+                        style={{ width: '100%', padding: '12px 36px 12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '600' }}
+                      />
+                      <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                    </div>
+
+                    {showToDropdown && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 40, maxHeight: '180px', overflowY: 'auto' }}>
+                        <div style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Select Destination</div>
+                        {PRESET_LOCATIONS.map((loc, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              setToLoc(loc);
+                              setShowToDropdown(false);
+                            }}
+                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <MapPin size={13} color="#0011ff" />
+                            <span>{loc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <button 
@@ -470,7 +557,7 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Status List for Passenger */}
+              {/* Passenger Ride Status */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>Active Trip Requests</span>
@@ -527,12 +614,9 @@ export default function App() {
             </div>
           )}
 
-          {/* =========================================================================
-              2. RIDER VIEW: STRICTLY "LIVE RIDER STREAM" (NO INPUT FORM)
-             ========================================================================= */}
+          {/* ================= RIDER VIEW ================= */}
           {isBiker && (
             <div>
-              {/* Header Stream Bar */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#009419', display: 'inline-block' }} />
@@ -606,7 +690,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* MATCHED REVEAL POPUP MODAL */}
+      {/* MATCHED POPUP */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
@@ -667,4 +751,4 @@ export default function App() {
       )}
     </div>
   );
-}
+}git add src/App.jsx
