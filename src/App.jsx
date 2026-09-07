@@ -22,10 +22,10 @@ const PRESET_LOCATIONS = [
   "Kathiyavadi Pan Parlour"
 ];
 
-// Haversine Distance Calculation (Returns distance in KM)
+// Distance calculator (Haversine formula in KM)
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -33,7 +33,7 @@ const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
     Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Number((R * c).toFixed(2));
+  return (R * c).toFixed(2);
 };
 
 const parseJwt = (token) => {
@@ -70,13 +70,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Location & Radar States
-  const [userLocation, setUserLocation] = useState(null);
-  const [locationStatus, setLocationStatus] = useState('Checking GPS...');
-  const [allLiveRiders, setAllLiveRiders] = useState([]);
-  const [selectedRadarRider, setSelectedRadarRider] = useState(null);
-
-  // Booking states
+  // Ride states
   const [fromLoc, setFromLoc] = useState('');
   const [toLoc, setToLoc] = useState('');
   const [showFromDropdown, setShowFromDropdown] = useState(false);
@@ -88,6 +82,11 @@ export default function App() {
   const [bikersList, setBikersList] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
 
+  // Live GPS Radar States
+  const [userLocation, setUserLocation] = useState(null);
+  const [liveNearbyRiders, setLiveNearbyRiders] = useState([]);
+  const [selectedRadarRider, setSelectedRadarRider] = useState(null);
+
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
   const fromContainerRef = useRef(null);
@@ -95,42 +94,6 @@ export default function App() {
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
-
-  // Request & Watch GPS Coordinates
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus("Geolocation not supported by your browser.");
-      return;
-    }
-
-    const geoWatchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const coords = {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude
-        };
-        setUserLocation(coords);
-        setLocationStatus("GPS Active & Accurate");
-
-        // If user is a Rider, broadcast current position to backend
-        if (currentUser && currentUser.role === 'biker' && socketRef.current) {
-          socketRef.current.emit('update_rider_location', {
-            userId: currentUser._id,
-            name: currentUser.name,
-            phone: currentUser.phone,
-            avatar: currentUser.avatar,
-            ...coords
-          });
-        }
-      },
-      (err) => {
-        setLocationStatus("Location off. Enable GPS for 2 KM Radar.");
-      },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
-    );
-
-    return () => navigator.geolocation.clearWatch(geoWatchId);
-  }, [currentUser]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -144,6 +107,35 @@ export default function App() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Continuous Geolocation Broadcast for Riders & Watcher for Passengers
+  useEffect(() => {
+    if (!currentUser) return;
+
+    if ("geolocation" in navigator) {
+      const watcher = navigator.geolocation.watchPosition(
+        (pos) => {
+          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(coords);
+
+          if (isBiker && socketRef.current) {
+            socketRef.current.emit('update_rider_gps', {
+              userId: currentUser._id,
+              name: currentUser.name,
+              phone: currentUser.phone,
+              avatar: currentUser.avatar,
+              lat: coords.lat,
+              lng: coords.lng
+            });
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+
+      return () => navigator.geolocation.clearWatch(watcher);
+    }
+  }, [currentUser, isBiker]);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, {
@@ -160,13 +152,6 @@ export default function App() {
         .catch(() => {});
     }
 
-    // Live Rider update socket listener
-    socketRef.current.on('live_riders_update', (ridersList) => {
-      setAllLiveRiders(ridersList || []);
-    });
-
-    socketRef.current.emit('get_live_riders');
-
     socketRef.current.on('new_ride_broadcast', (newRide) => {
       setRides(prev => [newRide, ...prev]);
     });
@@ -179,6 +164,12 @@ export default function App() {
       setRides(prev => prev.filter(r => r._id !== deletedId));
     });
 
+    // Real-time 2 KM Live Radar Update
+    socketRef.current.on('nearby_riders_update', (ridersList) => {
+      setLiveNearbyRiders(Array.isArray(ridersList) ? ridersList : []);
+    });
+
+    // Auto-Updates across all riders: Accepted ride is synced/removed
     socketRef.current.on('ride_accepted_broadcast', (updatedRide) => {
       setRides(prev => prev.map(r => r._id === updatedRide._id ? updatedRide : r));
       
@@ -379,28 +370,26 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Filter Riders within 2 KM
-  const ridersWithin2Km = allLiveRiders
+  // Filter out riders within 2 KM distance for the passenger
+  const bikersWithin2Km = liveNearbyRiders
     .filter(r => r.userId !== currentUser?._id)
-    .map(rider => {
-      if (!userLocation) return { ...rider, distance: null };
-      const dist = calculateDistanceKm(
-        userLocation.latitude,
-        userLocation.longitude,
-        rider.latitude,
-        rider.longitude
-      );
-      return { ...rider, distance: dist };
+    .map(r => {
+      const distance = userLocation 
+        ? calculateDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng)
+        : 'Nearby';
+      return { ...r, distance };
     })
-    .filter(rider => rider.distance === null || rider.distance <= 2.0);
+    .filter(r => r.distance === 'Nearby' || parseFloat(r.distance) <= 2.0);
 
+  // Rider views: Active accepted ride
   const riderAcceptedRide = isBiker 
     ? rides.find(r => r.status === 'accepted' && r.acceptedBy?.phone === currentUser.phone)
     : null;
 
-  const otherWaitingRides = rides.filter(r => r._id !== riderAcceptedRide?._id);
+  // Crucial Feature: Only show UNACCEPTED (waiting) requests to other riders
+  const unacceptedRidesForBikers = rides.filter(r => r.status !== 'accepted');
 
-  // AUTH SCREEN
+  // SPLASH AUTH VIEW
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f1f4fa', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -525,11 +514,14 @@ export default function App() {
     );
   }
 
-  // ADMIN DASHBOARD
+  // =========================================================================
+  // VIEW 1: MASTER ADMIN WORKSPACE (3-COLUMN WIREFRAME)
+  // =========================================================================
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f0f3f8', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', border: '3px solid #0f172a', boxShadow: '0 25px 50px rgba(15,23,42,0.1)', overflow: 'hidden' }}>
+          
           <header style={{ padding: '18px 24px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
@@ -541,22 +533,37 @@ export default function App() {
               </div>
             </div>
 
-            <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
-              <LogOut size={16} /> Logout
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
+                <LogOut size={16} /> Logout
+              </button>
+            </div>
           </header>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr minmax(280px, 340px)', minHeight: '740px' }}>
-            {/* Riders */}
+            {/* COLUMN 1: RIDERS LIST */}
             <div style={{ borderRight: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-              <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Bike size={20} color="#009419" /> Riders List ({bikersList.length})
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Bike size={20} color="#009419" /> Riders List
+                </h2>
+                <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#ecfdf5', color: '#009419', padding: '2px 8px', borderRadius: '8px' }}>
+                  {bikersList.length} Registered
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1, maxHeight: '640px' }}>
                 {bikersList.map((biker) => (
                   <div key={biker._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {biker.avatar ? (
+                      <img src={biker.avatar} alt="Rider" style={{ width: '38px', height: '38px', borderRadius: '12px', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
+                        {biker.fullName.charAt(0)}
+                      </div>
+                    )}
                     <div style={{ overflow: 'hidden', flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{biker.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', truncate: true }}>{biker.fullName}</p>
                       <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{biker.phone || 'No Phone'}</p>
                     </div>
                   </div>
@@ -564,47 +571,63 @@ export default function App() {
               </div>
             </div>
 
-            {/* Controls */}
+            {/* COLUMN 2: ADMIN CONTROLS */}
             <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>System State & Reset Controls</h2>
+              <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Admin Controls & System Operations</h2>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
                 <div style={{ backgroundColor: '#eff6ff', border: '2px solid #bfdbfe', padding: '16px', borderRadius: '20px' }}>
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#1d4ed8' }}>TOTAL RIDES</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900' }}>{rides.length}</p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#0f172a' }}>{rides.length}</p>
                 </div>
                 <div style={{ backgroundColor: '#ecfdf5', border: '2px solid #a7f3d0', padding: '16px', borderRadius: '20px' }}>
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#047857' }}>CONNECTED</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900' }}>{rides.filter(r => r.status === 'accepted').length}</p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#0f172a' }}>{rides.filter(r => r.status === 'accepted').length}</p>
                 </div>
                 <div style={{ backgroundColor: '#fef3c7', border: '2px solid #fde68a', padding: '16px', borderRadius: '20px' }}>
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#b45309' }}>WAITING</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900' }}>{rides.filter(r => r.status !== 'accepted').length}</p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#0f172a' }}>{rides.filter(r => r.status !== 'accepted').length}</p>
                 </div>
               </div>
 
-              <button
-                onClick={handleClearAllRides}
-                style={{ padding: '14px 18px', borderRadius: '16px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <Trash2 size={16} /> Flush & Wipe All Active Rides
-              </button>
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '24px', padding: '20px' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '900' }}>Hostel Pool Actions</h3>
+                <button
+                  onClick={handleClearAllRides}
+                  style={{ width: '100%', padding: '14px 18px', borderRadius: '16px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <Trash2 size={16} /> Flush & Wipe All Active Rides
+                </button>
+              </div>
             </div>
 
-            {/* Requests */}
+            {/* COLUMN 3: PASSENGERS ACTIVE REQUESTS */}
             <div style={{ borderLeft: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-              <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>
-                Active Requests ({rides.length})
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UserCheck size={20} color="#0011ff" /> Active Requests
+                </h2>
+                <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#eff6ff', color: '#0011ff', padding: '2px 8px', borderRadius: '8px' }}>
+                  {rides.length} Live
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, maxHeight: '640px' }}>
                 {rides.map((ride) => (
-                  <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '14px' }}>
+                  <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{ride.creatorName}</span>
                       <button onClick={() => handleDeleteRide(ride._id)} style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '4px', borderRadius: '8px', cursor: 'pointer' }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#334155', fontWeight: '700' }}>{ride.fromLocation} ➔ {ride.toLocation}</p>
+                    <div style={{ fontSize: '11px', color: '#334155', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{ride.fromLocation}</span>
+                      <ArrowRight size={12} color="#0011ff" />
+                      <span>{ride.toLocation}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -615,10 +638,12 @@ export default function App() {
     );
   }
 
-  // REGULAR WORKSPACE WITH 2 KM RADAR
+  // =========================================================================
+  // VIEW 2: REGULAR DASHBOARD (PASSENGER / RIDER)
+  // =========================================================================
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
         
         {/* Header */}
         <header style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
@@ -632,12 +657,9 @@ export default function App() {
             )}
             <div>
               <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>{currentUser.name}</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: isBiker ? '#009419' : '#0011ff', backgroundColor: isBiker ? '#ecfdf5' : '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
-                  {isBiker ? 'Rider / Pilot' : 'Passenger'}
-                </span>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748b' }}>• {locationStatus}</span>
-              </div>
+              <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: isBiker ? '#009419' : '#0011ff', backgroundColor: isBiker ? '#ecfdf5' : '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
+                {isBiker ? 'Rider / Pilot' : 'Passenger'}
+              </span>
             </div>
           </div>
 
@@ -654,131 +676,83 @@ export default function App() {
           </div>
         </header>
 
-        {/* =========================================================================
-            FEATURE: 2 KM LIVE PROXIMITY RADAR COMPONENT
-           ========================================================================= */}
-        <section style={{ margin: '20px 24px 0 24px', backgroundColor: '#0f172a', borderRadius: '26px', padding: '20px', color: '#ffffff', position: 'relative', overflow: 'hidden', boxShadow: '0 15px 35px rgba(15,23,42,0.15)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#10b981', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Compass size={20} />
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', letterSpacing: '-0.3px' }}>2 KM Live Riders Radar</h3>
-                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Riders with active GPS near your location</p>
-              </div>
-            </div>
-
-            <span style={{ fontSize: '11px', fontWeight: '900', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#38bdf8', padding: '4px 12px', borderRadius: '9999px' }}>
-              {ridersWithin2Km.length} Riders in 2 KM Area
-            </span>
-          </div>
-
-          {/* Simulated Clean Interactive Radar Map Canvas */}
-          <div style={{ position: 'relative', height: '170px', backgroundColor: '#1e293b', borderRadius: '20px', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {/* Concentric Radar Rings */}
-            <div style={{ position: 'absolute', width: '130px', height: '130px', borderRadius: '50%', border: '1px dashed rgba(56,189,248,0.3)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', width: '220px', height: '220px', borderRadius: '50%', border: '1px solid rgba(56,189,248,0.15)', pointerEvents: 'none' }} />
-
-            {/* Center: Current User Marker */}
-            <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#38bdf8', border: '3px solid #ffffff', boxShadow: '0 0 16px #38bdf8' }} />
-              <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', marginTop: '4px' }}>YOU</span>
-            </div>
-
-            {/* Nearby Rider Badges Placed around Radar */}
-            {ridersWithin2Km.length === 0 ? (
-              <div style={{ position: 'absolute', bottom: '12px', fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>
-                No active riders currently within 2 KM range.
-              </div>
-            ) : (
-              ridersWithin2Km.map((rider, idx) => {
-                // Scatter markers radially for responsive visual appeal
-                const angles = [35, 120, 210, 290, 70, 160];
-                const angle = angles[idx % angles.length];
-                const radius = 55 + (idx * 15) % 45;
-                const x = radius * Math.cos((angle * Math.PI) / 180);
-                const y = radius * Math.sin((angle * Math.PI) / 180);
-
-                return (
-                  <button
-                    key={rider.socketId}
-                    onClick={() => setSelectedRadarRider(rider)}
-                    title={`Rider: ${rider.name}`}
-                    style={{
-                      position: 'absolute',
-                      transform: `translate(${x}px, ${y}px)`,
-                      border: 'none',
-                      backgroundColor: '#10b981',
-                      color: '#ffffff',
-                      borderRadius: '9999px',
-                      padding: '6px 10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 14px rgba(16,185,129,0.5)',
-                      zIndex: 20,
-                      fontWeight: '800',
-                      fontSize: '11px'
-                    }}
-                  >
-                    <span style={{ fontSize: '14px' }}>🛵</span>
-                    <span>{rider.name?.split(' ')[0]}</span>
-                    {rider.distance !== null && <span style={{ fontSize: '9px', opacity: 0.9 }}>({rider.distance}km)</span>}
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {/* Quick-Inspect Contact Card on Marker Tap */}
-          {selectedRadarRider && (
-            <div style={{ marginTop: '14px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '18px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#10b981', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '18px' }}>
-                  🛵
-                </div>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: '#ffffff' }}>{selectedRadarRider.name}</h4>
-                  <p style={{ margin: 0, fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>
-                    {selectedRadarRider.distance ? `${selectedRadarRider.distance} KM from you` : 'In range'} • Phone: {selectedRadarRider.phone || 'Available'}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <a
-                  href={`tel:${selectedRadarRider.phone}`}
-                  style={{ padding: '8px 14px', borderRadius: '10px', backgroundColor: '#10b981', color: '#fff', fontSize: '11px', fontWeight: '800', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <Phone size={13} /> Call Rider
-                </a>
-                <a
-                  href={`https://wa.me/91${selectedRadarRider.phone}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ padding: '8px 14px', borderRadius: '10px', backgroundColor: '#334155', color: '#fff', fontSize: '11px', fontWeight: '800', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <MessageCircle size={13} /> WhatsApp
-                </a>
-                <button
-                  onClick={() => setSelectedRadarRider(null)}
-                  style={{ border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Main Passenger / Rider Flow */}
-        <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Dashboard Main Content */}
+        <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* PASSENGER SECTION */}
+          {/* =========================================================================
+              PASSENGER VIEW WITH 2 KM LIVE RADAR
+             ========================================================================= */}
           {!isBiker && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+              
+              {/* LIVE 2 KM GPS RADAR WIDGET */}
+              <div style={{ backgroundColor: '#0f172a', borderRadius: '28px', padding: '20px 24px', color: '#ffffff', boxShadow: '0 10px 25px rgba(15,23,42,0.15)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '-0.3px' }}>
+                      Live Bikers Radar (Within 2 KM)
+                    </h3>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#1e293b', color: '#38bdf8', padding: '4px 10px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Radio size={13} color="#38bdf8" /> {bikersWithin2Km.length} Online Nearby
+                  </span>
+                </div>
+
+                {bikersWithin2Km.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 10px', backgroundColor: '#1e293b', borderRadius: '20px' }}>
+                    <Compass size={32} color="#64748b" style={{ margin: '0 auto 8px auto' }} />
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#94a3b8' }}>No active riders within 2 KM range</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#64748b' }}>Ensure riders have location enabled on their device.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px' }}>
+                    {bikersWithin2Km.map((biker, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedRadarRider(biker)}
+                        style={{
+                          backgroundColor: '#1e293b',
+                          border: '2px solid #334155',
+                          borderRadius: '20px',
+                          padding: '14px',
+                          minWidth: '170px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ position: 'relative' }}>
+                          {biker.avatar ? (
+                            <img src={biker.avatar} alt="Rider" style={{ width: '46px', height: '46px', borderRadius: '16px', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: '46px', height: '46px', borderRadius: '16px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
+                              {biker.name?.charAt(0)}
+                            </div>
+                          )}
+                          <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', backgroundColor: '#009419', padding: '3px', borderRadius: '50%', border: '2px solid #1e293b' }}>
+                            <Bike size={10} color="#fff" />
+                          </div>
+                        </div>
+
+                        <span style={{ fontSize: '13px', fontWeight: '900', color: '#ffffff', whiteSpace: 'nowrap', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {biker.name}
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', padding: '2px 8px', borderRadius: '8px' }}>
+                          📍 {biker.distance} KM away
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Tap to Connect</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* REQUEST FORM CARD */}
               <div style={{ backgroundColor: '#f8faff', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -791,7 +765,7 @@ export default function App() {
                 </div>
 
                 <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* From */}
+                  {/* FROM LOCATION */}
                   <div ref={fromContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>From Location</label>
                     <div style={{ position: 'relative' }}>
@@ -812,6 +786,7 @@ export default function App() {
 
                     {showFromDropdown && (
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 40, maxHeight: '180px', overflowY: 'auto' }}>
+                        <div style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Select Location</div>
                         {PRESET_LOCATIONS.map((loc, idx) => (
                           <div
                             key={idx}
@@ -819,16 +794,17 @@ export default function App() {
                               setFromLoc(loc);
                               setShowFromDropdown(false);
                             }}
-                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}
                           >
-                            📍 {loc}
+                            <MapPin size={13} color="#0011ff" />
+                            <span>{loc}</span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* To */}
+                  {/* TO DESTINATION */}
                   <div ref={toContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>To Destination</label>
                     <div style={{ position: 'relative' }}>
@@ -849,6 +825,7 @@ export default function App() {
 
                     {showToDropdown && (
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 40, maxHeight: '180px', overflowY: 'auto' }}>
+                        <div style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Select Destination</div>
                         {PRESET_LOCATIONS.map((loc, idx) => (
                           <div
                             key={idx}
@@ -856,16 +833,17 @@ export default function App() {
                               setToLoc(loc);
                               setShowToDropdown(false);
                             }}
-                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '700', color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}
                           >
-                            📍 {loc}
+                            <MapPin size={13} color="#0011ff" />
+                            <span>{loc}</span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Time toggle */}
+                  {/* DEPARTURE TIME SELECTOR */}
                   <div style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -886,12 +864,13 @@ export default function App() {
 
                     {isScheduled && (
                       <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #e2e8f0' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '4px' }}>Choose Departure Date & Time</label>
                         <input
                           type="datetime-local"
                           required={isScheduled}
                           value={scheduleTime}
                           onChange={(e) => setScheduleTime(e.target.value)}
-                          style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '700', outline: 'none', boxSizing: 'border-box' }}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '700', color: '#0f172a', outline: 'none', boxSizing: 'border-box' }}
                         />
                       </div>
                     )}
@@ -907,36 +886,81 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Passenger Ride Status */}
+              {/* ACTIVE REQUESTS STREAM FOR PASSENGER */}
               <div>
-                <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a', display: 'block', marginBottom: '10px' }}>Active Pool Requests</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {rides.map((ride) => (
-                    <div key={ride._id} style={{ padding: '14px 18px', borderRadius: '20px', backgroundColor: '#ffffff', border: '2px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{ride.fromLocation} ➔ {ride.toLocation}</p>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Posted by: {ride.creatorName}</p>
-                      </div>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: ride.status === 'accepted' ? '#009419' : '#e28100', padding: '4px 10px', backgroundColor: ride.status === 'accepted' ? '#ecfdf5' : '#fef3c7', borderRadius: '10px' }}>
-                        {ride.status === 'accepted' ? 'Accepted ✓' : 'Waiting...'}
-                      </span>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>Active Trip Requests</span>
+                  <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', backgroundColor: '#eff6ff', color: '#0011ff', borderRadius: '9999px' }}>
+                    {rides.length} Active
+                  </span>
                 </div>
+
+                {rides.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>No requests in the pool</p>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>Post your route above to notify departing bikers.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {rides.map((ride) => (
+                      <div 
+                        key={ride._id} 
+                        style={{
+                          padding: '14px 18px',
+                          borderRadius: '20px',
+                          backgroundColor: '#ffffff',
+                          border: '2px solid #e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
+                            <span>{ride.fromLocation}</span>
+                            <ArrowRight size={14} color="#0011ff" />
+                            <span>{ride.toLocation}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b' }}>
+                            <span style={{ fontWeight: '700', color: '#334155' }}>By: {ride.creatorName}</span>
+                          </div>
+                        </div>
+
+                        {ride.status === 'accepted' ? (
+                          <span style={{ fontSize: '11px', fontWeight: '800', color: '#009419', padding: '4px 10px', backgroundColor: '#ecfdf5', borderRadius: '10px' }}>
+                            Accepted ✓
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', fontWeight: '800', color: '#e28100', padding: '4px 10px', backgroundColor: '#fef3c7', borderRadius: '10px' }}>
+                            Waiting...
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* RIDER SECTION */}
+          {/* =========================================================================
+              RIDER WORKSPACE: ACCEPTED RIDE ISOLATION & OTHER REQUESTS FILTER
+             ========================================================================= */}
           {isBiker && (
             <div>
               {riderAcceptedRide ? (
+                /* RIDER CURRENTLY COMMITTED TO A RIDE */
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', alignItems: 'start' }}>
-                  {/* Accepted Main */}
+                  
+                  {/* MAIN FOCUS: CURRENT ACCEPTED RIDE */}
                   <div style={{ backgroundColor: '#ffffff', border: '3px solid #009419', borderRadius: '28px', padding: '24px', boxShadow: '0 14px 30px rgba(0,148,25,0.1)' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: '#ecfdf5', color: '#009419', padding: '4px 12px', borderRadius: '9999px', display: 'inline-block', marginBottom: '14px' }}>
-                      ● CURRENT ACCEPTED RIDE
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: '#ecfdf5', color: '#009419', padding: '4px 12px', borderRadius: '9999px' }}>
+                        ● CURRENT ACCEPTED RIDE
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>In Progress</span>
+                    </div>
+
                     <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '900', color: '#0f172a' }}>
                       {riderAcceptedRide.fromLocation} ➔ {riderAcceptedRide.toLocation}
                     </h3>
@@ -944,11 +968,27 @@ export default function App() {
                       Passenger: <strong style={{ color: '#0f172a' }}>{riderAcceptedRide.creatorName}</strong>
                     </p>
 
+                    <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '16px', marginBottom: '18px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Passenger Phone</span>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>
+                        {riderAcceptedRide.creatorPhone}
+                      </p>
+                    </div>
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <a href={`tel:${riderAcceptedRide.creatorPhone}`} style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <a
+                        href={`tel:${riderAcceptedRide.creatorPhone}`}
+                        style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
                         <Phone size={15} /> Call Passenger
                       </a>
-                      <a href={`https://wa.me/91${riderAcceptedRide.creatorPhone}`} target="_blank" rel="noreferrer" style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+
+                      <a
+                        href={`https://wa.me/91${riderAcceptedRide.creatorPhone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
                         <MessageCircle size={15} /> WhatsApp
                       </a>
                     </div>
@@ -961,44 +1001,98 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Other Waiting */}
+                  {/* RIGHT PANEL: OTHER UNACCEPTED WAITING REQUESTS */}
                   <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '20px' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>Other Waiting Requests</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>Other Waiting Requests</span>
+                      <span style={{ fontSize: '11px', fontWeight: '800', padding: '2px 8px', backgroundColor: '#eff6ff', color: '#0011ff', borderRadius: '8px' }}>
+                        {unacceptedRidesForBikers.length}
+                      </span>
+                    </div>
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
-                      {otherWaitingRides.map((ride) => (
-                        <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 14px' }}>
-                          <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{ride.fromLocation} ➔ {ride.toLocation}</p>
-                          <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>{ride.creatorName}</p>
-                        </div>
-                      ))}
+                      {unacceptedRidesForBikers.length === 0 ? (
+                        <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '20px' }}>No other waiting requests.</p>
+                      ) : (
+                        unacceptedRidesForBikers.map((ride) => (
+                          <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 14px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
+                              {ride.fromLocation} ➔ {ride.toLocation}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>
+                              {ride.creatorName} • Waiting
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
+
                 </div>
               ) : (
-                /* Default List */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#065f46' }}>Live Rider Stream</h3>
+                /* DEFAULT RIDER STREAM (ONLY SHOWS UNACCEPTED REQUESTS) */
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#009419', display: 'inline-block' }} />
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#065f46' }}>Live Rider Stream</h3>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#047857' }}>Tap the green checkmark to accept a passenger's route</p>
+                      </div>
+                    </div>
                     <span style={{ fontSize: '12px', fontWeight: '900', padding: '4px 10px', backgroundColor: '#009419', color: '#fff', borderRadius: '9999px' }}>
-                      {rides.filter(r => r.status !== 'accepted').length} Waiting
+                      {unacceptedRidesForBikers.length} Waiting
                     </span>
                   </div>
 
-                  {rides.map((ride) => (
-                    <div key={ride._id} style={{ padding: '16px 20px', borderRadius: '24px', backgroundColor: '#ffffff', border: '2px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>{ride.fromLocation} ➔ {ride.toLocation}</p>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Passenger: {ride.creatorName}</p>
-                      </div>
-                      {ride.status === 'accepted' ? (
-                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#009419' }}>Connected</span>
-                      ) : (
-                        <button onClick={() => handleAcceptRide(ride)} style={{ width: '46px', height: '46px', borderRadius: '16px', border: 'none', backgroundColor: '#009419', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Check size={24} strokeWidth={3} />
-                        </button>
-                      )}
+                  {unacceptedRidesForBikers.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '50px 20px', backgroundColor: '#f8faff', borderRadius: '28px', border: '2px solid #e2e8f0' }}>
+                      <Bike size={36} color="#94a3b8" style={{ marginBottom: '10px' }} />
+                      <p style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>Stream is quiet</p>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>All requests have been accepted or no student has requested yet.</p>
                     </div>
-                  ))}
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {unacceptedRidesForBikers.map((ride) => (
+                        <div 
+                          key={ride._id} 
+                          style={{
+                            padding: '16px 20px',
+                            borderRadius: '24px',
+                            backgroundColor: '#ffffff',
+                            border: '2px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
+                              <span>{ride.fromLocation}</span>
+                              <ArrowRight size={14} color="#009419" />
+                              <span>{ride.toLocation}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748b' }}>
+                              <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', backgroundColor: '#eff6ff', color: '#0011ff' }}>
+                                Passenger
+                              </span>
+                              <span>•</span>
+                              <span style={{ fontWeight: '700', color: '#334155' }}>{ride.creatorName}</span>
+                            </div>
+                          </div>
+
+                          <button 
+                            onClick={() => handleAcceptRide(ride)}
+                            title="Accept and give a ride"
+                            style={{ width: '46px', height: '46px', borderRadius: '16px', border: 'none', backgroundColor: '#009419', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,148,25,0.25)' }}
+                          >
+                            <Check size={24} strokeWidth={3} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1006,26 +1100,111 @@ export default function App() {
         </main>
       </div>
 
-      {/* MATCHED POPUP */}
+      {/* RADAR RIDER TAP DETAILS POPUP SHEET */}
+      {selectedRadarRider && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '22px', backgroundColor: '#ecfdf5', color: '#009419', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+              <Bike size={34} />
+            </div>
+
+            <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', textTransform: 'uppercase', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '9999px' }}>
+              Verified Nearby Rider
+            </span>
+            <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '8px 0 2px 0' }}>{selectedRadarRider.name}</h2>
+            <p style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', margin: '0 0 16px 0' }}>
+              📍 Located {selectedRadarRider.distance} KM from your position
+            </p>
+
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>Contact Number</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>
+                {selectedRadarRider.phone || 'Contact via WhatsApp'}
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <a 
+                href={`tel:${selectedRadarRider.phone}`}
+                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <Phone size={14} /> Call Now
+              </a>
+
+              <a 
+                href={`https://wa.me/91${selectedRadarRider.phone}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <MessageCircle size={14} /> WhatsApp
+              </a>
+            </div>
+
+            <button 
+              onClick={() => setSelectedRadarRider(null)}
+              style={{ marginTop: '14px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#94a3b8', cursor: 'pointer' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MATCHED RIDE POPUP MODAL */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
             <div style={{ width: '56px', height: '56px', borderRadius: '20px', backgroundColor: '#ecfdf5', color: '#009419', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
               <Check size={32} />
             </div>
+
+            <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', textTransform: 'uppercase', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '9999px' }}>
+              Commute Matched
+            </span>
             <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '8px 0 2px 0' }}>Ride Confirmed!</h2>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px 0' }}>{matchedRide.fromLocation} ➔ {matchedRide.toLocation}</p>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px 0' }}>
+              {matchedRide.fromLocation} ➔ {matchedRide.toLocation}
+            </p>
+
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
+              <p style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Contact Details</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>
+                  {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}
+                </span>
+                <span style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', padding: '2px 6px', backgroundColor: '#e2e8f0', borderRadius: '6px' }}>
+                  {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.role : matchedRide.creatorRole}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#0f172a', fontWeight: '800' }}>
+                <Phone size={14} color="#009419" />
+                <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}</span>
+              </div>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <a href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`} style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <a 
+                href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
+                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
                 <Phone size={14} /> Call Now
               </a>
-              <a href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`} target="_blank" rel="noreferrer" style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+
+              <a 
+                href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
                 <MessageCircle size={14} /> WhatsApp
               </a>
             </div>
 
-            <button onClick={() => setMatchedRide(null)} style={{ marginTop: '12px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#94a3b8', cursor: 'pointer' }}>
+            <button 
+              onClick={() => setMatchedRide(null)}
+              style={{ marginTop: '12px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#94a3b8', cursor: 'pointer' }}
+            >
               Close
             </button>
           </div>
