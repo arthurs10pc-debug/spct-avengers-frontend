@@ -5,8 +5,7 @@ import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, 
-  Search, Calendar, Radio, Navigation, Trash2, Compass, CheckCircle2,
-  Clock, FileText, Activity, Globe, CreditCard, ChevronRight, LogIn, UserPlus
+  Search, Calendar, Clock, ChevronRight, Navigation, Trash2
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -31,8 +30,12 @@ const parseJwt = (token) => {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('spct_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('spct_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [selectedRole, setSelectedRole] = useState('ride_taker');
@@ -59,7 +62,7 @@ export default function App() {
     });
 
     axios.get(`${BACKEND_URL}/api/rides`)
-      .then(res => setRides(res.data))
+      .then(res => setRides(Array.isArray(res.data) ? res.data : []))
       .catch(() => {});
 
     socketRef.current.on('new_ride_broadcast', (newRide) => {
@@ -73,11 +76,13 @@ export default function App() {
     socketRef.current.on('ride_accepted_broadcast', (updatedRide) => {
       setRides(prev => prev.map(r => r._id === updatedRide._id ? updatedRide : r));
       
-      const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
-      if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
-        setMatchedRide(updatedRide);
-        confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
-      }
+      try {
+        const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
+        if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
+          setMatchedRide(updatedRide);
+          confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
+        }
+      } catch (e) {}
     });
 
     return () => {
@@ -92,7 +97,7 @@ export default function App() {
     try {
       const decoded = parseJwt(response.credential);
       if (!decoded || !decoded.email) {
-        throw new Error("Unable to parse Google authentication token.");
+        throw new Error("Unable to parse Google login token.");
       }
 
       const googleData = {
@@ -197,7 +202,7 @@ export default function App() {
 
   const handlePostRide = (e) => {
     e.preventDefault();
-    if (!fromLoc || !toLoc || !currentUser) return;
+    if (!fromLoc.trim() || !toLoc.trim() || !currentUser) return;
 
     const payload = {
       creatorId: currentUser._id,
@@ -250,47 +255,45 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Metrics calculation
+  // Metrics numbers
   const isBiker = currentUser?.role === 'biker';
   const activeCount = rides.filter(r => r.status !== 'accepted').length;
   const matchedCount = rides.filter(r => r.status === 'accepted').length;
-  const pendingCount = activeCount;
   const totalCount = rides.length;
-  const chartRatio = totalCount > 0 ? (matchedCount / totalCount) : 0.25;
 
-  // Sidebar Menu Items (Exact Replica of Image 2)
-  const menuItems = [
-    { name: 'Dashboard', icon: Home, bg: 'bg-[#1e50ff]' },
-    { name: 'Attendance', icon: Calendar, bg: 'bg-[#1e50ff]' },
-    { name: 'Work Report', icon: FileText, bg: 'bg-[#1e50ff]' },
-    { name: 'Performance', icon: Activity, bg: 'bg-[#1e50ff]' },
-    { name: 'Flexi Work', icon: Clock, bg: 'bg-[#1e50ff]' },
-    { name: 'Leave', icon: Globe, bg: 'bg-[#1e50ff]' },
-    { name: 'Pay Slip', icon: CreditCard, bg: 'bg-[#1e50ff]' },
-    { name: 'Expense', icon: CheckCircle2, bg: 'bg-[#1e50ff]' },
-    { name: 'Announcement', icon: Bell, bg: 'bg-[#1e50ff]', hasArrow: true }
+  // Sidebar Menu list from Image 2
+  const sidebarItems = [
+    { name: 'Dashboard', icon: '🏠' },
+    { name: 'Attendance', icon: '📅' },
+    { name: 'Work Report', icon: '📄' },
+    { name: 'Performance', icon: '📊' },
+    { name: 'Flexi Work', icon: '⏰' },
+    { name: 'Leave', icon: '🌐' },
+    { name: 'Pay Slip', icon: '💳' },
+    { name: 'Expense', icon: '💰' },
+    { name: 'Announcement', icon: '📢', hasArrow: true }
   ];
 
-  const filteredMenuItems = menuItems.filter(m => 
-    m.name.toLowerCase().includes(menuSearch.toLowerCase())
+  const filteredItems = sidebarItems.filter(item => 
+    item.name.toLowerCase().includes(menuSearch.toLowerCase())
   );
 
-  // AUTHENTICATION SPLASH SCREEN
+  // AUTH VIEW (If user not logged in)
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-[#f0f3fa] text-slate-800 flex flex-col items-center justify-center p-6 select-none font-sans">
+      <div className="min-h-screen bg-[#f1f4fa] text-slate-800 flex flex-col items-center justify-center p-5 select-none font-sans">
         <div className="text-center mb-8">
-          <div className="inline-flex p-3.5 rounded-2xl bg-[#0011ff] text-white shadow-xl shadow-blue-500/25 mb-3">
-            <Sparkles size={30} />
+          <div className="inline-flex p-4 rounded-3xl bg-[#0011ff] text-white shadow-xl shadow-blue-500/30 mb-3">
+            <Sparkles size={32} />
           </div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900">SPCT AVENGERS</h1>
-          <p className="text-xs text-slate-500 font-bold mt-1">Hostel Bike Pooling & Verified Commute Engine</p>
+          <p className="text-xs text-slate-500 font-bold mt-1">Hostel Bike Pooling & Commute Portal</p>
         </div>
 
         <div className="w-full max-w-sm space-y-4">
           <button
             onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-            className="w-full bg-white hover:bg-emerald-50/50 border-2 border-slate-200/80 hover:border-emerald-500 p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
+            className="w-full bg-white hover:bg-emerald-50/50 border-2 border-slate-200 hover:border-emerald-500 p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm group-hover:scale-110 transition-transform">
@@ -307,7 +310,7 @@ export default function App() {
 
           <button
             onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-            className="w-full bg-white hover:bg-blue-50/50 border-2 border-slate-200/80 hover:border-[#0011ff] p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
+            className="w-full bg-white hover:bg-blue-50/50 border-2 border-slate-200 hover:border-[#0011ff] p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0011ff] shadow-sm group-hover:scale-110 transition-transform">
@@ -328,7 +331,7 @@ export default function App() {
             <div className="bg-white border border-slate-200 w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative text-slate-800 text-center animate-in zoom-in-95 duration-150">
               <button 
                 onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 p-1 rounded-full bg-slate-100 cursor-pointer"
+                className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 p-1.5 rounded-full bg-slate-100 cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -361,7 +364,7 @@ export default function App() {
               </h2>
               <p className="text-xs text-slate-500 mb-6">
                 {tempGoogleUser 
-                  ? "Required for direct passenger & rider communication" 
+                  ? "Required for direct passenger & rider contact" 
                   : "Authenticate directly with your Google account"}
               </p>
 
@@ -420,40 +423,39 @@ export default function App() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     );
   }
 
-  // MAIN DASHBOARD INTERFACE
+  // MAIN DASHBOARD UI: EXACT MATCH TO USER'S 2 IMAGES
   return (
-    <div className="min-h-screen bg-[#eaedf5] text-slate-900 flex justify-center p-2 sm:p-5 select-none font-sans">
-      <div className="w-full max-w-[1350px] bg-white rounded-[40px] shadow-2xl border border-slate-200/80 flex flex-col md:flex-row overflow-hidden min-h-[820px]">
+    <div className="min-h-screen bg-[#eaedf5] text-slate-900 flex justify-center p-3 sm:p-6 select-none font-sans">
+      <div className="w-full max-w-[1360px] bg-white rounded-[38px] shadow-2xl border border-slate-200 flex flex-col md:flex-row overflow-hidden min-h-[820px]">
         
-        {/* =====================================================================
-            LEFT CAPSULE PILL SIDEBAR (MATCHING EXACT IMAGE 2)
-           ===================================================================== */}
-        <aside className="w-full md:w-[260px] bg-white border-r border-slate-200 p-5 flex flex-col justify-between shrink-0">
+        {/* =========================================================
+            LEFT CAPSULE PILL SIDEBAR (IMAGE 2 REPLICA)
+           ========================================================= */}
+        <aside className="w-full md:w-[270px] bg-white border-r border-slate-200 p-5 flex flex-col justify-between shrink-0">
           <div className="space-y-4">
             
-            {/* Search Input Box with Blue Outline & Shadow from Image 2 */}
+            {/* Search menu bar with purple/blue outline and drop shadow */}
             <div className="relative">
-              <div className="w-full bg-white border-2 border-[#5764ec] shadow-[0_4px_14px_rgba(87,100,236,0.22)] rounded-full px-4 py-2.5 flex items-center gap-2.5">
+              <div className="w-full bg-white border-2 border-[#5468ff] shadow-[0_4px_14px_rgba(84,104,255,0.22)] rounded-full px-4 py-2.5 flex items-center gap-2.5">
                 <Search size={18} className="text-slate-800 stroke-[2.5]" />
                 <input 
                   type="text" 
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu..." 
-                  className="bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none w-full font-medium"
+                  className="bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none w-full font-semibold"
                 />
               </div>
             </div>
 
-            {/* Pill Navigation Items from Image 2 */}
+            {/* Pill Navigation Buttons from Image 2 */}
             <div className="space-y-2.5 pt-2">
-              {filteredMenuItems.map((item, idx) => {
+              {filteredItems.map((item, idx) => {
                 const isActive = activeMenu === item.name;
-                const IconComponent = item.icon;
 
                 return (
                   <button
@@ -461,13 +463,13 @@ export default function App() {
                     onClick={() => setActiveMenu(item.name)}
                     className={`w-full py-2.5 px-4 rounded-full flex items-center justify-between text-[13px] font-black transition-all cursor-pointer ${
                       isActive 
-                        ? 'bg-gradient-to-b from-[#e3e6ed] to-[#cbd2e0] text-slate-900 border-2 border-slate-300/80 shadow-inner' 
-                        : 'bg-[#f4f6fb] hover:bg-[#eef2f9] text-[#0011ff] border-2 border-slate-200/60 shadow-sm'
+                        ? 'bg-gradient-to-b from-[#e3e6ed] to-[#cbd2e0] text-slate-900 border-2 border-slate-300 shadow-inner' 
+                        : 'bg-[#f4f6fb] hover:bg-[#ebf0fa] text-[#0011ff] border-2 border-slate-200/70 shadow-sm'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-[#0011ff] flex items-center justify-center text-white shadow-sm shrink-0">
-                        <IconComponent size={16} className="text-white stroke-[2.5]" />
+                      <div className="w-8 h-8 rounded-xl bg-[#0011ff] flex items-center justify-center text-white shadow-sm shrink-0 text-sm">
+                        {item.icon}
                       </div>
                       <span className="truncate">{item.name}</span>
                     </div>
@@ -480,12 +482,12 @@ export default function App() {
             </div>
           </div>
 
-          {/* Bottom user profile & clear database tool */}
+          {/* User Profile Bar + Clear Database Button */}
           <div className="pt-4 border-t border-slate-200 space-y-2.5">
             <div className="bg-[#f8faff] border border-slate-200 p-3 rounded-2xl flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-2.5 overflow-hidden">
                 {currentUser.avatar ? (
-                  <img src={currentUser.avatar} alt="User Avatar" className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
+                  <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
                 ) : (
                   <div className="w-10 h-10 rounded-xl bg-[#0011ff] text-white font-black flex items-center justify-center text-sm shrink-0">
                     {currentUser.name?.charAt(0)}
@@ -508,7 +510,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Clear Database live ride records */}
+            {/* Clear All Live Rides button */}
             <button
               onClick={handleClearAllRides}
               className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-black py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -518,15 +520,15 @@ export default function App() {
           </div>
         </aside>
 
-        {/* =====================================================================
-            RIGHT WORKSPACE WITH IMAGE 1 BANNER, DOUGHNUT & CONDITIONAL FORM
-           ===================================================================== */}
+        {/* =========================================================
+            RIGHT WORKSPACE (IMAGE 1 OVERVIEW & DOUGHNUT + FEED)
+           ========================================================= */}
         <main className="flex-1 p-5 md:p-8 flex flex-col space-y-6 overflow-y-auto">
           
           {/* TOP SECTION: EXACT REPLICA OF ATTENDANCE OVERVIEW (IMAGE 1) */}
-          <div className="w-full bg-white border-4 border-[#0011ff] rounded-[36px] overflow-hidden shadow-xl shadow-blue-500/10">
+          <div className="w-full bg-white border-4 border-[#0011ff] rounded-[34px] overflow-hidden shadow-xl shadow-blue-500/10">
             
-            {/* 1. Header Bar from Image 1 */}
+            {/* 1. Deep Blue Header from Image 1 */}
             <div className="bg-[#0011ff] px-6 py-4 flex items-center justify-between text-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-inner">
@@ -535,8 +537,8 @@ export default function App() {
                 <h2 className="text-xl md:text-2xl font-black tracking-tight">Attendance Overview</h2>
               </div>
 
-              {/* Right pill badge from Image 1 */}
-              <div className="bg-white/90 backdrop-blur-md px-5 py-2 rounded-full text-xs font-black text-slate-800 shadow-sm">
+              {/* Pill badge: Sep 2026 */}
+              <div className="bg-[#e8ebfa] px-5 py-2 rounded-full text-xs font-black text-slate-800 shadow-sm">
                 Sep 2026
               </div>
             </div>
@@ -547,7 +549,7 @@ export default function App() {
               {/* 5 Vivid Cards (Green, Blue, Orange, Red, Dark Blue) */}
               <div className="lg:col-span-7 grid grid-cols-2 gap-4">
                 
-                {/* Green Pill: Present / Active */}
+                {/* 1. Green Card: Present */}
                 <div className="bg-[#009419] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#009419] shrink-0 shadow-sm">
                     <Calendar size={22} className="stroke-[2.5]" />
@@ -558,7 +560,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Sky Blue Pill: Late / Matched */}
+                {/* 2. Sky Blue Card: Late */}
                 <div className="bg-[#307af2] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#307af2] shrink-0 shadow-sm">
                     <Clock size={22} className="stroke-[2.5]" />
@@ -569,18 +571,18 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Orange Pill: Half Day / Pending */}
+                {/* 3. Orange Card: Half Day */}
                 <div className="bg-[#e28100] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#e28100] shrink-0 shadow-sm">
                     <Calendar size={22} className="stroke-[2.5]" />
                   </div>
                   <div>
                     <span className="text-xs font-bold block leading-none opacity-90">Half Day</span>
-                    <span className="text-2xl font-black leading-tight">{pendingCount || 0}</span>
+                    <span className="text-2xl font-black leading-tight">{activeCount || 0}</span>
                   </div>
                 </div>
 
-                {/* Crimson Red Pill: Absent */}
+                {/* 4. Crimson Red Card: Absent */}
                 <div className="bg-[#cf2020] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#cf2020] shrink-0 shadow-sm">
                     <X size={22} className="stroke-[3]" />
@@ -591,7 +593,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Blue Full Pill: Leave / Total */}
+                {/* 5. Deep Royal Blue Full Width Card: Leave */}
                 <div className="col-span-2 bg-[#006ee4] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#006ee4] shrink-0 shadow-sm">
                     <Navigation size={22} className="stroke-[2.5]" />
@@ -616,7 +618,7 @@ export default function App() {
                       stroke="#009419"
                       strokeWidth="16"
                       strokeDasharray="238.7"
-                      strokeDashoffset={238.7 * (1 - (1 - chartRatio))}
+                      strokeDashoffset="60"
                       strokeLinecap="butt"
                     />
                     {/* Blue Segment */}
@@ -628,7 +630,7 @@ export default function App() {
                       stroke="#006ee4"
                       strokeWidth="16"
                       strokeDasharray="238.7"
-                      strokeDashoffset={238.7 * (1 - chartRatio)}
+                      strokeDashoffset="180"
                       strokeLinecap="butt"
                     />
                   </svg>
@@ -641,10 +643,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* LOWER INTERACTIVE SECTION: RIDE FORM (PASSENGERS ONLY) & LIVE STREAM */}
+          {/* LOWER WORKSPACE: CONDITIONAL REQUEST FORM & LIVE RIDE STREAM */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* CONDITIONAL RENDER: Form is strictly hidden for Bikers */}
+            {/* CONDITIONAL RENDER: Biker gets NO FORM. Only Passengers get Request a Ride */}
             {!isBiker ? (
               <div className="lg:col-span-5 bg-[#f8faff] border-2 border-slate-200 rounded-[32px] p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
@@ -655,7 +657,7 @@ export default function App() {
                     <h3 className="text-base font-black text-slate-900">Request A Ride</h3>
                   </div>
                   <span className="text-[10px] font-black px-2.5 py-1 bg-blue-100 text-[#0011ff] rounded-full">
-                    Need Ride
+                    Passenger Mode
                   </span>
                 </div>
 
@@ -694,7 +696,7 @@ export default function App() {
                 </form>
               </div>
             ) : (
-              /* Biker Pilot View: Informative banner without request inputs */
+              /* Biker Pilot Clean View */
               <div className="lg:col-span-5 bg-gradient-to-br from-[#009419] to-emerald-800 p-6 rounded-[32px] text-white shadow-xl">
                 <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">
                   Rider Mode Active
@@ -704,7 +706,7 @@ export default function App() {
                   As a registered Biker, you do not need to submit requests. Browse the live passenger requests from the feed on the right and tap the green tick to connect.
                 </p>
                 <div className="mt-6 flex items-center gap-3 bg-white/10 p-3.5 rounded-2xl border border-white/20 text-xs font-bold">
-                  <CheckCircle2 size={20} className="text-white shrink-0" />
+                  <Check size={20} className="text-white shrink-0 stroke-[3]" />
                   <span>Verified Google accounts guarantee authentic campus rides.</span>
                 </div>
               </div>
@@ -714,7 +716,7 @@ export default function App() {
             <div className="lg:col-span-7 space-y-3">
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                  <Radio size={16} className="text-emerald-600 animate-pulse" /> Live Ride Stream
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" /> Live Ride Stream
                 </span>
                 <span className="text-[11px] font-black px-3 py-1 bg-blue-50 text-[#0011ff] rounded-full font-mono">
                   {rides.length} Requests
@@ -723,9 +725,6 @@ export default function App() {
 
               {rides.length === 0 ? (
                 <div className="text-center py-14 bg-[#f8faff] border-2 border-slate-200/80 rounded-[32px] p-6 shadow-sm">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-2 shadow-sm">
-                    <Compass size={24} />
-                  </div>
                   <p className="text-xs font-black text-slate-800">No active ride requests</p>
                   <p className="text-[11px] text-slate-400 mt-1">Live passenger requests will appear here automatically.</p>
                 </div>
@@ -780,7 +779,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* MATCHED REVEAL MODAL */}
+      {/* MATCHED REVEAL POPUP MODAL */}
       {matchedRide && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 w-full max-w-sm rounded-[36px] p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150 text-slate-800">
