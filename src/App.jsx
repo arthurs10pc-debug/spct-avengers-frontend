@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, Sparkles, MessageCircle, AlertCircle, X, 
-  Navigation, Trash2, ChevronDown, Shield, Users, Activity, Crown
+  Navigation, Trash2, ChevronDown, Clock, Calendar, Shield, Crown, Activity
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -56,10 +56,13 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Ride booking states
   const [fromLoc, setFromLoc] = useState('');
   const [toLoc, setToLoc] = useState('');
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [showToDropdown, setShowToDropdown] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState('');
 
   const [rides, setRides] = useState([]);
   const [bikersList, setBikersList] = useState([]);
@@ -71,6 +74,7 @@ export default function App() {
   const toContainerRef = useRef(null);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
+  const isBiker = currentUser?.role === 'biker';
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -243,13 +247,17 @@ export default function App() {
     e.preventDefault();
     if (!fromLoc.trim() || !toLoc.trim() || !currentUser) return;
 
+    const departureInfo = isScheduled && scheduleTime 
+      ? `Scheduled: ${scheduleTime.replace('T', ' ')}` 
+      : 'Leaving Now';
+
     const payload = {
       creatorId: currentUser._id,
       creatorName: currentUser.name,
       creatorPhone: currentUser.phone || '',
       creatorRole: currentUser.role,
       fromLocation: fromLoc.trim(),
-      toLocation: toLoc.trim()
+      toLocation: `${toLoc.trim()} (${departureInfo})`
     };
 
     if (socketRef.current) {
@@ -258,6 +266,8 @@ export default function App() {
 
     setFromLoc('');
     setToLoc('');
+    setIsScheduled(false);
+    setScheduleTime('');
     setShowFromDropdown(false);
     setShowToDropdown(false);
   };
@@ -282,7 +292,7 @@ export default function App() {
   };
 
   const handleDeleteRide = async (rideId) => {
-    if (!window.confirm("Admin: Remove this ride permanently?")) return;
+    if (!window.confirm("Remove this ride record?")) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/rides/${rideId}`);
       setRides(prev => prev.filter(r => r._id !== rideId));
@@ -306,9 +316,14 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  const isBiker = currentUser?.role === 'biker';
+  // Find if current biker has accepted an active ride
+  const riderAcceptedRide = isBiker 
+    ? rides.find(r => r.status === 'accepted' && r.acceptedBy?.phone === currentUser.phone)
+    : null;
 
-  // LOGIN SCREEN
+  const otherWaitingRides = rides.filter(r => r._id !== riderAcceptedRide?._id);
+
+  // AUTH SCREEN
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f1f4fa', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -434,38 +449,32 @@ export default function App() {
   }
 
   // =========================================================================
-  // VIEW A: ADMIN DASHBOARD (MATCHING 3-COLUMN WIREFRAME FOR ARTHURS10PC)
+  // VIEW 1: ADMIN WORKSPACE (3-COLUMN WIREFRAME)
   // =========================================================================
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f0f3f8', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', border: '3px solid #0f172a', boxShadow: '0 25px 50px rgba(15,23,42,0.1)', overflow: 'hidden' }}>
           
-          {/* Admin Header */}
           <header style={{ padding: '18px 24px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
                 <Crown size={24} />
               </div>
               <div>
-                <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '900', letterSpacing: '-0.5px' }}>SPCT AVENGERS MASTER ADMIN</h1>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Root Access: {currentUser.email}</span>
+                <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>SPCT AVENGERS MASTER ADMIN</h1>
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Root: {currentUser.email}</span>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ backgroundColor: '#10b981', color: '#fff', fontSize: '11px', fontWeight: '800', padding: '4px 10px', borderRadius: '9999px' }}>
-                Live Database Online
-              </span>
-              <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
+              <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
                 <LogOut size={16} /> Logout
               </button>
             </div>
           </header>
 
-          {/* 3-Column Wireframe Grid from Image */}
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr minmax(280px, 340px)', minHeight: '740px' }}>
-            
             {/* COLUMN 1: RIDERS LIST */}
             <div style={{ borderRight: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
@@ -478,87 +487,53 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1, maxHeight: '640px' }}>
-                {bikersList.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '40px' }}>No riders registered yet.</p>
-                ) : (
-                  bikersList.map((biker) => (
-                    <div key={biker._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-                      {biker.avatar ? (
-                        <img src={biker.avatar} alt="Rider" style={{ width: '38px', height: '38px', borderRadius: '12px', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '14px' }}>
-                          {biker.fullName.charAt(0)}
-                        </div>
-                      )}
-                      <div style={{ overflow: 'hidden', flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{biker.fullName}</p>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{biker.phone || 'No Phone'}</p>
+                {bikersList.map((biker) => (
+                  <div key={biker._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {biker.avatar ? (
+                      <img src={biker.avatar} alt="Rider" style={{ width: '38px', height: '38px', borderRadius: '12px', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
+                        {biker.fullName.charAt(0)}
                       </div>
+                    )}
+                    <div style={{ overflow: 'hidden', flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', truncate: true }}>{biker.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{biker.phone || 'No Phone'}</p>
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* COLUMN 2: ADMIN FEATURES & CONTROLS */}
+            {/* COLUMN 2: ADMIN CONTROLS */}
             <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Shield size={20} color="#0011ff" /> Admin Features & Master Controls
-                </h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>Monitor hostel network throughput, manage system state, and wipe live queues.</p>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Admin Controls & System Operations</h2>
               </div>
 
-              {/* Metric stats */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
                 <div style={{ backgroundColor: '#eff6ff', border: '2px solid #bfdbfe', padding: '16px', borderRadius: '20px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#1d4ed8' }}>TOTAL POOL RIDES</span>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#1d4ed8' }}>TOTAL RIDES</span>
                   <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#0f172a' }}>{rides.length}</p>
                 </div>
                 <div style={{ backgroundColor: '#ecfdf5', border: '2px solid #a7f3d0', padding: '16px', borderRadius: '20px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#047857' }}>MATCHED SUCCESS</span>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#047857' }}>CONNECTED</span>
                   <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#0f172a' }}>{rides.filter(r => r.status === 'accepted').length}</p>
                 </div>
                 <div style={{ backgroundColor: '#fef3c7', border: '2px solid #fde68a', padding: '16px', borderRadius: '20px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#b45309' }}>ACTIVE WAITING</span>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#b45309' }}>WAITING</span>
                   <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#0f172a' }}>{rides.filter(r => r.status !== 'accepted').length}</p>
                 </div>
               </div>
 
-              {/* Master Tools Section */}
               <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '24px', padding: '20px' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>Hostel Pool Operations</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <button
-                    onClick={handleClearAllRides}
-                    style={{ padding: '14px 18px', borderRadius: '16px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(220,38,38,0.2)' }}
-                  >
-                    <Trash2 size={16} /> Flush & Wipe All Active Rides (Reset DB)
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      axios.get(`${BACKEND_URL}/api/admin/bikers`).then(res => setBikersList(res.data));
-                      axios.get(`${BACKEND_URL}/api/rides`).then(res => setRides(res.data));
-                      alert("Stream and Rider Registry re-synced.");
-                    }}
-                    style={{ padding: '14px 18px', borderRadius: '16px', border: '2px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  >
-                    <Activity size={16} /> Force Sync Database & WebSocket Queues
-                  </button>
-                </div>
-              </div>
-
-              {/* Verified Locations Directory Reference */}
-              <div style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '24px', padding: '18px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0011ff', textTransform: 'uppercase' }}>Active Hotspot Zones</span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
-                  {PRESET_LOCATIONS.map((spot, i) => (
-                    <span key={i} style={{ fontSize: '11px', fontWeight: '700', backgroundColor: '#f1f5f9', color: '#334155', padding: '6px 12px', borderRadius: '9999px', border: '1px solid #e2e8f0' }}>
-                      📍 {spot}
-                    </span>
-                  ))}
-                </div>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '900' }}>Hostel Pool Actions</h3>
+                <button
+                  onClick={handleClearAllRides}
+                  style={{ width: '100%', padding: '14px 18px', borderRadius: '16px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <Trash2 size={16} /> Flush & Wipe All Active Rides
+                </button>
               </div>
             </div>
 
@@ -566,7 +541,7 @@ export default function App() {
             <div style={{ borderLeft: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UserCheck size={20} color="#0011ff" /> Passengers Active Requests
+                  <UserCheck size={20} color="#0011ff" /> Active Requests
                 </h2>
                 <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#eff6ff', color: '#0011ff', padding: '2px 8px', borderRadius: '8px' }}>
                   {rides.length} Live
@@ -574,40 +549,23 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, maxHeight: '640px' }}>
-                {rides.length === 0 ? (
-                  <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', marginTop: '40px' }}>No active requests in queue.</p>
-                ) : (
-                  rides.map((ride) => (
-                    <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{ride.creatorName}</span>
-                        <button
-                          onClick={() => handleDeleteRide(ride._id)}
-                          title="Admin Delete Request"
-                          style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '4px', borderRadius: '8px', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-
-                      <div style={{ fontSize: '11px', color: '#334155', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{ride.fromLocation}</span>
-                        <ArrowRight size={12} color="#0011ff" />
-                        <span>{ride.toLocation}</span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '6px', fontSize: '11px' }}>
-                        <span style={{ fontFamily: 'monospace', color: '#64748b' }}>{ride.creatorPhone}</span>
-                        <span style={{ fontWeight: '800', color: ride.status === 'accepted' ? '#009419' : '#e28100' }}>
-                          {ride.status === 'accepted' ? 'Accepted' : 'Waiting'}
-                        </span>
-                      </div>
+                {rides.map((ride) => (
+                  <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>{ride.creatorName}</span>
+                      <button onClick={() => handleDeleteRide(ride._id)} style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '4px', borderRadius: '8px', cursor: 'pointer' }}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  ))
-                )}
+                    <div style={{ fontSize: '11px', color: '#334155', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{ride.fromLocation}</span>
+                      <ArrowRight size={12} color="#0011ff" />
+                      <span>{ride.toLocation}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -615,13 +573,13 @@ export default function App() {
   }
 
   // =========================================================================
-  // VIEW B: REGULAR USER WORKSPACE (BIKER / PASSENGER)
+  // VIEW 2: REGULAR DASHBOARD (PASSENGER / RIDER)
   // =========================================================================
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ maxWidth: '960px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ maxWidth: isBiker && riderAcceptedRide ? '1200px' : '960px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden', transition: 'all 0.3s ease' }}>
         
-        {/* Header */}
+        {/* App Header */}
         <header style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {currentUser.avatar ? (
@@ -640,16 +598,24 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              onClick={handleClearAllRides}
+              style={{ padding: '8px 12px', borderRadius: '12px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Trash2 size={14} /> Clear Stream
+            </button>
             <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#f1f5f9', padding: '8px', borderRadius: '12px', cursor: 'pointer', color: '#64748b' }}>
               <LogOut size={16} />
             </button>
           </div>
         </header>
 
-        {/* Workspace Body */}
+        {/* Dashboard Main Content Area */}
         <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* 1. PASSENGER VIEW */}
+          {/* =========================================================================
+              PASSENGER SECTION: REQUEST FORM WITH NOW / SCHEDULE TOGGLE
+             ========================================================================= */}
           {!isBiker && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ backgroundColor: '#f8faff', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '24px' }}>
@@ -665,7 +631,7 @@ export default function App() {
 
                 <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   
-                  {/* FROM LOCATION DROPDOWN */}
+                  {/* FROM LOCATION */}
                   <div ref={fromContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>From Location</label>
                     <div style={{ position: 'relative' }}>
@@ -704,7 +670,7 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* TO DESTINATION DROPDOWN */}
+                  {/* TO DESTINATION */}
                   <div ref={toContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>To Destination</label>
                     <div style={{ position: 'relative' }}>
@@ -743,6 +709,39 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* FEATURE: DEPARTURE TIME SELECTION (NOW VS FUTURE SCHEDULE) */}
+                  <div style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Clock size={16} color="#0011ff" />
+                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
+                          Timing: <span style={{ color: '#0011ff' }}>{isScheduled ? 'Scheduled Ahead' : 'Now (Instant)'}</span>
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsScheduled(!isScheduled)}
+                        style={{ border: 'none', background: isScheduled ? '#eff6ff' : '#f1f5f9', color: isScheduled ? '#0011ff' : '#475569', fontSize: '11px', fontWeight: '800', padding: '6px 12px', borderRadius: '10px', cursor: 'pointer' }}
+                      >
+                        {isScheduled ? 'Switch to Now' : '+ Pick Future Time'}
+                      </button>
+                    </div>
+
+                    {isScheduled && (
+                      <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #e2e8f0' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '4px' }}>Choose Departure Date & Time</label>
+                        <input
+                          type="datetime-local"
+                          required={isScheduled}
+                          value={scheduleTime}
+                          onChange={(e) => setScheduleTime(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: '700', color: '#0f172a', outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <button 
                     type="submit"
                     style={{ padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#0011ff', color: '#fff', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 6px 16px rgba(0,17,255,0.25)' }}
@@ -753,7 +752,7 @@ export default function App() {
                 </form>
               </div>
 
-              {/* Status List */}
+              {/* Status stream for passenger */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>Active Trip Requests</span>
@@ -810,75 +809,163 @@ export default function App() {
             </div>
           )}
 
-          {/* 2. RIDER VIEW */}
+          {/* =========================================================================
+              RIDER SECTION: ACTIVE ACCEPTED RIDE IN MAIN + OTHER REQUESTS ON RIGHT
+             ========================================================================= */}
           {isBiker && (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#009419', display: 'inline-block' }} />
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#065f46' }}>Live Rider Stream</h3>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#047857' }}>Tap the green checkmark to accept a passenger's route</p>
-                  </div>
-                </div>
-                <span style={{ fontSize: '12px', fontWeight: '900', padding: '4px 10px', backgroundColor: '#009419', color: '#fff', borderRadius: '9999px' }}>
-                  {rides.filter(r => r.status !== 'accepted').length} Waiting
-                </span>
-              </div>
+              {/* If Rider has accepted a ride, split into Main Card + Right List */}
+              {riderAcceptedRide ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', alignItems: 'start' }}>
+                  
+                  {/* MAIN FOCUS: ACCEPTED RIDE CARD */}
+                  <div style={{ backgroundColor: '#ffffff', border: '3px solid #009419', borderRadius: '28px', padding: '24px', boxShadow: '0 14px 30px rgba(0,148,25,0.1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: '#ecfdf5', color: '#009419', padding: '4px 12px', borderRadius: '9999px' }}>
+                        ● CURRENT ACCEPTED RIDE
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>In Progress</span>
+                    </div>
 
-              {rides.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '50px 20px', backgroundColor: '#f8faff', borderRadius: '28px', border: '2px solid #e2e8f0' }}>
-                  <Bike size={36} color="#94a3b8" style={{ marginBottom: '10px' }} />
-                  <p style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>Stream is quiet</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>When students post ride requests, they will show up here instantly.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {rides.map((ride) => (
-                    <div 
-                      key={ride._id} 
-                      style={{
-                        padding: '16px 20px',
-                        borderRadius: '24px',
-                        backgroundColor: '#ffffff',
-                        border: '2px solid #e2e8f0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        opacity: ride.status === 'accepted' ? 0.6 : 1,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
-                      }}
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '900', color: '#0f172a' }}>
+                      {riderAcceptedRide.fromLocation} ➔ {riderAcceptedRide.toLocation}
+                    </h3>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#64748b' }}>
+                      Passenger: <strong style={{ color: '#0f172a' }}>{riderAcceptedRide.creatorName}</strong>
+                    </p>
+
+                    <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '16px', marginBottom: '18px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Passenger Phone</span>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>
+                        {riderAcceptedRide.creatorPhone}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <a
+                        href={`tel:${riderAcceptedRide.creatorPhone}`}
+                        style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        <Phone size={15} /> Call Passenger
+                      </a>
+
+                      <a
+                        href={`https://wa.me/91${riderAcceptedRide.creatorPhone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        <MessageCircle size={15} /> WhatsApp
+                      </a>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteRide(riderAcceptedRide._id)}
+                      style={{ marginTop: '14px', width: '100%', padding: '12px', borderRadius: '14px', border: '2px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
                     >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
-                          <span>{ride.fromLocation}</span>
-                          <ArrowRight size={14} color="#009419" />
-                          <span>{ride.toLocation}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748b' }}>
-                          <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', backgroundColor: '#eff6ff', color: '#0011ff' }}>
-                            Passenger
-                          </span>
-                          <span>•</span>
-                          <span style={{ fontWeight: '700', color: '#334155' }}>{ride.creatorName}</span>
-                        </div>
-                      </div>
+                      Complete / Finish Trip
+                    </button>
+                  </div>
 
-                      {ride.status === 'accepted' ? (
-                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#009419', padding: '6px 12px', backgroundColor: '#ecfdf5', borderRadius: '14px' }}>
-                          Connected
-                        </span>
+                  {/* RIGHT PANEL: OTHER WAITING REQUESTS */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>Other Waiting Requests</span>
+                      <span style={{ fontSize: '11px', fontWeight: '800', padding: '2px 8px', backgroundColor: '#eff6ff', color: '#0011ff', borderRadius: '8px' }}>
+                        {otherWaitingRides.length}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
+                      {otherWaitingRides.length === 0 ? (
+                        <p style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '20px' }}>No other waiting requests.</p>
                       ) : (
-                        <button 
-                          onClick={() => handleAcceptRide(ride)}
-                          title="Accept and give a ride"
-                          style={{ width: '46px', height: '46px', borderRadius: '16px', border: 'none', backgroundColor: '#009419', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,148,25,0.25)' }}
-                        >
-                          <Check size={24} strokeWidth={3} />
-                        </button>
+                        otherWaitingRides.map((ride) => (
+                          <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 14px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
+                              {ride.fromLocation} ➔ {ride.toLocation}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>
+                              {ride.creatorName} • {ride.status === 'accepted' ? 'Accepted' : 'Waiting'}
+                            </div>
+                          </div>
+                        ))
                       )}
                     </div>
-                  ))}
+                  </div>
+
+                </div>
+              ) : (
+                /* DEFAULT RIDER STREAM VIEW (WHEN NO RIDE IS CURRENTLY ACCEPTED) */
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#009419', display: 'inline-block' }} />
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#065f46' }}>Live Rider Stream</h3>
+                        <p style={{ margin: 0, fontSize: '11px', color: '#047857' }}>Tap the green checkmark to accept a passenger's route</p>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: '900', padding: '4px 10px', backgroundColor: '#009419', color: '#fff', borderRadius: '9999px' }}>
+                      {rides.filter(r => r.status !== 'accepted').length} Waiting
+                    </span>
+                  </div>
+
+                  {rides.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '50px 20px', backgroundColor: '#f8faff', borderRadius: '28px', border: '2px solid #e2e8f0' }}>
+                      <Bike size={36} color="#94a3b8" style={{ marginBottom: '10px' }} />
+                      <p style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>Stream is quiet</p>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>When students post ride requests, they will show up here instantly.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {rides.map((ride) => (
+                        <div 
+                          key={ride._id} 
+                          style={{
+                            padding: '16px 20px',
+                            borderRadius: '24px',
+                            backgroundColor: '#ffffff',
+                            border: '2px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            opacity: ride.status === 'accepted' ? 0.6 : 1,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
+                              <span>{ride.fromLocation}</span>
+                              <ArrowRight size={14} color="#009419" />
+                              <span>{ride.toLocation}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748b' }}>
+                              <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', backgroundColor: '#eff6ff', color: '#0011ff' }}>
+                                Passenger
+                              </span>
+                              <span>•</span>
+                              <span style={{ fontWeight: '700', color: '#334155' }}>{ride.creatorName}</span>
+                            </div>
+                          </div>
+
+                          {ride.status === 'accepted' ? (
+                            <span style={{ fontSize: '12px', fontWeight: '800', color: '#009419', padding: '6px 12px', backgroundColor: '#ecfdf5', borderRadius: '14px' }}>
+                              Connected
+                            </span>
+                          ) : (
+                            <button 
+                              onClick={() => handleAcceptRide(ride)}
+                              title="Accept and give a ride"
+                              style={{ width: '46px', height: '46px', borderRadius: '16px', border: 'none', backgroundColor: '#009419', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,148,25,0.25)' }}
+                            >
+                              <Check size={24} strokeWidth={3} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
