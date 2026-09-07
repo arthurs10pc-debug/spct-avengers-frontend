@@ -61,7 +61,6 @@ export default function App() {
     };
   }, []);
 
-  // Client-side Strict Indian Number Check
   const validateNumberClient = (num) => {
     const clean = num.replace(/\D/g, '');
     if (clean.length !== 10) return false;
@@ -81,7 +80,7 @@ export default function App() {
     }
 
     if (!validateNumberClient(phone)) {
-      setErrorMsg("Please enter a valid 10-digit mobile number (starts with 6-9, no dummy sequences)");
+      setErrorMsg("Please enter a valid 10-digit mobile number (starts with 6-9)");
       return;
     }
 
@@ -96,7 +95,9 @@ export default function App() {
       });
       setStep(2);
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Error dispatching OTP email");
+      // Direct server error message display
+      const serverError = err.response?.data?.error || err.message || "Network error. Backend might be sleeping.";
+      setErrorMsg(serverError);
     } finally {
       setAuthLoading(false);
     }
@@ -118,7 +119,8 @@ export default function App() {
         setShowAuthModal(false);
       }
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Invalid OTP code entered");
+      const serverError = err.response?.data?.error || err.message || "Verification failed";
+      setErrorMsg(serverError);
     } finally {
       setAuthLoading(false);
     }
@@ -170,7 +172,6 @@ export default function App() {
     setSelectedRole(null);
   };
 
-  // SCREEN 1: Splash / Clean White Role Selection Screen
   if (!currentUser) {
     return (
       <main className="min-h-screen bg-white text-slate-800 flex flex-col items-center justify-center p-6 select-none font-sans">
@@ -183,9 +184,8 @@ export default function App() {
         </div>
 
         <div className="w-full max-w-sm space-y-4">
-          {/* Card 1: Biker */}
           <button
-            onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setStep(1); }}
+            onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setStep(1); setErrorMsg(''); }}
             className="w-full bg-slate-50 hover:bg-emerald-50/40 border border-slate-200 hover:border-emerald-300 p-6 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-md active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
@@ -200,9 +200,8 @@ export default function App() {
             <ArrowRight size={18} className="text-slate-400 group-hover:text-emerald-600 transition-colors" />
           </button>
 
-          {/* Card 2: Ride Taker */}
           <button
-            onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setStep(1); }}
+            onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setStep(1); setErrorMsg(''); }}
             className="w-full bg-slate-50 hover:bg-sky-50/40 border border-slate-200 hover:border-sky-300 p-6 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-md active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
@@ -218,7 +217,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* Modal: Registration via Gmail OTP */}
+        {/* Modal */}
         {showAuthModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-800 animate-in zoom-in-95 duration-150">
@@ -232,13 +231,18 @@ export default function App() {
               <h2 className="text-lg font-bold text-slate-900 mb-1">
                 {step === 1 ? `Join as ${selectedRole === 'biker' ? 'Biker' : 'Ride Taker'}` : "Verification Code"}
               </h2>
-              <p className="text-xs text-slate-500 mb-5">
+              <p className="text-xs text-slate-500 mb-4">
                 {step === 1 ? "One-time account registration" : `Enter the 6-digit code sent to ${email}`}
               </p>
 
+              {/* Exact Error Feedback Display at Bottom/Middle */}
               {errorMsg && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs p-3 rounded-xl mb-4 flex items-center gap-2 font-medium">
-                  <AlertCircle size={15} className="shrink-0" /> {errorMsg}
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl mb-4 font-mono break-words leading-relaxed shadow-sm flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                  <div>
+                    <span className="font-bold block text-rose-800">Error Details:</span>
+                    <span>{errorMsg}</span>
+                  </div>
                 </div>
               )}
 
@@ -313,7 +317,7 @@ export default function App() {
                   </button>
                   <button 
                     type="button" 
-                    onClick={() => setStep(1)} 
+                    onClick={() => { setStep(1); setErrorMsg(''); }} 
                     className="w-full text-center text-xs font-medium text-slate-500 hover:text-slate-800"
                   >
                     Edit Email or Phone
@@ -327,11 +331,8 @@ export default function App() {
     );
   }
 
-  // SCREEN 2: Main Dashboard (White Clean UI)
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col max-w-md mx-auto relative font-sans border-x border-slate-100 shadow-sm">
-      
-      {/* Header */}
       <header className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center gap-2.5">
           <div className={`p-2 rounded-xl ${currentUser.role === 'biker' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-sky-50 text-sky-600 border border-sky-100'}`}>
@@ -361,10 +362,7 @@ export default function App() {
         </button>
       </header>
 
-      {/* Main Stream Area */}
       <div className="flex-1 p-4 space-y-4 overflow-y-auto pb-24 bg-[#fafafa]">
-        
-        {/* Post a Ride Card */}
         <section className="bg-white border border-slate-200/80 p-4 rounded-3xl shadow-sm">
           <h2 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <MapPin size={14} className="text-emerald-600" /> Post a Trip
@@ -396,7 +394,6 @@ export default function App() {
           </form>
         </section>
 
-        {/* Live Ride Requests */}
         <section className="space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -435,7 +432,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Green Tick Action Button */}
                 {ride.status === 'accepted' ? (
                   <span className="text-[11px] text-emerald-700 font-medium px-2.5 py-1 bg-emerald-50 rounded-xl border border-emerald-200">
                     Connected
@@ -455,7 +451,6 @@ export default function App() {
         </section>
       </div>
 
-      {/* REVEAL MODAL: Connect Info on Green Tick */}
       {matchedRide && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150 text-slate-800">
@@ -470,7 +465,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* Revealed Contact Card */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2">
               <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Contact Details (Connect Purpose Only)</p>
               
@@ -487,7 +481,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Direct Connect Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a
                 href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
