@@ -4,11 +4,31 @@ import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
-  MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, Shield, Crown
+  MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, Crown
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
+
+// Official Google OAuth Client ID
+const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
+
+// Helper to decode JWT token payload without extra external libraries
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -16,13 +36,10 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('ride_taker');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [step, setStep] = useState(1);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [tempGoogleUser, setTempGoogleUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -32,6 +49,7 @@ export default function App() {
   const [matchedRide, setMatchedRide] = useState(null);
 
   const socketRef = useRef(null);
+  const googleBtnRef = useRef(null);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, {
@@ -61,66 +79,93 @@ export default function App() {
     };
   }, []);
 
-  const validateNumberClient = (num) => {
-    const clean = num.replace(/\D/g, '');
-    if (clean.length !== 10) return false;
-    if (!/^[6-9]/.test(clean)) return false;
-    if (["1234567890", "0123456789", "9876543210", "1234567892"].includes(clean)) return false;
-    if (/^(\d)\1{9}$/.test(clean)) return false;
-    return true;
-  };
-
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
+  // Handle Google Token Response
+  const handleGoogleCallback = async (response) => {
     setErrorMsg('');
-
-    if (!name.trim() || !email.trim() || !phone.trim()) {
-      setErrorMsg("Please fill all details");
-      return;
-    }
-
-    if (!validateNumberClient(phone)) {
-      setErrorMsg("Please enter a valid 10-digit mobile number (starts with 6-9)");
-      return;
-    }
-
     setAuthLoading(true);
-
     try {
-      await axios.post(`${BACKEND_URL}/api/auth/send-otp`, {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
+      const decoded = parseJwt(response.credential);
+      if (!decoded || !decoded.email) {
+        throw new Error("Unable to parse Google authentication token.");
+      }
+
+      const googleData = {
+        fullName: decoded.name || 'Hostel Student',
+        email: decoded.email,
+        avatar: decoded.picture || '',
         role: selectedRole
-      });
-      setStep(2);
+      };
+
+      setTempGoogleUser(googleData);
     } catch (err) {
-      // Direct server error message display
-      const serverError = err.response?.data?.error || err.message || "Network error. Backend might be sleeping.";
-      setErrorMsg(serverError);
+      setErrorMsg(err.message || "Google Authentication failed.");
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (e) => {
+  // Load Google SDK Script dynamically
+  useEffect(() => {
+    if (!showAuthModal) return;
+
+    const initializeGoogleSignIn = () => {
+      if (window.google && googleBtnRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+          auto_select: false
+        });
+
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: 300,
+          text: 'continue_with',
+          shape: 'pill'
+        });
+      }
+    };
+
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogleSignIn;
+      document.body.appendChild(script);
+    } else {
+      initializeGoogleSignIn();
+    }
+  }, [showAuthModal, tempGoogleUser]);
+
+  // Complete Registration with WhatsApp Contact Number
+  const handleCompleteAuth = async (e) => {
     e.preventDefault();
-    setAuthLoading(true);
     setErrorMsg('');
 
+    const cleanPhone = phoneInput.replace(/\D/g, '');
+    if (cleanPhone.length !== 10 || !/^[6-9]/.test(cleanPhone)) {
+      setErrorMsg("Please enter a valid 10-digit genuine mobile number (starts with 6-9)");
+      return;
+    }
+
+    setAuthLoading(true);
+
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/auth/verify-otp`, { 
-        email: email.trim().toLowerCase(), 
-        otp: otp.trim() 
+      const res = await axios.post(`${BACKEND_URL}/api/auth/google-login`, {
+        ...tempGoogleUser,
+        phone: cleanPhone,
+        role: selectedRole
       });
+
       if (res.data.success) {
         setCurrentUser(res.data.user);
         localStorage.setItem('spct_user', JSON.stringify(res.data.user));
         setShowAuthModal(false);
+        setTempGoogleUser(null);
       }
     } catch (err) {
-      const serverError = err.response?.data?.error || err.message || "Verification failed";
-      setErrorMsg(serverError);
+      setErrorMsg(err.response?.data?.error || "Error finalizing registration");
     } finally {
       setAuthLoading(false);
     }
@@ -169,9 +214,9 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('spct_user');
     setCurrentUser(null);
-    setSelectedRole(null);
   };
 
+  // SCREEN 1: Clean White Role Selection Screen
   if (!currentUser) {
     return (
       <main className="min-h-screen bg-white text-slate-800 flex flex-col items-center justify-center p-6 select-none font-sans">
@@ -185,7 +230,7 @@ export default function App() {
 
         <div className="w-full max-w-sm space-y-4">
           <button
-            onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setStep(1); setErrorMsg(''); }}
+            onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
             className="w-full bg-slate-50 hover:bg-emerald-50/40 border border-slate-200 hover:border-emerald-300 p-6 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-md active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
@@ -201,7 +246,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setStep(1); setErrorMsg(''); }}
+            onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
             className="w-full bg-slate-50 hover:bg-sky-50/40 border border-slate-200 hover:border-sky-300 p-6 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-md active:scale-98 text-left cursor-pointer group"
           >
             <div className="flex items-center gap-4">
@@ -217,10 +262,10 @@ export default function App() {
           </button>
         </div>
 
-        {/* Modal */}
+        {/* Modal: Direct Google Sign-In */}
         {showAuthModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-800 animate-in zoom-in-95 duration-150 text-center">
               <button 
                 onClick={() => setShowAuthModal(false)}
                 className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 cursor-pointer"
@@ -229,98 +274,68 @@ export default function App() {
               </button>
 
               <h2 className="text-lg font-bold text-slate-900 mb-1">
-                {step === 1 ? `Join as ${selectedRole === 'biker' ? 'Biker' : 'Ride Taker'}` : "Verification Code"}
+                {tempGoogleUser ? "Almost Done!" : `Join as ${selectedRole === 'biker' ? 'Biker' : 'Ride Taker'}`}
               </h2>
-              <p className="text-xs text-slate-500 mb-4">
-                {step === 1 ? "One-time account registration" : `Enter the 6-digit code sent to ${email}`}
+              <p className="text-xs text-slate-500 mb-6">
+                {tempGoogleUser 
+                  ? "Enter your genuine WhatsApp number so passengers can reach you" 
+                  : "Sign in with your Chrome Google account in 1-click"}
               </p>
 
-              {/* Exact Error Feedback Display at Bottom/Middle */}
               {errorMsg && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl mb-4 font-mono break-words leading-relaxed shadow-sm flex items-start gap-2">
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl mb-4 font-mono break-words leading-relaxed shadow-sm flex items-start gap-2 text-left">
                   <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
-                  <div>
-                    <span className="font-bold block text-rose-800">Error Details:</span>
-                    <span>{errorMsg}</span>
-                  </div>
+                  <span>{errorMsg}</span>
                 </div>
               )}
 
-              {step === 1 ? (
-                <form onSubmit={handleSendOtp} className="space-y-3.5">
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Full Name</label>
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="e.g. Jack Patel"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-500 transition-all"
-                    />
-                  </div>
+              {!tempGoogleUser ? (
+                <div className="flex flex-col items-center justify-center py-4 space-y-4">
+                  <div ref={googleBtnRef} className="flex justify-center w-full min-h-[44px]"></div>
 
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">Gmail ID</label>
-                    <input 
-                      type="email" 
-                      required 
-                      placeholder="your.email@gmail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-500 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-[11px] font-semibold text-slate-600">Mobile Number</label>
-                      <span className="text-[10px] text-emerald-600 font-medium">for connect purpose only</span>
+                  {authLoading && (
+                    <p className="text-xs text-emerald-600 font-semibold animate-pulse">
+                      Authenticating with Google...
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={handleCompleteAuth} className="space-y-4 text-left">
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl flex items-center gap-3">
+                    {tempGoogleUser.avatar ? (
+                      <img src={tempGoogleUser.avatar} alt="Avatar" className="w-10 h-10 rounded-full border border-slate-300" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center">
+                        {tempGoogleUser.fullName.charAt(0)}
+                      </div>
+                    )}
+                    <div className="overflow-hidden">
+                      <p className="text-xs font-bold text-slate-900 truncate">{tempGoogleUser.fullName}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{tempGoogleUser.email}</p>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                      10-Digit Genuine Mobile Number
+                    </label>
                     <input 
                       type="tel" 
                       required 
                       maxLength={10}
-                      placeholder="10-digit genuine number"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-500 transition-all"
+                      placeholder="e.g. 9876543210"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-emerald-500 transition-all font-mono"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={authLoading}
-                    className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer text-sm shadow-md shadow-emerald-600/20 active:scale-98"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer text-sm shadow-md shadow-emerald-600/20 active:scale-98"
                   >
-                    {authLoading ? "Sending Code..." : "Send Gmail OTP"}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <input 
-                    type="text" 
-                    required 
-                    maxLength={6}
-                    placeholder="• • • • • •"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    className="w-full tracking-[8px] text-center text-2xl font-bold bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 outline-none focus:border-emerald-500 transition-all"
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={authLoading}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer text-sm shadow-md shadow-emerald-600/20"
-                  >
-                    {authLoading ? "Verifying..." : "Verify & Launch"}
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => { setStep(1); setErrorMsg(''); }} 
-                    className="w-full text-center text-xs font-medium text-slate-500 hover:text-slate-800"
-                  >
-                    Edit Email or Phone
+                    {authLoading ? "Launching..." : "Complete & Launch"}
                   </button>
                 </form>
               )}
@@ -331,6 +346,7 @@ export default function App() {
     );
   }
 
+  // SCREEN 2: Main Dashboard
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col max-w-md mx-auto relative font-sans border-x border-slate-100 shadow-sm">
       <header className="h-16 flex items-center justify-between px-4 border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-30">
