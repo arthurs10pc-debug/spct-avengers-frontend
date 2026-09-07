@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, Sparkles, MessageCircle, AlertCircle, X, 
-  Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio
+  Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio, RotateCw
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -22,7 +22,6 @@ const PRESET_LOCATIONS = [
   "Kathiyavadi Pan Parlour"
 ];
 
-// Distance calculator (Haversine formula in KM)
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
   const R = 6371;
@@ -70,7 +69,6 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Ride states
   const [fromLoc, setFromLoc] = useState('');
   const [toLoc, setToLoc] = useState('');
   const [showFromDropdown, setShowFromDropdown] = useState(false);
@@ -82,10 +80,11 @@ export default function App() {
   const [bikersList, setBikersList] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
 
-  // Live GPS Radar States
+  // Radar States
   const [userLocation, setUserLocation] = useState(null);
   const [liveNearbyRiders, setLiveNearbyRiders] = useState([]);
   const [selectedRadarRider, setSelectedRadarRider] = useState(null);
+  const [isRefreshingRadar, setIsRefreshingRadar] = useState(false);
 
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
@@ -108,17 +107,14 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Continuous Geolocation Broadcast for Riders & Watcher for Passengers
-  useEffect(() => {
-    if (!currentUser) return;
-
+  const fetchLiveGPS = () => {
     if ("geolocation" in navigator) {
-      const watcher = navigator.geolocation.watchPosition(
+      navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           setUserLocation(coords);
 
-          if (isBiker && socketRef.current) {
+          if (isBiker && socketRef.current && currentUser) {
             socketRef.current.emit('update_rider_gps', {
               userId: currentUser._id,
               name: currentUser.name,
@@ -130,11 +126,16 @@ export default function App() {
           }
         },
         () => {},
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
-
-      return () => navigator.geolocation.clearWatch(watcher);
     }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+    fetchLiveGPS();
+    const interval = setInterval(fetchLiveGPS, 12000);
+    return () => clearInterval(interval);
   }, [currentUser, isBiker]);
 
   useEffect(() => {
@@ -164,12 +165,10 @@ export default function App() {
       setRides(prev => prev.filter(r => r._id !== deletedId));
     });
 
-    // Real-time 2 KM Live Radar Update
     socketRef.current.on('nearby_riders_update', (ridersList) => {
       setLiveNearbyRiders(Array.isArray(ridersList) ? ridersList : []);
     });
 
-    // Auto-Updates across all riders: Accepted ride is synced/removed
     socketRef.current.on('ride_accepted_broadcast', (updatedRide) => {
       setRides(prev => prev.map(r => r._id === updatedRide._id ? updatedRide : r));
       
@@ -186,6 +185,18 @@ export default function App() {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, [isAdmin]);
+
+  // Manual Radar Refresh Function
+  const handleRefreshRadar = () => {
+    setIsRefreshingRadar(true);
+    fetchLiveGPS();
+    if (socketRef.current) {
+      socketRef.current.emit('request_riders_refresh');
+    }
+    setTimeout(() => {
+      setIsRefreshingRadar(false);
+    }, 800);
+  };
 
   const handleGoogleCallback = async (response) => {
     setErrorMsg('');
@@ -370,7 +381,7 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Filter out riders within 2 KM distance for the passenger
+  // Filter 2 KM radius
   const bikersWithin2Km = liveNearbyRiders
     .filter(r => r.userId !== currentUser?._id)
     .map(r => {
@@ -381,15 +392,12 @@ export default function App() {
     })
     .filter(r => r.distance === 'Nearby' || parseFloat(r.distance) <= 2.0);
 
-  // Rider views: Active accepted ride
   const riderAcceptedRide = isBiker 
     ? rides.find(r => r.status === 'accepted' && r.acceptedBy?.phone === currentUser.phone)
     : null;
 
-  // Crucial Feature: Only show UNACCEPTED (waiting) requests to other riders
   const unacceptedRidesForBikers = rides.filter(r => r.status !== 'accepted');
 
-  // SPLASH AUTH VIEW
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f1f4fa', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -514,9 +522,7 @@ export default function App() {
     );
   }
 
-  // =========================================================================
-  // VIEW 1: MASTER ADMIN WORKSPACE (3-COLUMN WIREFRAME)
-  // =========================================================================
+  // ADMIN DASHBOARD
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f0f3f8', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -541,7 +547,7 @@ export default function App() {
           </header>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr minmax(280px, 340px)', minHeight: '740px' }}>
-            {/* COLUMN 1: RIDERS LIST */}
+            {/* Riders List */}
             <div style={{ borderRight: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -563,7 +569,7 @@ export default function App() {
                       </div>
                     )}
                     <div style={{ overflow: 'hidden', flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', truncate: true }}>{biker.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{biker.fullName}</p>
                       <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{biker.phone || 'No Phone'}</p>
                     </div>
                   </div>
@@ -571,7 +577,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* COLUMN 2: ADMIN CONTROLS */}
+            {/* Admin Controls */}
             <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Admin Controls & System Operations</h2>
@@ -603,7 +609,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* COLUMN 3: PASSENGERS ACTIVE REQUESTS */}
+            {/* Active Requests */}
             <div style={{ borderLeft: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -638,14 +644,11 @@ export default function App() {
     );
   }
 
-  // =========================================================================
-  // VIEW 2: REGULAR DASHBOARD (PASSENGER / RIDER)
-  // =========================================================================
+  // MAIN DASHBOARD: PASSENGER & RIDER
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
         
-        {/* Header */}
         <header style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {currentUser.avatar ? (
@@ -676,16 +679,13 @@ export default function App() {
           </div>
         </header>
 
-        {/* Dashboard Main Content */}
         <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* =========================================================================
-              PASSENGER VIEW WITH 2 KM LIVE RADAR
-             ========================================================================= */}
+          {/* PASSENGER VIEW */}
           {!isBiker && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
               
-              {/* LIVE 2 KM GPS RADAR WIDGET */}
+              {/* LIVE 2 KM GPS RADAR WIDGET WITH REFRESH BUTTON */}
               <div style={{ backgroundColor: '#0f172a', borderRadius: '28px', padding: '20px 24px', color: '#ffffff', boxShadow: '0 10px 25px rgba(15,23,42,0.15)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -694,16 +694,48 @@ export default function App() {
                       Live Bikers Radar (Within 2 KM)
                     </h3>
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#1e293b', color: '#38bdf8', padding: '4px 10px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Radio size={13} color="#38bdf8" /> {bikersWithin2Km.length} Online Nearby
-                  </span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={handleRefreshRadar}
+                      title="Refresh Radar & GPS Location"
+                      disabled={isRefreshingRadar}
+                      style={{
+                        border: '1px solid #334155',
+                        background: '#1e293b',
+                        color: '#f8fafc',
+                        padding: '6px 12px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <RotateCw 
+                        size={13} 
+                        style={{ 
+                          animation: isRefreshingRadar ? 'spin 1s linear infinite' : 'none',
+                          transform: isRefreshingRadar ? 'rotate(360deg)' : 'none'
+                        }} 
+                      />
+                      <span>{isRefreshingRadar ? 'Updating...' : 'Refresh Radar'}</span>
+                    </button>
+
+                    <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#1e293b', color: '#38bdf8', padding: '5px 10px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid #334155' }}>
+                      <Radio size={12} color="#38bdf8" /> {bikersWithin2Km.length} Online
+                    </span>
+                  </div>
                 </div>
 
                 {bikersWithin2Km.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 10px', backgroundColor: '#1e293b', borderRadius: '20px' }}>
                     <Compass size={32} color="#64748b" style={{ margin: '0 auto 8px auto' }} />
                     <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#94a3b8' }}>No active riders within 2 KM range</p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#64748b' }}>Ensure riders have location enabled on their device.</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#64748b' }}>If you just turned on GPS, tap "Refresh Radar" above.</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px' }}>
@@ -752,7 +784,7 @@ export default function App() {
                 )}
               </div>
 
-              {/* REQUEST FORM CARD */}
+              {/* REQUEST A RIDE FORM */}
               <div style={{ backgroundColor: '#f8faff', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -765,7 +797,6 @@ export default function App() {
                 </div>
 
                 <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* FROM LOCATION */}
                   <div ref={fromContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>From Location</label>
                     <div style={{ position: 'relative' }}>
@@ -804,7 +835,6 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* TO DESTINATION */}
                   <div ref={toContainerRef} style={{ position: 'relative' }}>
                     <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>To Destination</label>
                     <div style={{ position: 'relative' }}>
@@ -843,7 +873,6 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* DEPARTURE TIME SELECTOR */}
                   <div style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -943,13 +972,10 @@ export default function App() {
             </div>
           )}
 
-          {/* =========================================================================
-              RIDER WORKSPACE: ACCEPTED RIDE ISOLATION & OTHER REQUESTS FILTER
-             ========================================================================= */}
+          {/* RIDER VIEW */}
           {isBiker && (
             <div>
               {riderAcceptedRide ? (
-                /* RIDER CURRENTLY COMMITTED TO A RIDE */
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', alignItems: 'start' }}>
                   
                   {/* MAIN FOCUS: CURRENT ACCEPTED RIDE */}
@@ -1030,7 +1056,7 @@ export default function App() {
 
                 </div>
               ) : (
-                /* DEFAULT RIDER STREAM (ONLY SHOWS UNACCEPTED REQUESTS) */
+                /* DEFAULT RIDER STREAM (ONLY WAITING REQUESTS SHOWN) */
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1100,7 +1126,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* RADAR RIDER TAP DETAILS POPUP SHEET */}
+      {/* RADAR RIDER TAP DETAILS MODAL */}
       {selectedRadarRider && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
