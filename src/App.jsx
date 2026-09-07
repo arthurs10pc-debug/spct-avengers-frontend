@@ -4,7 +4,7 @@ import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
-  MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, Crown
+  MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, Crown, LogIn, UserPlus
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -13,7 +13,6 @@ const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 // Official Google OAuth Client ID
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
 
-// Helper to decode JWT token payload without extra external libraries
 const parseJwt = (token) => {
   try {
     const base64Url = token.split('.')[1];
@@ -37,6 +36,7 @@ export default function App() {
   });
 
   const [selectedRole, setSelectedRole] = useState('ride_taker');
+  const [authTab, setAuthTab] = useState('login'); // 'login' or 'signup'
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
@@ -79,10 +79,11 @@ export default function App() {
     };
   }, []);
 
-  // Handle Google Token Response
+  // Handle Google OAuth Callback
   const handleGoogleCallback = async (response) => {
     setErrorMsg('');
     setAuthLoading(true);
+
     try {
       const decoded = parseJwt(response.credential);
       if (!decoded || !decoded.email) {
@@ -96,20 +97,40 @@ export default function App() {
         role: selectedRole
       };
 
-      setTempGoogleUser(googleData);
+      // Case 1: Returning User Direct 1-Click Login
+      if (authTab === 'login') {
+        const res = await axios.post(`${BACKEND_URL}/api/auth/google-login`, {
+          ...googleData,
+          mode: 'login'
+        });
+
+        if (res.data.success) {
+          setCurrentUser(res.data.user);
+          localStorage.setItem('spct_user', JSON.stringify(res.data.user));
+          setShowAuthModal(false);
+          setTempGoogleUser(null);
+        }
+      } else {
+        // Case 2: New User Sign Up (Proceed to phone number step)
+        setTempGoogleUser(googleData);
+      }
     } catch (err) {
-      setErrorMsg(err.message || "Google Authentication failed.");
+      const serverMsg = err.response?.data?.error;
+      const status = err.response?.status;
+      const networkMsg = err.message;
+      setErrorMsg(`Server [${status || 'Error'}]: ${serverMsg || networkMsg}`);
     } finally {
       setAuthLoading(false);
     }
   };
 
-  // Load Google SDK Script dynamically
+  // Render Google Button Dynamically
   useEffect(() => {
-    if (!showAuthModal) return;
+    if (!showAuthModal || tempGoogleUser) return;
 
     const initializeGoogleSignIn = () => {
       if (window.google && googleBtnRef.current) {
+        googleBtnRef.current.innerHTML = "";
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleCallback,
@@ -120,7 +141,7 @@ export default function App() {
           theme: 'outline',
           size: 'large',
           width: 300,
-          text: 'continue_with',
+          text: authTab === 'login' ? 'signin_with' : 'signup_with',
           shape: 'pill'
         });
       }
@@ -136,16 +157,16 @@ export default function App() {
     } else {
       initializeGoogleSignIn();
     }
-  }, [showAuthModal, tempGoogleUser]);
+  }, [showAuthModal, authTab, tempGoogleUser]);
 
-  // Complete Registration with WhatsApp Contact Number
+  // Complete Sign-Up with Mobile Number
   const handleCompleteAuth = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
     const cleanPhone = phoneInput.replace(/\D/g, '');
-    if (cleanPhone.length !== 10 || !/^[6-9]/.test(cleanPhone)) {
-      setErrorMsg("Please enter a valid 10-digit genuine mobile number (starts with 6-9)");
+    if (cleanPhone.length < 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number for contact");
       return;
     }
 
@@ -155,7 +176,8 @@ export default function App() {
       const res = await axios.post(`${BACKEND_URL}/api/auth/google-login`, {
         ...tempGoogleUser,
         phone: cleanPhone,
-        role: selectedRole
+        role: selectedRole,
+        mode: 'signup'
       });
 
       if (res.data.success) {
@@ -165,7 +187,10 @@ export default function App() {
         setTempGoogleUser(null);
       }
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Error finalizing registration");
+      const serverMsg = err.response?.data?.error;
+      const status = err.response?.status;
+      const networkMsg = err.message;
+      setErrorMsg(`Server [${status || 'Error'}]: ${serverMsg || networkMsg}`);
     } finally {
       setAuthLoading(false);
     }
@@ -178,7 +203,7 @@ export default function App() {
     const payload = {
       creatorId: currentUser._id,
       creatorName: currentUser.name,
-      creatorPhone: currentUser.phone,
+      creatorPhone: currentUser.phone || '',
       creatorRole: currentUser.role,
       fromLocation: fromLoc.trim(),
       toLocation: toLoc.trim()
@@ -204,7 +229,7 @@ export default function App() {
         rideId: ride._id,
         accepter: {
           name: currentUser.name,
-          phone: currentUser.phone,
+          phone: currentUser.phone || '',
           role: currentUser.role
         }
       });
@@ -216,7 +241,7 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // SCREEN 1: Clean White Role Selection Screen
+  // SCREEN 1: Role Selection Screen
   if (!currentUser) {
     return (
       <main className="min-h-screen bg-white text-slate-800 flex flex-col items-center justify-center p-6 select-none font-sans">
@@ -262,26 +287,55 @@ export default function App() {
           </button>
         </div>
 
-        {/* Modal: Direct Google Sign-In */}
+        {/* Auth Modal: Login & Sign Up Options */}
         {showAuthModal && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white border border-slate-200 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-slate-800 animate-in zoom-in-95 duration-150 text-center">
               <button 
-                onClick={() => setShowAuthModal(false)}
+                onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }}
                 className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X size={18} />
               </button>
 
+              {/* Login vs Sign Up Tabs */}
+              {!tempGoogleUser && (
+                <div className="flex bg-slate-100 p-1 rounded-2xl mb-5">
+                  <button
+                    type="button"
+                    onClick={() => { setAuthTab('login'); setErrorMsg(''); }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      authTab === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <LogIn size={14} /> Log In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthTab('signup'); setErrorMsg(''); }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      authTab === 'signup' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <UserPlus size={14} /> Sign Up
+                  </button>
+                </div>
+              )}
+
               <h2 className="text-lg font-bold text-slate-900 mb-1">
-                {tempGoogleUser ? "Almost Done!" : `Join as ${selectedRole === 'biker' ? 'Biker' : 'Ride Taker'}`}
+                {tempGoogleUser 
+                  ? "Finish Registration" 
+                  : (authTab === 'login' ? "Welcome Back!" : `Join as ${selectedRole === 'biker' ? 'Biker' : 'Ride Taker'}`)}
               </h2>
               <p className="text-xs text-slate-500 mb-6">
                 {tempGoogleUser 
-                  ? "Enter your genuine WhatsApp number so passengers can reach you" 
-                  : "Sign in with your Chrome Google account in 1-click"}
+                  ? "Enter your mobile number for hostel passenger connection" 
+                  : (authTab === 'login' 
+                      ? "1-Click Sign in using your registered Google account" 
+                      : "Create your new account using Google")}
               </p>
 
+              {/* Exact Real-time Error Display Box */}
               {errorMsg && (
                 <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl mb-4 font-mono break-words leading-relaxed shadow-sm flex items-start gap-2 text-left">
                   <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
@@ -290,7 +344,7 @@ export default function App() {
               )}
 
               {!tempGoogleUser ? (
-                <div className="flex flex-col items-center justify-center py-4 space-y-4">
+                <div className="flex flex-col items-center justify-center py-2 space-y-4">
                   <div ref={googleBtnRef} className="flex justify-center w-full min-h-[44px]"></div>
 
                   {authLoading && (
@@ -317,7 +371,7 @@ export default function App() {
 
                   <div>
                     <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                      10-Digit Genuine Mobile Number
+                      10-Digit Genuine Contact Number
                     </label>
                     <input 
                       type="tel" 
@@ -335,7 +389,14 @@ export default function App() {
                     disabled={authLoading}
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer text-sm shadow-md shadow-emerald-600/20 active:scale-98"
                   >
-                    {authLoading ? "Launching..." : "Complete & Launch"}
+                    {authLoading ? "Launching..." : "Complete Sign Up"}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setTempGoogleUser(null)}
+                    className="w-full text-center text-xs text-slate-400 hover:text-slate-600 pt-1 cursor-pointer block"
+                  >
+                    Cancel
                   </button>
                 </form>
               )}
