@@ -4,12 +4,11 @@ import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
-  MapPin, LogOut, Bell, Sparkles, MessageCircle, AlertCircle, X, 
-  Search, Calendar, Clock, ChevronRight, Navigation, Trash2
+  MapPin, LogOut, Sparkles, MessageCircle, AlertCircle, X, 
+  Search, Calendar, Clock, ChevronRight, Navigation, Trash2, Home, Activity, Globe, CreditCard
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
-const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
 
 const parseJwt = (token) => {
@@ -146,7 +145,7 @@ export default function App() {
         window.google.accounts.id.renderButton(googleBtnRef.current, {
           theme: 'outline',
           size: 'large',
-          width: 290,
+          width: 280,
           text: authTab === 'login' ? 'signin_with' : 'signup_with',
           shape: 'pill'
         });
@@ -241,12 +240,12 @@ export default function App() {
   };
 
   const handleClearAllRides = async () => {
-    if (!window.confirm("Do you want to wipe all live ride records from the cloud database?")) return;
+    if (!window.confirm("Do you want to clear all active rides from the database?")) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/rides/clear-all`);
       setRides([]);
     } catch (err) {
-      alert("Failed to clear rides: " + err.message);
+      alert("Failed to clear: " + err.message);
     }
   };
 
@@ -255,166 +254,138 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Metrics numbers
   const isBiker = currentUser?.role === 'biker';
   const activeCount = rides.filter(r => r.status !== 'accepted').length;
   const matchedCount = rides.filter(r => r.status === 'accepted').length;
   const totalCount = rides.length;
 
-  // Sidebar Menu list from Image 2
   const sidebarItems = [
-    { name: 'Dashboard', icon: '🏠' },
-    { name: 'Attendance', icon: '📅' },
-    { name: 'Work Report', icon: '📄' },
-    { name: 'Performance', icon: '📊' },
-    { name: 'Flexi Work', icon: '⏰' },
-    { name: 'Leave', icon: '🌐' },
-    { name: 'Pay Slip', icon: '💳' },
-    { name: 'Expense', icon: '💰' },
-    { name: 'Announcement', icon: '📢', hasArrow: true }
+    { name: 'Dashboard', icon: <Home size={16} color="#ffffff" /> },
+    { name: 'Attendance', icon: <Calendar size={16} color="#ffffff" /> },
+    { name: 'Work Report', icon: <Clock size={16} color="#ffffff" /> },
+    { name: 'Performance', icon: <Activity size={16} color="#ffffff" /> },
+    { name: 'Leave', icon: <Globe size={16} color="#ffffff" /> },
+    { name: 'Pay Slip', icon: <CreditCard size={16} color="#ffffff" /> },
+    { name: 'Announcement', icon: <Sparkles size={16} color="#ffffff" />, hasArrow: true }
   ];
 
   const filteredItems = sidebarItems.filter(item => 
     item.name.toLowerCase().includes(menuSearch.toLowerCase())
   );
 
-  // AUTH VIEW (If user not logged in)
+  // AUTH VIEW (Sign In / Sign Up)
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#f1f4fa] text-slate-800 flex flex-col items-center justify-center p-5 select-none font-sans">
-        <div className="text-center mb-8">
-          <div className="inline-flex p-4 rounded-3xl bg-[#0011ff] text-white shadow-xl shadow-blue-500/30 mb-3">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f0f3fa', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', padding: '14px', borderRadius: '20px', backgroundColor: '#0011ff', color: '#fff', boxShadow: '0 10px 25px rgba(0,17,255,0.3)', marginBottom: '14px' }}>
             <Sparkles size={32} />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">SPCT AVENGERS</h1>
-          <p className="text-xs text-slate-500 font-bold mt-1">Hostel Bike Pooling & Commute Portal</p>
-        </div>
+          <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px 0' }}>SPCT AVENGERS</h1>
+          <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginBottom: '24px' }}>Hostel Bike Pooling Portal</p>
 
-        <div className="w-full max-w-sm space-y-4">
-          <button
-            onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-            className="w-full bg-white hover:bg-emerald-50/50 border-2 border-slate-200 hover:border-emerald-500 p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm group-hover:scale-110 transition-transform">
-                <Bike size={30} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <button
+              onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '16px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                  <Bike size={28} />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#059669', textTransform: 'uppercase' }}>Pilot</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>I Have a Bike</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Give rides to hostel friends</p>
+                </div>
               </div>
-              <div>
-                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Pilot</span>
-                <h2 className="text-base font-black text-slate-900">I Have a Bike</h2>
-                <p className="text-xs text-slate-500">Pick up hostel students</p>
-              </div>
-            </div>
-            <ArrowRight size={20} className="text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
-          </button>
+              <ArrowRight size={20} color="#94a3b8" />
+            </button>
 
-          <button
-            onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-            className="w-full bg-white hover:bg-blue-50/50 border-2 border-slate-200 hover:border-[#0011ff] p-5 rounded-3xl flex items-center justify-between transition-all duration-200 shadow-sm hover:shadow-xl active:scale-98 text-left cursor-pointer group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0011ff] shadow-sm group-hover:scale-110 transition-transform">
-                <UserCheck size={30} />
+            <button
+              onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '16px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0011ff' }}>
+                  <UserCheck size={28} />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#0011ff', textTransform: 'uppercase' }}>Passenger</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>Need a Ride</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Request bikes leaving hostel</p>
+                </div>
               </div>
-              <div>
-                <span className="text-[10px] font-black text-[#0011ff] uppercase tracking-widest">Passenger</span>
-                <h2 className="text-base font-black text-slate-900">Need a Ride</h2>
-                <p className="text-xs text-slate-500">Post route & catch leaving bikes</p>
-              </div>
-            </div>
-            <ArrowRight size={20} className="text-slate-400 group-hover:text-[#0011ff] group-hover:translate-x-1 transition-all" />
-          </button>
+              <ArrowRight size={20} color="#94a3b8" />
+            </button>
+          </div>
         </div>
 
         {showAuthModal && (
-          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative text-slate-800 text-center animate-in zoom-in-95 duration-150">
-              <button 
-                onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 p-1.5 rounded-full bg-slate-100 cursor-pointer"
-              >
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ backgroundColor: '#fff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', position: 'relative', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+              <button onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }} style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
 
               {!tempGoogleUser && (
-                <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-5 shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => { setAuthTab('login'); setErrorMsg(''); }}
-                    className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
-                      authTab === 'login' ? 'bg-white text-[#0011ff] shadow-sm' : 'text-slate-500'
-                    }`}
-                  >
-                    Log In
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAuthTab('signup'); setErrorMsg(''); }}
-                    className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
-                      authTab === 'signup' ? 'bg-white text-[#0011ff] shadow-sm' : 'text-slate-500'
-                    }`}
-                  >
-                    Sign Up
-                  </button>
+                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '16px', marginBottom: '16px' }}>
+                  <button onClick={() => { setAuthTab('login'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', fontSize: '12px', backgroundColor: authTab === 'login' ? '#fff' : 'transparent', color: authTab === 'login' ? '#0011ff' : '#64748b', boxShadow: authTab === 'login' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none' }}>Log In</button>
+                  <button onClick={() => { setAuthTab('signup'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', fontSize: '12px', backgroundColor: authTab === 'signup' ? '#fff' : 'transparent', color: authTab === 'signup' ? '#0011ff' : '#64748b', boxShadow: authTab === 'signup' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none' }}>Sign Up</button>
                 </div>
               )}
 
-              <h2 className="text-xl font-black text-slate-900 mb-1">
-                {tempGoogleUser ? "Verify Mobile Number" : (authTab === 'login' ? "Welcome Back!" : `Join as ${selectedRole === 'biker' ? 'Biker' : 'Ride Taker'}`)}
+              <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px 0' }}>
+                {tempGoogleUser ? "Contact Number" : (authTab === 'login' ? "Welcome Back" : `Join as ${selectedRole === 'biker' ? 'Biker' : 'Rider'}`)}
               </h2>
-              <p className="text-xs text-slate-500 mb-6">
-                {tempGoogleUser 
-                  ? "Required for direct passenger & rider contact" 
-                  : "Authenticate directly with your Google account"}
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '20px' }}>
+                {tempGoogleUser ? "Enter your phone number for passenger contact" : "Authenticate seamlessly using Google"}
               </p>
 
               {errorMsg && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3.5 rounded-2xl mb-4 font-mono break-words shadow-sm flex items-start gap-2 text-left">
-                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600" />
-                  <span>{errorMsg}</span>
+                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '11px', padding: '10px 14px', borderRadius: '14px', marginBottom: '14px', textAlign: 'left' }}>
+                  {errorMsg}
                 </div>
               )}
 
               {!tempGoogleUser ? (
-                <div className="flex flex-col items-center justify-center py-2 space-y-4">
-                  <div ref={googleBtnRef} className="flex justify-center w-full min-h-[44px]"></div>
-                  {authLoading && (
-                    <p className="text-xs text-[#0011ff] font-bold animate-pulse">Connecting to Google OAuth...</p>
-                  )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50px' }}>
+                  <div ref={googleBtnRef}></div>
+                  {authLoading && <p style={{ fontSize: '12px', color: '#0011ff', fontWeight: 'bold', marginTop: '10px' }}>Authenticating...</p>}
                 </div>
               ) : (
-                <form onSubmit={handleCompleteAuth} className="space-y-4 text-left">
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl flex items-center gap-3">
+                <form onSubmit={handleCompleteAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                     {tempGoogleUser.avatar ? (
-                      <img src={tempGoogleUser.avatar} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
+                      <img src={tempGoogleUser.avatar} alt="User" style={{ width: '38px', height: '38px', borderRadius: '50%' }} />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#0011ff] text-white font-bold flex items-center justify-center">
+                      <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                         {tempGoogleUser.fullName.charAt(0)}
                       </div>
                     )}
-                    <div className="overflow-hidden">
-                      <p className="text-xs font-bold text-slate-900 truncate">{tempGoogleUser.fullName}</p>
-                      <p className="text-[11px] text-slate-500 truncate">{tempGoogleUser.email}</p>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>{tempGoogleUser.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '10px', color: '#64748b' }}>{tempGoogleUser.email}</p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">10-Digit Genuine Contact Number</label>
+                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>10-Digit Mobile Number</label>
                     <input 
-                      type="tel" 
-                      required 
+                      type="tel"
+                      required
                       maxLength={10}
                       placeholder="e.g. 9876543210"
                       value={phoneInput}
                       onChange={(e) => setPhoneInput(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:bg-white focus:border-[#0011ff] font-mono"
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={authLoading}
-                    className="w-full bg-[#0011ff] hover:bg-blue-600 text-white font-bold py-3.5 rounded-2xl transition-all text-xs shadow-lg shadow-blue-600/30 cursor-pointer active:scale-98"
+                    style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#0011ff', color: '#fff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 8px 18px rgba(0,17,255,0.25)' }}
                   >
                     {authLoading ? "Launching..." : "Complete & Enter"}
                   </button>
@@ -427,33 +398,32 @@ export default function App() {
     );
   }
 
-  // MAIN DASHBOARD UI: EXACT MATCH TO USER'S 2 IMAGES
+  // MAIN RESPONSIVE DASHBOARD: DESKTOP + LAPTOP + MOBILE
   return (
-    <div className="min-h-screen bg-[#eaedf5] text-slate-900 flex justify-center p-3 sm:p-6 select-none font-sans">
-      <div className="w-full max-w-[1360px] bg-white rounded-[38px] shadow-2xl border border-slate-200 flex flex-col md:flex-row overflow-hidden min-h-[820px]">
+    <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ maxWidth: '1320px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '36px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', overflow: 'hidden' }}>
         
         {/* =========================================================
-            LEFT CAPSULE PILL SIDEBAR (IMAGE 2 REPLICA)
+            LEFT CAPSULE PILL SIDEBAR (EXACT IMAGE 2 REPLICA)
            ========================================================= */}
-        <aside className="w-full md:w-[270px] bg-white border-r border-slate-200 p-5 flex flex-col justify-between shrink-0">
-          <div className="space-y-4">
-            
+        <aside style={{ width: '260px', padding: '24px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', flexShrink: 0 }}>
+          <div>
             {/* Search menu bar with purple/blue outline and drop shadow */}
-            <div className="relative">
-              <div className="w-full bg-white border-2 border-[#5468ff] shadow-[0_4px_14px_rgba(84,104,255,0.22)] rounded-full px-4 py-2.5 flex items-center gap-2.5">
-                <Search size={18} className="text-slate-800 stroke-[2.5]" />
+            <div style={{ position: 'relative', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', backgroundColor: '#ffffff', border: '2px solid #5764ec', borderRadius: '9999px', boxShadow: '0 4px 14px rgba(87,100,236,0.2)' }}>
+                <Search size={16} color="#0f172a" />
                 <input 
                   type="text" 
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu..." 
-                  className="bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none w-full font-semibold"
+                  style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', color: '#0f172a', width: '100%', fontWeight: '600' }}
                 />
               </div>
             </div>
 
-            {/* Pill Navigation Buttons from Image 2 */}
-            <div className="space-y-2.5 pt-2">
+            {/* Pill Navigation Items from Image 2 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {filteredItems.map((item, idx) => {
                 const isActive = activeMenu === item.name;
 
@@ -461,59 +431,62 @@ export default function App() {
                   <button
                     key={idx}
                     onClick={() => setActiveMenu(item.name)}
-                    className={`w-full py-2.5 px-4 rounded-full flex items-center justify-between text-[13px] font-black transition-all cursor-pointer ${
-                      isActive 
-                        ? 'bg-gradient-to-b from-[#e3e6ed] to-[#cbd2e0] text-slate-900 border-2 border-slate-300 shadow-inner' 
-                        : 'bg-[#f4f6fb] hover:bg-[#ebf0fa] text-[#0011ff] border-2 border-slate-200/70 shadow-sm'
-                    }`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 16px',
+                      borderRadius: '9999px',
+                      border: isActive ? '2px solid #cbd5e1' : '2px solid #f1f5f9',
+                      background: isActive ? 'linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%)' : '#f8fafc',
+                      color: isActive ? '#0f172a' : '#0011ff',
+                      fontWeight: '800',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      boxShadow: isActive ? 'inset 0 2px 4px rgba(0,0,0,0.06)' : '0 2px 4px rgba(0,0,0,0.02)',
+                      transition: 'all 0.15s ease'
+                    }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-[#0011ff] flex items-center justify-center text-white shadow-sm shrink-0 text-sm">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '30px', height: '30px', borderRadius: '10px', backgroundColor: '#0011ff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,17,255,0.25)' }}>
                         {item.icon}
                       </div>
-                      <span className="truncate">{item.name}</span>
+                      <span>{item.name}</span>
                     </div>
-                    {item.hasArrow && (
-                      <ChevronRight size={16} className="text-[#0011ff] stroke-[3]" />
-                    )}
+                    {item.hasArrow && <ChevronRight size={16} color="#0011ff" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* User Profile Bar + Clear Database Button */}
-          <div className="pt-4 border-t border-slate-200 space-y-2.5">
-            <div className="bg-[#f8faff] border border-slate-200 p-3 rounded-2xl flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-2.5 overflow-hidden">
+          {/* User Profile Footer & Clear Database Button */}
+          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '18px', border: '1px solid #e2e8f0', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
                 {currentUser.avatar ? (
-                  <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0" />
+                  <img src={currentUser.avatar} alt="Avatar" style={{ width: '36px', height: '36px', borderRadius: '12px', objectFit: 'cover' }} />
                 ) : (
-                  <div className="w-10 h-10 rounded-xl bg-[#0011ff] text-white font-black flex items-center justify-center text-sm shrink-0">
+                  <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '13px' }}>
                     {currentUser.name?.charAt(0)}
                   </div>
                 )}
-                <div className="truncate">
-                  <p className="text-xs font-black text-slate-900 truncate">{currentUser.name}</p>
-                  <p className="text-[10px] font-black text-[#0011ff] tracking-wide uppercase">
+                <div style={{ overflow: 'hidden' }}>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{currentUser.name}</p>
+                  <p style={{ margin: 0, fontSize: '10px', fontWeight: '800', color: '#0011ff', textTransform: 'uppercase' }}>
                     {isBiker ? 'Biker Pilot' : 'Passenger'}
                   </p>
                 </div>
               </div>
 
-              <button 
-                onClick={handleLogout}
-                title="Sign out"
-                className="p-1.5 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-              >
+              <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: 'transparent', padding: '6px', borderRadius: '10px', cursor: 'pointer', color: '#94a3b8' }}>
                 <LogOut size={16} />
               </button>
             </div>
 
-            {/* Clear All Live Rides button */}
             <button
               onClick={handleClearAllRides}
-              className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-black py-2.5 px-3 rounded-2xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              style={{ width: '100%', padding: '10px', borderRadius: '16px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
               <Trash2 size={14} /> Clear All Live Rides
             </button>
@@ -521,174 +494,152 @@ export default function App() {
         </aside>
 
         {/* =========================================================
-            RIGHT WORKSPACE (IMAGE 1 OVERVIEW & DOUGHNUT + FEED)
+            RIGHT WORKSPACE (IMAGE 1 OVERVIEW BANNER & LIVE STREAM)
            ========================================================= */}
-        <main className="flex-1 p-5 md:p-8 flex flex-col space-y-6 overflow-y-auto">
+        <main style={{ flex: 1, minWidth: '320px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', boxSizing: 'border-box' }}>
           
           {/* TOP SECTION: EXACT REPLICA OF ATTENDANCE OVERVIEW (IMAGE 1) */}
-          <div className="w-full bg-white border-4 border-[#0011ff] rounded-[34px] overflow-hidden shadow-xl shadow-blue-500/10">
+          <div style={{ backgroundColor: '#ffffff', border: '4px solid #0011ff', borderRadius: '32px', overflow: 'hidden', boxShadow: '0 16px 36px rgba(0,17,255,0.08)' }}>
             
-            {/* 1. Deep Blue Header from Image 1 */}
-            <div className="bg-[#0011ff] px-6 py-4 flex items-center justify-between text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-inner">
-                  <Calendar size={22} className="text-white stroke-[2.5]" />
+            {/* 1. Cobalt Blue Header Banner */}
+            <div style={{ backgroundColor: '#0011ff', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '14px', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar size={22} color="#ffffff" />
                 </div>
-                <h2 className="text-xl md:text-2xl font-black tracking-tight">Attendance Overview</h2>
+                <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px' }}>Attendance Overview</h2>
               </div>
 
-              {/* Pill badge: Sep 2026 */}
-              <div className="bg-[#e8ebfa] px-5 py-2 rounded-full text-xs font-black text-slate-800 shadow-sm">
+              {/* Right pill badge: Sep 2026 */}
+              <div style={{ backgroundColor: '#e2e8f0', color: '#0f172a', padding: '8px 20px', borderRadius: '9999px', fontSize: '13px', fontWeight: '900' }}>
                 Sep 2026
               </div>
             </div>
 
             {/* 2. Grid with 5 colorful pills + Doughnut Chart from Image 1 */}
-            <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-white">
+            <div style={{ padding: '24px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
               
               {/* 5 Vivid Cards (Green, Blue, Orange, Red, Dark Blue) */}
-              <div className="lg:col-span-7 grid grid-cols-2 gap-4">
+              <div style={{ flex: '1 1 380px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
                 
                 {/* 1. Green Card: Present */}
-                <div className="bg-[#009419] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#009419] shrink-0 shadow-sm">
-                    <Calendar size={22} className="stroke-[2.5]" />
+                <div style={{ backgroundColor: '#009419', color: '#fff', padding: '16px', borderRadius: '22px', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 6px 14px rgba(0,148,25,0.2)' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#009419', flexShrink: 0 }}>
+                    <Calendar size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold block leading-none opacity-90">Present</span>
-                    <span className="text-2xl font-black leading-tight">{activeCount || 6}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', display: 'block', opacity: 0.9 }}>Present</span>
+                    <span style={{ fontSize: '24px', fontWeight: '900' }}>{activeCount || 6}</span>
                   </div>
                 </div>
 
                 {/* 2. Sky Blue Card: Late */}
-                <div className="bg-[#307af2] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#307af2] shrink-0 shadow-sm">
-                    <Clock size={22} className="stroke-[2.5]" />
+                <div style={{ backgroundColor: '#307af2', color: '#fff', padding: '16px', borderRadius: '22px', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 6px 14px rgba(48,122,242,0.2)' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#307af2', flexShrink: 0 }}>
+                    <Clock size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold block leading-none opacity-90">Late</span>
-                    <span className="text-2xl font-black leading-tight">{matchedCount || 0}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', display: 'block', opacity: 0.9 }}>Late</span>
+                    <span style={{ fontSize: '24px', fontWeight: '900' }}>{matchedCount || 0}</span>
                   </div>
                 </div>
 
                 {/* 3. Orange Card: Half Day */}
-                <div className="bg-[#e28100] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#e28100] shrink-0 shadow-sm">
-                    <Calendar size={22} className="stroke-[2.5]" />
+                <div style={{ backgroundColor: '#e28100', color: '#fff', padding: '16px', borderRadius: '22px', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 6px 14px rgba(226,129,0,0.2)' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e28100', flexShrink: 0 }}>
+                    <Calendar size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold block leading-none opacity-90">Half Day</span>
-                    <span className="text-2xl font-black leading-tight">{activeCount || 0}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', display: 'block', opacity: 0.9 }}>Half Day</span>
+                    <span style={{ fontSize: '24px', fontWeight: '900' }}>{activeCount || 0}</span>
                   </div>
                 </div>
 
                 {/* 4. Crimson Red Card: Absent */}
-                <div className="bg-[#cf2020] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#cf2020] shrink-0 shadow-sm">
-                    <X size={22} className="stroke-[3]" />
+                <div style={{ backgroundColor: '#cf2020', color: '#fff', padding: '16px', borderRadius: '22px', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 6px 14px rgba(207,32,32,0.2)' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cf2020', flexShrink: 0 }}>
+                    <X size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold block leading-none opacity-90">Absent</span>
-                    <span className="text-2xl font-black leading-tight">0</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', display: 'block', opacity: 0.9 }}>Absent</span>
+                    <span style={{ fontSize: '24px', fontWeight: '900' }}>0</span>
                   </div>
                 </div>
 
                 {/* 5. Deep Royal Blue Full Width Card: Leave */}
-                <div className="col-span-2 bg-[#006ee4] text-white p-4 rounded-3xl flex items-center gap-3.5 shadow-md">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#006ee4] shrink-0 shadow-sm">
-                    <Navigation size={22} className="stroke-[2.5]" />
+                <div style={{ gridColumn: '1 / -1', backgroundColor: '#006ee4', color: '#fff', padding: '16px', borderRadius: '22px', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: '0 6px 14px rgba(0,110,228,0.2)' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#006ee4', flexShrink: 0 }}>
+                    <Navigation size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-bold block leading-none opacity-90">Leave</span>
-                    <span className="text-2xl font-black leading-tight">{totalCount || 1}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', display: 'block', opacity: 0.9 }}>Leave</span>
+                    <span style={{ fontSize: '24px', fontWeight: '900' }}>{totalCount || 1}</span>
                   </div>
                 </div>
               </div>
 
               {/* Exact Circular Doughnut Graphic from Image 1 */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center">
-                <div className="relative w-56 h-56 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    {/* Green Segment */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="38"
-                      fill="transparent"
-                      stroke="#009419"
-                      strokeWidth="16"
-                      strokeDasharray="238.7"
-                      strokeDashoffset="60"
-                      strokeLinecap="butt"
-                    />
-                    {/* Blue Segment */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="38"
-                      fill="transparent"
-                      stroke="#006ee4"
-                      strokeWidth="16"
-                      strokeDasharray="238.7"
-                      strokeDashoffset="180"
-                      strokeLinecap="butt"
-                    />
+              <div style={{ flex: '1 1 240px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '220px' }}>
+                <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#009419" strokeWidth="15" strokeDasharray="238.7" strokeDashoffset="60" />
+                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#006ee4" strokeWidth="15" strokeDasharray="238.7" strokeDashoffset="180" />
                   </svg>
-                  <div className="absolute flex flex-col items-center justify-center text-center">
-                    <span className="text-base font-black text-slate-900 leading-tight">Attendance</span>
-                    <span className="text-xs font-bold text-slate-500 leading-tight">Overview</span>
+                  <div style={{ position: 'absolute', textAlign: 'center' }}>
+                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'block', lineHeight: '1.2' }}>Attendance</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#64748b' }}>Overview</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* LOWER WORKSPACE: CONDITIONAL REQUEST FORM & LIVE RIDE STREAM */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LOWER INTERACTIVE SECTION: FORM (PASSENGERS ONLY) vs RIDER FEED */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-start' }}>
             
-            {/* CONDITIONAL RENDER: Biker gets NO FORM. Only Passengers get Request a Ride */}
+            {/* CONDITIONAL RENDER: Form is strictly hidden for Bikers */}
             {!isBiker ? (
-              <div className="lg:col-span-5 bg-[#f8faff] border-2 border-slate-200 rounded-[32px] p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-[#0011ff] text-white flex items-center justify-center shadow-md">
+              <div style={{ flex: '1 1 340px', backgroundColor: '#f8faff', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '24px', boxSizing: 'border-box' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Navigation size={18} />
                     </div>
-                    <h3 className="text-base font-black text-slate-900">Request A Ride</h3>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>Request A Ride</h3>
                   </div>
-                  <span className="text-[10px] font-black px-2.5 py-1 bg-blue-100 text-[#0011ff] rounded-full">
+                  <span style={{ fontSize: '11px', fontWeight: '800', padding: '4px 10px', backgroundColor: '#eff6ff', color: '#0011ff', borderRadius: '9999px' }}>
                     Passenger Mode
                   </span>
                 </div>
 
-                <form onSubmit={handlePostRide} className="space-y-3.5">
+                <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 block mb-1">From Location</label>
+                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>From Location</label>
                     <input 
                       type="text" 
                       required
                       placeholder="e.g. Hostel Block B, Gate 2" 
                       value={fromLoc}
                       onChange={(e) => setFromLoc(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-[#0011ff] font-semibold transition-all"
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '600' }}
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-black text-slate-700 block mb-1">To Destination</label>
+                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '4px' }}>To Destination</label>
                     <input 
                       type="text" 
                       required
                       placeholder="e.g. College Campus, Metro" 
                       value={toLoc}
                       onChange={(e) => setToLoc(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-[#0011ff] font-semibold transition-all"
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '2px solid #e2e8f0', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '600' }}
                     />
                   </div>
 
                   <button 
                     type="submit"
-                    className="w-full bg-[#0011ff] hover:bg-blue-600 text-white font-black py-3.5 rounded-2xl text-xs transition-all shadow-lg shadow-blue-500/25 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                    style={{ padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#0011ff', color: '#fff', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 6px 16px rgba(0,17,255,0.25)' }}
                   >
                     <span>Broadcast Request to Bikers</span>
                     <ArrowRight size={16} />
@@ -696,78 +647,81 @@ export default function App() {
                 </form>
               </div>
             ) : (
-              /* Biker Pilot Clean View */
-              <div className="lg:col-span-5 bg-gradient-to-br from-[#009419] to-emerald-800 p-6 rounded-[32px] text-white shadow-xl">
-                <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">
+              /* Biker Pilot View */
+              <div style={{ flex: '1 1 340px', backgroundColor: '#009419', borderRadius: '28px', padding: '24px', color: '#ffffff', boxShadow: '0 12px 28px rgba(0,148,25,0.25)', boxSizing: 'border-box' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '9999px' }}>
                   Rider Mode Active
                 </span>
-                <h3 className="text-xl font-black mt-3">Ready to offer a lift?</h3>
-                <p className="text-xs text-emerald-100 mt-2 leading-relaxed">
-                  As a registered Biker, you do not need to submit requests. Browse the live passenger requests from the feed on the right and tap the green tick to connect.
+                <h3 style={{ fontSize: '20px', fontWeight: '900', margin: '14px 0 6px 0' }}>Ready to offer a lift?</h3>
+                <p style={{ fontSize: '13px', color: '#dcfce7', lineHeight: '1.5', margin: 0 }}>
+                  As a registered Biker, you do not need to submit requests. Simply browse live passenger requests from the feed and tap the green tick to accept.
                 </p>
-                <div className="mt-6 flex items-center gap-3 bg-white/10 p-3.5 rounded-2xl border border-white/20 text-xs font-bold">
-                  <Check size={20} className="text-white shrink-0 stroke-[3]" />
-                  <span>Verified Google accounts guarantee authentic campus rides.</span>
+                <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(255,255,255,0.15)', padding: '12px 16px', borderRadius: '16px', fontSize: '12px', fontWeight: '700' }}>
+                  <Check size={18} />
+                  <span>Google-verified authenticated campus pool.</span>
                 </div>
               </div>
             )}
 
             {/* LIVE RIDE STREAM FEED */}
-            <div className="lg:col-span-7 space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" /> Live Ride Stream
+            <div style={{ flex: '1 1 420px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#009419' }} /> Live Ride Stream
                 </span>
-                <span className="text-[11px] font-black px-3 py-1 bg-blue-50 text-[#0011ff] rounded-full font-mono">
+                <span style={{ fontSize: '12px', fontWeight: '800', padding: '4px 10px', backgroundColor: '#eff6ff', color: '#0011ff', borderRadius: '9999px' }}>
                   {rides.length} Requests
                 </span>
               </div>
 
               {rides.length === 0 ? (
-                <div className="text-center py-14 bg-[#f8faff] border-2 border-slate-200/80 rounded-[32px] p-6 shadow-sm">
-                  <p className="text-xs font-black text-slate-800">No active ride requests</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Live passenger requests will appear here automatically.</p>
+                <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: '#f8faff', borderRadius: '28px', border: '2px solid #e2e8f0' }}>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>No active ride requests</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Live student requests will appear here in real-time.</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
                   {rides.map((ride) => (
                     <div 
                       key={ride._id} 
-                      className={`p-4 rounded-3xl flex items-center justify-between transition-all border-2 ${
-                        ride.status === 'accepted' 
-                          ? 'bg-slate-100/60 border-slate-200 opacity-60' 
-                          : 'bg-white border-slate-200 hover:border-[#0011ff] shadow-sm hover:shadow-md'
-                      }`}
+                      style={{
+                        padding: '16px 20px',
+                        borderRadius: '24px',
+                        backgroundColor: '#ffffff',
+                        border: '2px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        opacity: ride.status === 'accepted' ? 0.6 : 1,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                      }}
                     >
-                      <div className="space-y-1.5 overflow-hidden pr-3">
-                        <div className="flex items-center gap-2 text-xs font-black text-slate-900">
-                          <span className="truncate max-w-[140px]">{ride.fromLocation}</span>
-                          <ArrowRight size={14} className="text-[#0011ff] shrink-0 stroke-[3]" />
-                          <span className="truncate max-w-[140px]">{ride.toLocation}</span>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '900', color: '#0f172a', marginBottom: '4px' }}>
+                          <span>{ride.fromLocation}</span>
+                          <ArrowRight size={14} color="#0011ff" />
+                          <span>{ride.toLocation}</span>
                         </div>
-
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                          <span className={`px-2.5 py-0.5 rounded-lg font-black text-[9px] uppercase tracking-wider ${
-                            ride.creatorRole === 'biker' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-[#0011ff] border border-blue-200'
-                          }`}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748b' }}>
+                          <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', backgroundColor: ride.creatorRole === 'biker' ? '#ecfdf5' : '#eff6ff', color: ride.creatorRole === 'biker' ? '#009419' : '#0011ff' }}>
                             {ride.creatorRole === 'biker' ? 'Biker' : 'Needs Ride'}
                           </span>
                           <span>•</span>
-                          <span className="font-bold text-slate-700 truncate">{ride.creatorName}</span>
+                          <span style={{ fontWeight: '700', color: '#334155' }}>{ride.creatorName}</span>
                         </div>
                       </div>
 
                       {ride.status === 'accepted' ? (
-                        <span className="text-[11px] font-black text-emerald-700 px-3.5 py-1.5 bg-emerald-50 rounded-2xl border border-emerald-200 shrink-0">
+                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#009419', padding: '6px 12px', backgroundColor: '#ecfdf5', borderRadius: '14px' }}>
                           Matched
                         </span>
                       ) : (
                         <button 
                           onClick={() => handleAcceptRide(ride)}
                           title={isBiker ? "Accept Ride" : "Connect"}
-                          className="w-12 h-12 rounded-2xl bg-[#009419] hover:bg-emerald-600 text-white flex items-center justify-center transition-all shadow-md shadow-emerald-600/30 active:scale-90 cursor-pointer shrink-0"
+                          style={{ width: '44px', height: '44px', borderRadius: '16px', border: 'none', backgroundColor: '#009419', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,148,25,0.25)' }}
                         >
-                          <Check size={24} strokeWidth={3.5} />
+                          <Check size={22} />
                         </button>
                       )}
                     </div>
@@ -781,59 +735,57 @@ export default function App() {
 
       {/* MATCHED REVEAL POPUP MODAL */}
       {matchedRide && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-sm rounded-[36px] p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150 text-slate-800">
-            <div className="w-14 h-14 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-              <Check size={30} strokeWidth={3.5} />
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '20px', backgroundColor: '#ecfdf5', color: '#009419', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+              <Check size={32} />
             </div>
 
-            <div>
-              <span className="text-[10px] font-black text-emerald-600 tracking-wider uppercase bg-emerald-50 px-3 py-1 rounded-full">
-                Commute Matched
-              </span>
-              <h2 className="text-xl font-black text-slate-900 mt-1.5">Ride Confirmed!</h2>
-              <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                {matchedRide.fromLocation} ➔ {matchedRide.toLocation}
-              </p>
-            </div>
+            <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', textTransform: 'uppercase', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '9999px' }}>
+              Commute Matched
+            </span>
+            <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '8px 0 2px 0' }}>Ride Confirmed!</h2>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px 0' }}>
+              {matchedRide.fromLocation} ➔ {matchedRide.toLocation}
+            </p>
 
-            <div className="bg-[#f8faff] border border-slate-200 rounded-2xl p-4 text-left space-y-2.5">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Direct Contact Info</p>
-              
-              <div className="flex justify-between items-center text-sm font-black text-slate-900">
-                <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}</span>
-                <span className="text-[11px] font-black text-slate-500 uppercase bg-slate-200/70 px-2 py-0.5 rounded-md">
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
+              <p style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Direct Contact</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>
+                  {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}
+                </span>
+                <span style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', padding: '2px 6px', backgroundColor: '#e2e8f0', borderRadius: '6px' }}>
                   {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.role : matchedRide.creatorRole}
                 </span>
               </div>
-
-              <div className="flex items-center gap-2 text-sm text-slate-800 font-mono font-bold pt-1">
-                <Phone size={16} className="text-emerald-600" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#0f172a', fontWeight: '800' }}>
+                <Phone size={14} color="#009419" />
                 <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <a
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <a 
                 href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
-                className="bg-[#009419] hover:bg-emerald-600 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-98"
+                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                <Phone size={16} /> Call Now
+                <Phone size={14} /> Call Now
               </a>
 
-              <a
+              <a 
                 href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-slate-900 hover:bg-slate-800 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-slate-900/25 active:scale-98"
+                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                <MessageCircle size={16} /> WhatsApp
+                <MessageCircle size={14} /> WhatsApp
               </a>
             </div>
 
             <button 
-              onClick={() => setMatchedRide(null)} 
-              className="text-xs font-bold text-slate-400 hover:text-slate-700 pt-1 cursor-pointer block mx-auto"
+              onClick={() => setMatchedRide(null)}
+              style={{ marginTop: '12px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#94a3b8', cursor: 'pointer' }}
             >
               Close
             </button>
