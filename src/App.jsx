@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { 
-  Bike, UserCheck, Check, Phone, ArrowRight, 
+  Bike, UserCheck, Check, Phone, ArrowRight, ArrowLeft,
   MapPin, LogOut, Sparkles, MessageCircle, AlertCircle, X, 
   Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio, RotateCw
 } from 'lucide-react';
@@ -22,6 +22,7 @@ const PRESET_LOCATIONS = [
   "Kathiyavadi Pan Parlour"
 ];
 
+// Distance Calculator (Haversine formula in KM)
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
   const R = 6371;
@@ -64,11 +65,13 @@ export default function App() {
   const [selectedRole, setSelectedRole] = useState('ride_taker');
   const [authTab, setAuthTab] = useState('login');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showRadarPage, setShowRadarPage] = useState(false); // Alag Radar Page View
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Ride Booking States
   const [fromLoc, setFromLoc] = useState('');
   const [toLoc, setToLoc] = useState('');
   const [showFromDropdown, setShowFromDropdown] = useState(false);
@@ -80,10 +83,9 @@ export default function App() {
   const [bikersList, setBikersList] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
 
-  // Radar States
+  // Live GPS Radar States
   const [userLocation, setUserLocation] = useState(null);
   const [liveNearbyRiders, setLiveNearbyRiders] = useState([]);
-  const [selectedRadarRider, setSelectedRadarRider] = useState(null);
   const [isRefreshingRadar, setIsRefreshingRadar] = useState(false);
 
   const socketRef = useRef(null);
@@ -132,7 +134,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!currentUser) return;
     fetchLiveGPS();
     const interval = setInterval(fetchLiveGPS, 12000);
     return () => clearInterval(interval);
@@ -186,7 +187,6 @@ export default function App() {
     };
   }, [isAdmin]);
 
-  // Manual Radar Refresh Function
   const handleRefreshRadar = () => {
     setIsRefreshingRadar(true);
     fetchLiveGPS();
@@ -195,7 +195,7 @@ export default function App() {
     }
     setTimeout(() => {
       setIsRefreshingRadar(false);
-    }, 800);
+    }, 700);
   };
 
   const handleGoogleCallback = async (response) => {
@@ -381,7 +381,7 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Filter 2 KM radius
+  // Bikers filtered in 2 KM
   const bikersWithin2Km = liveNearbyRiders
     .filter(r => r.userId !== currentUser?._id)
     .map(r => {
@@ -398,27 +398,161 @@ export default function App() {
 
   const unacceptedRidesForBikers = rides.filter(r => r.status !== 'accepted');
 
+  // =========================================================================
+  // VIEW 1: DEDICATED FULL-PAGE 2 KM LIVE RADAR (OPENED FROM HOME SCREEN)
+  // =========================================================================
+  if (showRadarPage) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f0f3fa', padding: '20px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Top Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: '16px 24px', borderRadius: '24px', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
+            <button
+              onClick={() => setShowRadarPage(false)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: '#eff6ff', color: '#0011ff', padding: '10px 18px', borderRadius: '16px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+            >
+              <ArrowLeft size={16} /> Back to Home
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={handleRefreshRadar}
+                disabled={isRefreshingRadar}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#0011ff',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '10px 18px',
+                  borderRadius: '16px',
+                  fontWeight: '800',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,17,255,0.25)'
+                }}
+              >
+                <RotateCw size={15} style={{ animation: isRefreshingRadar ? 'spin 1s linear infinite' : 'none' }} />
+                <span>{isRefreshingRadar ? 'Refreshing...' : 'Refresh Radar'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Radar Dashboard Header */}
+          <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '28px', borderRadius: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '900', color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px', backgroundColor: 'rgba(16,185,129,0.15)', padding: '4px 12px', borderRadius: '9999px' }}>
+                ● Real-Time Campus Geofence
+              </span>
+              <h1 style={{ margin: '10px 0 4px 0', fontSize: '26px', fontWeight: '900' }}>Live Bikers Radar (Within 2 KM)</h1>
+              <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+                Shows all active hostel riders who have GPS enabled within your 2 KM radius.
+              </p>
+            </div>
+
+            <div style={{ backgroundColor: '#1e293b', border: '2px solid #334155', padding: '12px 20px', borderRadius: '20px', textAlign: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8' }}>ONLINE WITHIN 2 KM</span>
+              <p style={{ margin: '4px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#ffffff' }}>{bikersWithin2Km.length} Riders</p>
+            </div>
+          </div>
+
+          {/* Radar Grid */}
+          {bikersWithin2Km.length === 0 ? (
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '60px 20px', textAlign: 'center', border: '2px solid #e2e8f0' }}>
+              <Compass size={48} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>No Bikers Detected Within 2 KM</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                Ask fellow hostel students with bikes to turn on GPS or tap "Refresh Radar" above.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+              {bikersWithin2Km.map((biker, idx) => (
+                <div key={idx} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ position: 'relative' }}>
+                      {biker.avatar ? (
+                        <img src={biker.avatar} alt="Rider" style={{ width: '52px', height: '52px', borderRadius: '18px', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '52px', height: '52px', borderRadius: '18px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '18px' }}>
+                          {biker.name?.charAt(0)}
+                        </div>
+                      )}
+                      <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', backgroundColor: '#009419', padding: '4px', borderRadius: '50%', border: '2px solid #ffffff' }}>
+                        <Bike size={12} color="#fff" />
+                      </div>
+                    </div>
+
+                    <div style={{ overflow: 'hidden', flex: 1 }}>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {biker.name}
+                      </h3>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#0011ff', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '6px', display: 'inline-block', marginTop: '2px' }}>
+                        📍 {biker.distance} KM away
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Contact</span>
+                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{biker.phone || 'Available via WhatsApp'}</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <a
+                      href={`tel:${biker.phone}`}
+                      style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#ffffff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Phone size={14} /> Call Now
+                    </a>
+
+                    <a
+                      href={`https://wa.me/91${biker.phone}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <MessageCircle size={14} /> WhatsApp
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: CLEAN HOME SCREEN (IMAGE_68EA88.PNG REPLICA WITH SEPARATE RADAR BAR)
+  // =========================================================================
   if (!currentUser) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f1f4fa', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', padding: '14px', borderRadius: '22px', backgroundColor: '#0011ff', color: '#fff', boxShadow: '0 10px 25px rgba(0,17,255,0.25)', marginBottom: '14px' }}>
-            <Sparkles size={32} />
+      <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: '420px', textAlign: 'center' }}>
+          
+          <div style={{ display: 'inline-flex', padding: '16px', borderRadius: '24px', backgroundColor: '#0011ff', color: '#fff', boxShadow: '0 10px 25px rgba(0,17,255,0.3)', marginBottom: '16px' }}>
+            <Sparkles size={36} />
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px 0' }}>SPCT AVENGERS</h1>
-          <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginBottom: '24px' }}>Hostel Ride-Pooling Hub</p>
+          <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#0f172a', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>SPCT AVENGERS</h1>
+          <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', marginBottom: '28px' }}>Hostel Ride-Pooling Hub</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            
+            {/* 1. I Have a Bike */}
             <button
               onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '16px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#009419' }}>
+                <div style={{ width: '54px', height: '54px', borderRadius: '18px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#009419' }}>
                   <Bike size={28} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', textTransform: 'uppercase' }}>Rider / Pilot</span>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', textTransform: 'uppercase' }}>RIDER / PILOT</span>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>I Have a Bike</h3>
                   <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Give lifts to hostel students</p>
                 </div>
@@ -426,25 +560,46 @@ export default function App() {
               <ArrowRight size={20} color="#94a3b8" />
             </button>
 
+            {/* 2. Need a Ride */}
             <button
               onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#fff', border: '2px solid #e2e8f0', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '16px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0011ff' }}>
+                <div style={{ width: '54px', height: '54px', borderRadius: '18px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0011ff' }}>
                   <UserCheck size={28} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#0011ff', textTransform: 'uppercase' }}>Passenger</span>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#0011ff', textTransform: 'uppercase' }}>PASSENGER</span>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>Need a Ride</h3>
                   <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Request bikes leaving hostel</p>
                 </div>
               </div>
               <ArrowRight size={20} color="#94a3b8" />
             </button>
+
+            {/* 3. ALAG SEPARATE FEATURE BAR: LIVE RADAR (2 KM) */}
+            <button
+              onClick={() => setShowRadarPage(true)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#0f172a', border: '2px solid #1e293b', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 6px 18px rgba(15,23,42,0.2)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '54px', height: '54px', borderRadius: '18px', backgroundColor: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+                  <Radio size={28} />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GPS RADAR</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ffffff' }}>Live Radar (2 KM)</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Explore nearby active bikers directly</p>
+                </div>
+              </div>
+              <ArrowRight size={20} color="#38bdf8" />
+            </button>
+
           </div>
         </div>
 
+        {/* Modal Auth */}
         {showAuthModal && (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
             <div style={{ backgroundColor: '#fff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', position: 'relative', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
@@ -522,12 +677,13 @@ export default function App() {
     );
   }
 
-  // ADMIN DASHBOARD
+  // =========================================================================
+  // VIEW 3: MASTER ADMIN WORKSPACE (3-COLUMN)
+  // =========================================================================
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f0f3f8', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', border: '3px solid #0f172a', boxShadow: '0 25px 50px rgba(15,23,42,0.1)', overflow: 'hidden' }}>
-          
           <header style={{ padding: '18px 24px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
@@ -539,15 +695,13 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
-                <LogOut size={16} /> Logout
-              </button>
-            </div>
+            <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
+              <LogOut size={16} /> Logout
+            </button>
           </header>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr minmax(280px, 340px)', minHeight: '740px' }}>
-            {/* Riders List */}
+            {/* Column 1: Riders */}
             <div style={{ borderRight: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -569,7 +723,7 @@ export default function App() {
                       </div>
                     )}
                     <div style={{ overflow: 'hidden', flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{biker.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', truncate: true }}>{biker.fullName}</p>
                       <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{biker.phone || 'No Phone'}</p>
                     </div>
                   </div>
@@ -577,7 +731,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Admin Controls */}
+            {/* Column 2: Controls */}
             <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Admin Controls & System Operations</h2>
@@ -609,7 +763,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Active Requests */}
+            {/* Column 3: Requests */}
             <div style={{ borderLeft: '3px solid #0f172a', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -644,11 +798,14 @@ export default function App() {
     );
   }
 
-  // MAIN DASHBOARD: PASSENGER & RIDER
+  // =========================================================================
+  // VIEW 4: MAIN WORKSPACE (PASSENGER / RIDER)
+  // =========================================================================
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
         
+        {/* Header */}
         <header style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {currentUser.avatar ? (
@@ -679,112 +836,12 @@ export default function App() {
           </div>
         </header>
 
+        {/* Workspace Body */}
         <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* PASSENGER VIEW */}
+          {/* 1. PASSENGER VIEW (Clean: Request Form + Requests Feed only) */}
           {!isBiker && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-              
-              {/* LIVE 2 KM GPS RADAR WIDGET WITH REFRESH BUTTON */}
-              <div style={{ backgroundColor: '#0f172a', borderRadius: '28px', padding: '20px 24px', color: '#ffffff', boxShadow: '0 10px 25px rgba(15,23,42,0.15)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '-0.3px' }}>
-                      Live Bikers Radar (Within 2 KM)
-                    </h3>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      onClick={handleRefreshRadar}
-                      title="Refresh Radar & GPS Location"
-                      disabled={isRefreshingRadar}
-                      style={{
-                        border: '1px solid #334155',
-                        background: '#1e293b',
-                        color: '#f8fafc',
-                        padding: '6px 12px',
-                        borderRadius: '9999px',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <RotateCw 
-                        size={13} 
-                        style={{ 
-                          animation: isRefreshingRadar ? 'spin 1s linear infinite' : 'none',
-                          transform: isRefreshingRadar ? 'rotate(360deg)' : 'none'
-                        }} 
-                      />
-                      <span>{isRefreshingRadar ? 'Updating...' : 'Refresh Radar'}</span>
-                    </button>
-
-                    <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#1e293b', color: '#38bdf8', padding: '5px 10px', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid #334155' }}>
-                      <Radio size={12} color="#38bdf8" /> {bikersWithin2Km.length} Online
-                    </span>
-                  </div>
-                </div>
-
-                {bikersWithin2Km.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 10px', backgroundColor: '#1e293b', borderRadius: '20px' }}>
-                    <Compass size={32} color="#64748b" style={{ margin: '0 auto 8px auto' }} />
-                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#94a3b8' }}>No active riders within 2 KM range</p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#64748b' }}>If you just turned on GPS, tap "Refresh Radar" above.</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px' }}>
-                    {bikersWithin2Km.map((biker, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => setSelectedRadarRider(biker)}
-                        style={{
-                          backgroundColor: '#1e293b',
-                          border: '2px solid #334155',
-                          borderRadius: '20px',
-                          padding: '14px',
-                          minWidth: '170px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          textAlign: 'center',
-                          gap: '6px',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <div style={{ position: 'relative' }}>
-                          {biker.avatar ? (
-                            <img src={biker.avatar} alt="Rider" style={{ width: '46px', height: '46px', borderRadius: '16px', objectFit: 'cover' }} />
-                          ) : (
-                            <div style={{ width: '46px', height: '46px', borderRadius: '16px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
-                              {biker.name?.charAt(0)}
-                            </div>
-                          )}
-                          <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', backgroundColor: '#009419', padding: '3px', borderRadius: '50%', border: '2px solid #1e293b' }}>
-                            <Bike size={10} color="#fff" />
-                          </div>
-                        </div>
-
-                        <span style={{ fontSize: '13px', fontWeight: '900', color: '#ffffff', whiteSpace: 'nowrap', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {biker.name}
-                        </span>
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', padding: '2px 8px', borderRadius: '8px' }}>
-                          📍 {biker.distance} KM away
-                        </span>
-                        <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Tap to Connect</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* REQUEST A RIDE FORM */}
               <div style={{ backgroundColor: '#f8faff', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#0011ff', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -915,7 +972,7 @@ export default function App() {
                 </form>
               </div>
 
-              {/* ACTIVE REQUESTS STREAM FOR PASSENGER */}
+              {/* Active Trip Requests Feed */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>Active Trip Requests</span>
@@ -972,13 +1029,11 @@ export default function App() {
             </div>
           )}
 
-          {/* RIDER VIEW */}
+          {/* 2. RIDER VIEW (Focus on Accepted Ride or Waiting Feed) */}
           {isBiker && (
             <div>
               {riderAcceptedRide ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', alignItems: 'start' }}>
-                  
-                  {/* MAIN FOCUS: CURRENT ACCEPTED RIDE */}
                   <div style={{ backgroundColor: '#ffffff', border: '3px solid #009419', borderRadius: '28px', padding: '24px', boxShadow: '0 14px 30px rgba(0,148,25,0.1)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                       <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: '#ecfdf5', color: '#009419', padding: '4px 12px', borderRadius: '9999px' }}>
@@ -1027,7 +1082,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* RIGHT PANEL: OTHER UNACCEPTED WAITING REQUESTS */}
                   <div style={{ backgroundColor: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: '28px', padding: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                       <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>Other Waiting Requests</span>
@@ -1053,10 +1107,8 @@ export default function App() {
                       )}
                     </div>
                   </div>
-
                 </div>
               ) : (
-                /* DEFAULT RIDER STREAM (ONLY WAITING REQUESTS SHOWN) */
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#ecfdf5', borderRadius: '22px', border: '1px solid #bbf7d0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1126,58 +1178,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* RADAR RIDER TAP DETAILS MODAL */}
-      {selectedRadarRider && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '22px', backgroundColor: '#ecfdf5', color: '#009419', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
-              <Bike size={34} />
-            </div>
-
-            <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', textTransform: 'uppercase', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '9999px' }}>
-              Verified Nearby Rider
-            </span>
-            <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a', margin: '8px 0 2px 0' }}>{selectedRadarRider.name}</h2>
-            <p style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', margin: '0 0 16px 0' }}>
-              📍 Located {selectedRadarRider.distance} KM from your position
-            </p>
-
-            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
-              <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>Contact Number</span>
-              <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>
-                {selectedRadarRider.phone || 'Contact via WhatsApp'}
-              </p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <a 
-                href={`tel:${selectedRadarRider.phone}`}
-                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <Phone size={14} /> Call Now
-              </a>
-
-              <a 
-                href={`https://wa.me/91${selectedRadarRider.phone}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#fff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <MessageCircle size={14} /> WhatsApp
-              </a>
-            </div>
-
-            <button 
-              onClick={() => setSelectedRadarRider(null)}
-              style={{ marginTop: '14px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#94a3b8', cursor: 'pointer' }}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* MATCHED RIDE POPUP MODAL */}
+      {/* Matched Ride Popup Modal */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
