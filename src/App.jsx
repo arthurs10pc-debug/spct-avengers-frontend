@@ -399,11 +399,33 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // VIEW 1: RADAR VIEW (68D8D8 Theme & Black Text)
+  // VIEW 1: FIGHTER JET ROTATING SWEEP RADAR VIEW (68D8D8 Theme & Black Text)
   if (showRadarPage) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', color: '#000000', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         
+        {/* CSS Keyframe Injection for Fighter Jet Radar Sweep */}
+        <style>{`
+          @keyframes radarSweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .fighter-sweep-beam {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 240px;
+            height: 240px;
+            margin-top: -120px;
+            margin-left: -120px;
+            background: conic-gradient(from 0deg at 50% 50%, rgba(104, 216, 216, 0.45) 0deg, rgba(104, 216, 216, 0.0) 60deg, transparent 360deg);
+            border-radius: 50%;
+            animation: radarSweep 3.5s linear infinite;
+            pointer-events: none;
+            transform-origin: center center;
+          }
+        `}</style>
+
         {/* Top Header */}
         <div style={{ padding: '16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', padding: '12px 20px', borderRadius: '22px', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
@@ -458,17 +480,24 @@ export default function App() {
           </div>
         </div>
 
-        {/* RADAR SWEEP CONTAINER */}
+        {/* FIGHTER JET CONTINUOUS ROTATING RADAR CONTAINER */}
         <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '1100px', margin: '0 auto 16px auto', padding: '0 16px', boxSizing: 'border-box', minHeight: '440px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '100%', height: '460px', backgroundColor: '#f8fafc', borderRadius: '28px', border: '2px solid #68D8D8', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
             
             {/* Concentric Radar Rings */}
-            <div style={{ position: 'absolute', width: '360px', height: '360px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.6)' }} />
-            <div style={{ position: 'absolute', width: '240px', height: '240px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.7)' }} />
-            <div style={{ position: 'absolute', width: '120px', height: '120px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.8)' }} />
+            <div style={{ position: 'absolute', width: '380px', height: '380px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.6)' }} />
+            <div style={{ position: 'absolute', width: '260px', height: '260px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.7)' }} />
+            <div style={{ position: 'absolute', width: '140px', height: '140px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.8)' }} />
             
+            {/* Crosshair Axis Lines */}
+            <div style={{ position: 'absolute', width: '100%', height: '1px', backgroundColor: 'rgba(104,216,216,0.3)' }} />
+            <div style={{ position: 'absolute', width: '1px', height: '100%', backgroundColor: 'rgba(104,216,216,0.3)' }} />
+
+            {/* Fighter Jet Rotating Sweep Beam */}
+            <div className="fighter-sweep-beam" />
+
             {/* Center User Dot */}
-            <div style={{ width: '20px', height: '20px', backgroundColor: '#000000', borderRadius: '50%', boxShadow: '0 0 20px #68D8D8', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '22px', height: '22px', backgroundColor: '#000000', borderRadius: '50%', boxShadow: '0 0 20px #68D8D8', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: '8px', height: '8px', backgroundColor: '#68D8D8', borderRadius: '50%' }} />
             </div>
 
@@ -482,7 +511,7 @@ export default function App() {
             ) : (
               bikersWithin2Km.map((biker, idx) => {
                 const angle = (idx * 90) * (Math.PI / 180);
-                const radius = 110 + (idx * 25);
+                const radius = 110 + (idx * 30);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
 
@@ -567,7 +596,7 @@ export default function App() {
     );
   }
 
-  // VIEW 2: SPLASH / ROLE SELECTION (68D8D8 Theme & Black Text)
+  // VIEW 2: SPLASH / ROLE SELECTION
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -716,7 +745,7 @@ export default function App() {
     );
   }
 
-  // VIEW 3: MASTER ADMIN WORKSPACE (68D8D8 Theme & Black Text)
+  // VIEW 3: MASTER ADMIN WORKSPACE
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -832,7 +861,7 @@ export default function App() {
     );
   }
 
-  // VIEW 4: MAIN WORKSPACE (68D8D8 Theme & Black Text)
+  // VIEW 4: MAIN WORKSPACE
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '2px solid #68D8D8', overflow: 'hidden' }}>
