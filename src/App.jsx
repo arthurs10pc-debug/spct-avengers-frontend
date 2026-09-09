@@ -5,12 +5,16 @@ import confetti from 'canvas-confetti';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, ArrowLeft,
   MapPin, LogOut, MessageCircle, AlertCircle, X, 
-  Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio, RotateCw
+  Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio, RotateCw,
+  Crosshair, Layers
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
+
+// Default coordinates (Ahmedabad Campus)
+const DEFAULT_CENTER = { lat: 23.0880, lng: 72.5350 };
 
 const PRESET_LOCATIONS = [
   "Vaishnodevi Circle",
@@ -52,6 +56,42 @@ const parseJwt = (token) => {
   }
 };
 
+// Top-Down Yellow & Black Bike SVG Icon (Rapido/Uber style)
+const createTopDownBikeSvg = (rotation = 0) => `
+  <div style="transform: rotate(${rotation}deg); width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45)); cursor: pointer;">
+    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Front Wheel -->
+      <rect x="46" y="4" width="8" height="20" rx="4" fill="#111827" />
+      <!-- Handlebar -->
+      <rect x="25" y="22" width="50" height="7" rx="3.5" fill="#111827" />
+      <circle cx="27" cy="25.5" r="4" fill="#fbbf24" />
+      <circle cx="73" cy="25.5" r="4" fill="#fbbf24" />
+      <!-- Front Forks & Tank -->
+      <path d="M42 26L38 48H62L58 26H42Z" fill="#f59e0b" stroke="#111827" stroke-width="3" />
+      <!-- Rider Shoulders & Arms -->
+      <path d="M30 36C30 32 70 32 70 36L66 52H34L30 36Z" fill="#1e293b" />
+      <!-- Rider Helmet (Yellow) -->
+      <circle cx="50" cy="40" r="13" fill="#facc15" stroke="#111827" stroke-width="3" />
+      <!-- Helmet Visor (Black) -->
+      <path d="M42 35C44 32 56 32 58 35L57 41C55 43 45 43 43 41L42 35Z" fill="#0f172a" />
+      <!-- Bike Seat & Rear Body -->
+      <path d="M40 50H60L56 80H44L40 50Z" fill="#111827" />
+      <rect x="44" y="52" width="12" height="18" rx="3" fill="#fbbf24" />
+      <!-- Rear Wheel -->
+      <rect x="46" y="76" width="8" height="20" rx="4" fill="#111827" />
+    </svg>
+  </div>
+`;
+
+// User Center Pin Icon (Blue circle with white arrow)
+const createUserPinSvg = () => `
+  <div style="width: 38px; height: 38px; border-radius: 50%; background: #0011ff; border: 3px solid #ffffff; box-shadow: 0 4px 14px rgba(0,17,255,0.45); display: flex; align-items: center; justify-content: center;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/>
+    </svg>
+  </div>
+`;
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -83,15 +123,22 @@ export default function App() {
   const [bikersList, setBikersList] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
 
-  // Real-time GPS states
+  // Real-time GPS & Radar states
   const [userLocation, setUserLocation] = useState(null);
   const [liveNearbyRiders, setLiveNearbyRiders] = useState([]);
   const [isRefreshingRadar, setIsRefreshingRadar] = useState(false);
+  const [selectedRiderDetail, setSelectedRiderDetail] = useState(null);
 
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
   const fromContainerRef = useRef(null);
   const toContainerRef = useRef(null);
+  
+  // Leaflet references
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersLayerRef = useRef(null);
+  const geofenceCircleRef = useRef(null);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
@@ -127,9 +174,14 @@ export default function App() {
             });
           }
         },
-        () => {},
+        () => {
+          // Default fallback
+          if (!userLocation) setUserLocation(DEFAULT_CENTER);
+        },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+    } else if (!userLocation) {
+      setUserLocation(DEFAULT_CENTER);
     }
   };
 
@@ -172,7 +224,6 @@ export default function App() {
 
     socketRef.current.on('ride_accepted_broadcast', (updatedRide) => {
       setRides(prev => prev.map(r => r._id === updatedRide._id ? updatedRide : r));
-      
       try {
         const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
         if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
@@ -187,6 +238,129 @@ export default function App() {
     };
   }, [isAdmin]);
 
+  // DYNAMIC LEAFLET MAP INJECTION & RENDER
+  useEffect(() => {
+    if (!showRadarPage) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      return;
+    }
+
+    const loadLeafletAssets = () => {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+
+      if (!window.L) {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = initMap;
+        document.body.appendChild(script);
+      } else {
+        initMap();
+      }
+    };
+
+    const initMap = () => {
+      if (!mapContainerRef.current || mapInstanceRef.current || !window.L) return;
+
+      const centerCoords = userLocation || DEFAULT_CENTER;
+      const map = window.L.map(mapContainerRef.current, {
+        zoomControl: false,
+        attributionControl: false
+      }).setView([centerCoords.lat, centerCoords.lng], 14);
+
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(map);
+
+      // Add Zoom Control top right
+      window.L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // Create 2 KM Geofence Radar Circle
+      const geofence = window.L.circle([centerCoords.lat, centerCoords.lng], {
+        radius: 2000,
+        color: '#f97316',
+        weight: 2,
+        fillColor: '#fb923c',
+        fillOpacity: 0.28
+      }).addTo(map);
+
+      geofenceCircleRef.current = geofence;
+
+      // Layer group for dynamic bikes
+      const markersLayer = window.L.layerGroup().addTo(map);
+      markersLayerRef.current = markersLayer;
+
+      mapInstanceRef.current = map;
+      updateMapMarkers();
+    };
+
+    loadLeafletAssets();
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [showRadarPage]);
+
+  // Update Map Markers (User & Bikers)
+  const updateMapMarkers = useCallback(() => {
+    if (!mapInstanceRef.current || !window.L || !markersLayerRef.current) return;
+
+    markersLayerRef.current.clearLayers();
+    const center = userLocation || DEFAULT_CENTER;
+
+    // 1. Center User Pin Marker
+    const userIcon = window.L.divIcon({
+      html: createUserPinSvg(),
+      className: 'user-pin-marker',
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
+    });
+
+    window.L.marker([center.lat, center.lng], { icon: userIcon, zIndexOffset: 1000 })
+      .addTo(markersLayerRef.current)
+      .bindPopup(`<b>Your Location</b><br/>Center of 2 KM Radar`);
+
+    // Update Geofence Circle Position
+    if (geofenceCircleRef.current) {
+      geofenceCircleRef.current.setLatLng([center.lat, center.lng]);
+    }
+
+    // 2. Render Nearby Bikers with Top-Down Icons
+    bikersWithin2Km.forEach((biker, idx) => {
+      const rotationAngle = (idx * 65) % 360;
+      const bikeIcon = window.L.divIcon({
+        html: createTopDownBikeSvg(rotationAngle),
+        className: 'bike-radar-marker',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
+
+      const marker = window.L.marker([biker.lat, biker.lng], { icon: bikeIcon })
+        .addTo(markersLayerRef.current);
+
+      marker.on('click', () => {
+        setSelectedRiderDetail(biker);
+      });
+    });
+  }, [userLocation, liveNearbyRiders]);
+
+  useEffect(() => {
+    if (showRadarPage) {
+      updateMapMarkers();
+    }
+  }, [showRadarPage, userLocation, liveNearbyRiders, updateMapMarkers]);
+
   const handleRefreshRadar = () => {
     setIsRefreshingRadar(true);
     fetchLiveGPS();
@@ -195,7 +369,10 @@ export default function App() {
     }
     setTimeout(() => {
       setIsRefreshingRadar(false);
-    }, 700);
+      if (mapInstanceRef.current && userLocation) {
+        mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
+      }
+    }, 600);
   };
 
   const handleGoogleCallback = async (response) => {
@@ -397,15 +574,17 @@ export default function App() {
 
   const unacceptedRidesForBikers = rides.filter(r => r.status !== 'accepted');
 
-  // VIEW 1: DEDICATED FULL-PAGE 2 KM LIVE RADAR
+  // VIEW 1: INTERACTIVE 2 KM RADAR MAP VIEW (EXACT TO REFERENCE SCREENSHOTS)
   if (showRadarPage) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f0f3fa', padding: '20px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: '16px 24px', borderRadius: '24px', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#0b0f19', color: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        
+        {/* Top Header Card */}
+        <div style={{ padding: '16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', padding: '12px 20px', borderRadius: '22px', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
             <button
               onClick={() => setShowRadarPage(false)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: '#eff6ff', color: '#0011ff', padding: '10px 18px', borderRadius: '16px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: '#eff6ff', color: '#0011ff', padding: '10px 18px', borderRadius: '14px', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
             >
               <ArrowLeft size={16} /> Back to Home
             </button>
@@ -421,93 +600,143 @@ export default function App() {
                 color: '#ffffff',
                 border: 'none',
                 padding: '10px 18px',
-                borderRadius: '16px',
+                borderRadius: '14px',
                 fontWeight: '800',
                 fontSize: '13px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0,17,255,0.25)'
+                boxShadow: '0 4px 12px rgba(0,17,255,0.3)'
               }}
             >
               <RotateCw size={15} style={{ animation: isRefreshingRadar ? 'spin 1s linear infinite' : 'none' }} />
-              <span>{isRefreshingRadar ? 'Refreshing...' : 'Refresh Radar'}</span>
+              <span>{isRefreshingRadar ? 'Scanning...' : 'Refresh Radar'}</span>
             </button>
           </div>
+        </div>
 
-          <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '28px', borderRadius: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        {/* Live Status Banner Card */}
+        <div style={{ padding: '0 16px 14px 16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', padding: '20px 24px', borderRadius: '26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '900', color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px', backgroundColor: 'rgba(16,185,129,0.15)', padding: '4px 12px', borderRadius: '9999px' }}>
-                ● Real-Time Campus Geofence
+              <span style={{ fontSize: '11px', fontWeight: '900', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.8px', backgroundColor: 'rgba(16,185,129,0.15)', padding: '4px 12px', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} /> REAL-TIME CAMPUS GEOFENCE
               </span>
-              <h1 style={{ margin: '10px 0 4px 0', fontSize: '26px', fontWeight: '900' }}>Live Bikers Radar (Within 2 KM)</h1>
-              <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+              <h1 style={{ margin: '8px 0 2px 0', fontSize: '24px', fontWeight: '900', color: '#ffffff' }}>Live Bikers Radar (Within 2 KM)</h1>
+              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>
                 Detects active hostel riders who have GPS enabled within 2 KM range.
               </p>
             </div>
 
-            <div style={{ backgroundColor: '#1e293b', border: '2px solid #334155', padding: '12px 20px', borderRadius: '20px', textAlign: 'center' }}>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8' }}>ONLINE WITHIN 2 KM</span>
-              <p style={{ margin: '4px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#ffffff' }}>{bikersWithin2Km.length} Riders</p>
+            <div style={{ backgroundColor: '#1e293b', border: '2px solid #334155', padding: '10px 20px', borderRadius: '18px', textAlign: 'center' }}>
+              <span style={{ fontSize: '10px', fontWeight: '800', color: '#38bdf8', letterSpacing: '0.5px' }}>ONLINE WITHIN 2 KM</span>
+              <p style={{ margin: '2px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#ffffff' }}>{bikersWithin2Km.length} Riders</p>
             </div>
           </div>
+        </div>
 
+        {/* INTERACTIVE RADAR MAP CONTAINER */}
+        <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '1100px', margin: '0 auto 16px auto', padding: '0 16px', boxSizing: 'border-box', minHeight: '480px' }}>
+          <div 
+            ref={mapContainerRef} 
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              minHeight: '480px',
+              borderRadius: '28px', 
+              overflow: 'hidden', 
+              border: '2px solid #1e293b', 
+              boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+              position: 'relative' 
+            }}
+          />
+
+          {/* Floating Center Radar Legend Overlay */}
+          <div style={{ position: 'absolute', top: '16px', left: '32px', zIndex: 500, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)', border: '1px solid #334155', padding: '8px 14px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: '700' }}>
+            <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'rgba(251,146,60,0.6)', border: '2px solid #f97316' }} />
+            <span>2 KM Active Geofence Area</span>
+          </div>
+
+          {/* Floating Re-center GPS Button */}
+          <button
+            onClick={() => {
+              if (mapInstanceRef.current && userLocation) {
+                mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 14);
+              }
+            }}
+            title="Center on My Location"
+            style={{ position: 'absolute', bottom: '24px', right: '32px', zIndex: 500, backgroundColor: '#ffffff', color: '#0f172a', border: 'none', width: '44px', height: '44px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,0.3)', cursor: 'pointer' }}
+          >
+            <Crosshair size={20} color="#0011ff" />
+          </button>
+
+          {/* Rider Quick-Card Drawer (Opens on tapping any bike icon) */}
+          {selectedRiderDetail && (
+            <div style={{ position: 'absolute', bottom: '24px', left: '32px', zIndex: 500, backgroundColor: '#ffffff', color: '#0f172a', borderRadius: '24px', padding: '16px 20px', width: '310px', boxShadow: '0 14px 35px rgba(0,0,0,0.4)', border: '2px solid #e2e8f0', animation: 'fadeIn 0.2s ease-in-out' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#009419', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '6px' }}>
+                  🏍️ {selectedRiderDetail.distance} KM AWAY
+                </span>
+                <button onClick={() => setSelectedRiderDetail(null)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={14} />
+                </button>
+              </div>
+
+              <h4 style={{ margin: '0 0 2px 0', fontSize: '16px', fontWeight: '900' }}>{selectedRiderDetail.name}</h4>
+              <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: '#64748b' }}>Active GPS Pilot within campus radius</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <a
+                  href={`tel:${selectedRiderDetail.phone}`}
+                  style={{ padding: '10px', borderRadius: '12px', backgroundColor: '#009419', color: '#ffffff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Phone size={13} /> Call
+                </a>
+
+                <a
+                  href={`https://wa.me/91${selectedRiderDetail.phone}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ padding: '10px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <MessageCircle size={13} /> WhatsApp
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Bikers Horizontal Drawer */}
+        <div style={{ padding: '0 16px 20px 16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           {bikersWithin2Km.length === 0 ? (
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '60px 20px', textAlign: 'center', border: '2px solid #e2e8f0' }}>
-              <Compass size={48} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>No Bikers Detectable Within 2 KM</h3>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px 20px', textAlign: 'center', color: '#0f172a', border: '1px solid #e2e8f0' }}>
+              <Compass size={32} color="#94a3b8" style={{ margin: '0 auto 8px auto' }} />
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900' }}>No Bikers Detectable Within 2 KM</h3>
+              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
                 Ensure riders have location enabled on their device, or tap "Refresh Radar".
               </p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none' }}>
               {bikersWithin2Km.map((biker, idx) => (
-                <div key={idx} style={{ backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <div style={{ position: 'relative' }}>
-                      {biker.avatar ? (
-                        <img src={biker.avatar} alt="Rider" style={{ width: '52px', height: '52px', borderRadius: '18px', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '52px', height: '52px', borderRadius: '18px', backgroundColor: '#009419', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '18px' }}>
-                          {biker.name?.charAt(0)}
-                        </div>
-                      )}
-                      <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', backgroundColor: '#009419', padding: '4px', borderRadius: '50%', border: '2px solid #ffffff' }}>
-                        <Bike size={12} color="#fff" />
-                      </div>
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setSelectedRiderDetail(biker);
+                    if (mapInstanceRef.current) {
+                      mapInstanceRef.current.setView([biker.lat, biker.lng], 16);
+                    }
+                  }}
+                  style={{ minWidth: '240px', backgroundColor: '#ffffff', color: '#0f172a', padding: '14px', borderRadius: '20px', border: '2px solid #e2e8f0', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', flexShrink: 0 }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#ecfdf5', color: '#009419', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Bike size={20} />
                     </div>
-
-                    <div style={{ overflow: 'hidden', flex: 1 }}>
-                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                        {biker.name}
-                      </h3>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#0011ff', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '6px', display: 'inline-block', marginTop: '2px' }}>
-                        📍 {biker.distance} KM away
-                      </span>
+                    <div style={{ overflow: 'hidden' }}>
+                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{biker.name}</h4>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#0011ff' }}>📍 {biker.distance} KM</span>
                     </div>
                   </div>
-
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Phone</span>
-                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', fontFamily: 'monospace' }}>{biker.phone || 'Available via WhatsApp'}</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <a
-                      href={`tel:${biker.phone}`}
-                      style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#009419', color: '#ffffff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <Phone size={14} /> Call Now
-                    </a>
-
-                    <a
-                      href={`https://wa.me/91${biker.phone}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <MessageCircle size={14} /> WhatsApp
-                    </a>
-                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Tap to view on radar map</div>
                 </div>
               ))}
             </div>
@@ -523,7 +752,6 @@ export default function App() {
       <div style={{ minHeight: '100vh', backgroundColor: '#eaedf5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         <div style={{ width: '100%', maxWidth: '420px', textAlign: 'center' }}>
           
-          {/* Brand Pirate Logo Image Header */}
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
             <img 
               src="/logo.png" 
@@ -574,7 +802,7 @@ export default function App() {
               <ArrowRight size={20} color="#94a3b8" />
             </button>
 
-            {/* Option 3: Separate 2 KM Radar Section */}
+            {/* Option 3: 2 KM Map Radar */}
             <button
               onClick={() => setShowRadarPage(true)}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#0f172a', border: '2px solid #1e293b', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 6px 18px rgba(15,23,42,0.2)' }}
@@ -586,7 +814,7 @@ export default function App() {
                 <div style={{ textAlign: 'left' }}>
                   <span style={{ fontSize: '10px', fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GPS RADAR</span>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ffffff' }}>Live Radar (2 KM)</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Explore nearby active bikers directly</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Visual map of active nearby bikes</p>
                 </div>
               </div>
               <ArrowRight size={20} color="#38bdf8" />
@@ -672,7 +900,7 @@ export default function App() {
     );
   }
 
-  // VIEW 3: MASTER ADMIN WORKSPACE (3-COLUMN WIREFRAME)
+  // VIEW 3: MASTER ADMIN WORKSPACE
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f0f3f8', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -727,7 +955,7 @@ export default function App() {
             {/* Column 2: Controls */}
             <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Admin Controls & System Operations</h2>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>Admin Controls & Operations</h2>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
@@ -814,12 +1042,21 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Direct Radar Map Access Button */}
+            <button
+              onClick={() => setShowRadarPage(true)}
+              style={{ padding: '8px 14px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#0f172a', color: '#38bdf8', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Radio size={14} /> Open 2 KM Radar
+            </button>
+
             <button
               onClick={handleClearAllRides}
               style={{ padding: '8px 12px', borderRadius: '12px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Trash2 size={14} /> Clear Stream
             </button>
+            
             <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#f1f5f9', padding: '8px', borderRadius: '12px', cursor: 'pointer', color: '#64748b' }}>
               <LogOut size={16} />
             </button>
@@ -1166,7 +1403,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Matched Ride Popup Modal */}
+      {/* Matched Ride Modal */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
