@@ -26,11 +26,11 @@ const PRESET_LOCATIONS = [
 ];
 
 const QUICK_CHAT_PRESETS = [
-  "Reached pickup spot 📍",
-  "2 mins away 🏍️",
-  "Where are you? 🔍",
-  "Running late, wait 1 min ⏱️",
-  "Heading to destination 🚀"
+  "📍 Spot",
+  "🏍️ 2m",
+  "🔍 Where?",
+  "⏱️ 1m",
+  "🚀 Moving"
 ];
 
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
@@ -68,7 +68,6 @@ export default function App() {
       const saved = localStorage.getItem('spct_user');
       if (!saved) return null;
       const parsed = JSON.parse(saved);
-      // Ensure name and email fields exist to prevent rendering crash
       if (parsed && (parsed.name || parsed.email)) {
         return parsed;
       }
@@ -189,7 +188,7 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchLiveGPS = () => {
+  const fetchLiveGPS = useCallback(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -211,17 +210,24 @@ export default function App() {
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
-  };
+  }, [isBiker, currentUser]);
 
   useEffect(() => {
     fetchLiveGPS();
-    const interval = setInterval(fetchLiveGPS, 12000);
+    const interval = setInterval(fetchLiveGPS, 8000);
     return () => clearInterval(interval);
-  }, [currentUser, isBiker]);
+  }, [fetchLiveGPS]);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000
+    });
+
+    socketRef.current.on('connect', () => {
+      fetchLiveGPS();
     });
 
     axios.get(`${BACKEND_URL}/api/rides`)
@@ -260,7 +266,7 @@ export default function App() {
         const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
         if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
           setMatchedRide(updatedRide);
-          triggerGlassNotification("Ride Matched Successfully! 🎉", `Commute connected for ${updatedRide.fromLocation} to ${updatedRide.toLocation}`);
+          triggerGlassNotification("Ride Matched! 🎉", `${updatedRide.fromLocation} ➔ ${updatedRide.toLocation}`);
           confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
         }
       } catch (e) {}
@@ -269,7 +275,7 @@ export default function App() {
     socketRef.current.on('receive_in_app_chat', (msg) => {
       if (msg) {
         setChatMessages(prev => [...prev, msg]);
-        triggerGlassNotification(`Message from ${msg.senderName || 'Partner'}`, msg.text);
+        triggerGlassNotification(`${msg.senderName || 'Partner'}`, msg.text);
       }
     });
 
@@ -317,7 +323,7 @@ export default function App() {
           localStorage.setItem('spct_user', JSON.stringify(res.data.user));
           setShowAuthModal(false);
           setTempGoogleUser(null);
-          triggerGlassNotification("Welcome Back!", `Logged in successfully as ${res.data.user.name}`);
+          triggerGlassNotification("Welcome Back!", `${res.data.user.name}`);
         }
       } else {
         setTempGoogleUser(googleData);
@@ -428,7 +434,7 @@ export default function App() {
     setScheduleTime('');
     setShowFromDropdown(false);
     setShowToDropdown(false);
-    triggerGlassNotification("Ride Posted!", "Nearby bikers have been notified.");
+    triggerGlassNotification("Ride Posted!", "Nearby bikers notified.");
   };
 
   const handleAcceptRide = (ride) => {
@@ -451,7 +457,7 @@ export default function App() {
   };
 
   const handleDeleteRide = async (rideId, rideObj) => {
-    if (!window.confirm("Complete & finish this trip? It will be archived to your History.")) return;
+    if (!window.confirm("Complete & finish this trip?")) return;
     try {
       if (rideObj) {
         const tripEntry = {
@@ -467,14 +473,14 @@ export default function App() {
       await axios.delete(`${BACKEND_URL}/api/rides/${rideId}`);
       setRides(prev => prev.filter(r => r && r._id !== rideId));
       if (matchedRide?._id === rideId) setMatchedRide(null);
-      triggerGlassNotification("Trip Completed! 🏁", "Saved to your Ride History & Commute Stats.");
+      triggerGlassNotification("Trip Completed! 🏁", "Saved to Ride History.");
     } catch (err) {
       alert("Delete failed: " + err.message);
     }
   };
 
   const handleClearAllRides = async () => {
-    if (!window.confirm("Do you want to clear all active rides from the database?")) return;
+    if (!window.confirm("Clear all active rides?")) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/rides/clear-all`);
       setRides([]);
@@ -506,7 +512,7 @@ export default function App() {
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
 
-  // VIEW 1: RADAR VIEW (Safe & Crash-proof)
+  // VIEW 1: RADAR VIEW (Emoji-only & 68D8D8 Theme)
   if (showRadarPage) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', color: '#000000', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -538,7 +544,7 @@ export default function App() {
               onClick={() => setShowRadarPage(false)}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: '#68D8D8', color: '#000000', padding: '10px 18px', borderRadius: '14px', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}
             >
-              <ArrowLeft size={16} /> Back to Home
+              <ArrowLeft size={16} /> ⬅️
             </button>
 
             <button
@@ -555,61 +561,52 @@ export default function App() {
                 borderRadius: '14px',
                 fontWeight: '900',
                 fontSize: '13px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(104,216,216,0.3)'
+                cursor: 'pointer'
               }}
             >
               <RotateCw size={15} style={{ animation: isRefreshingRadar ? 'spin 1s linear infinite' : 'none' }} />
-              <span>{isRefreshingRadar ? 'Scanning...' : 'Refresh Radar'}</span>
+              <span>🔄</span>
             </button>
           </div>
         </div>
 
         <div style={{ padding: '0 16px 14px 16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '20px 24px', borderRadius: '26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', color: '#000000', boxShadow: '0 10px 25px rgba(0,0,0,0.03)' }}>
+          <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '16px 20px', borderRadius: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#000000' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', textTransform: 'uppercase', letterSpacing: '0.8px', backgroundColor: '#68D8D8', padding: '4px 12px', borderRadius: '9999px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#000000', display: 'inline-block' }} /> REAL-TIME CAMPUS GEOFENCE
+              <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', padding: '3px 10px', borderRadius: '9999px' }}>
+                🟢 2 KM GEOFENCE
               </span>
-              <h1 style={{ margin: '8px 0 2px 0', fontSize: '24px', fontWeight: '900', color: '#000000' }}>Live Bikers Radar (Within 2 KM)</h1>
-              <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '600' }}>
-                Detects active hostel riders who have GPS enabled within 2 KM range.
-              </p>
+              <h2 style={{ margin: '6px 0 2px 0', fontSize: '20px', fontWeight: '900' }}>Radar 📡</h2>
             </div>
-
-            <div style={{ backgroundColor: '#68D8D8', border: '2px solid #000000', padding: '10px 20px', borderRadius: '18px', textAlign: 'center', color: '#000000' }}>
-              <span style={{ fontSize: '10px', fontWeight: '900', color: '#000000', letterSpacing: '0.5px' }}>ONLINE WITHIN 2 KM</span>
-              <p style={{ margin: '2px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{bikersWithin2Km.length} Riders</p>
+            <div style={{ backgroundColor: '#68D8D8', border: '2px solid #000', padding: '8px 14px', borderRadius: '14px', textAlign: 'center' }}>
+              <span style={{ fontSize: '10px', fontWeight: '900' }}>🏍️ ONLINE</span>
+              <p style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>{bikersWithin2Km.length}</p>
             </div>
           </div>
         </div>
 
-        <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '1100px', margin: '0 auto 16px auto', padding: '0 16px', boxSizing: 'border-box', minHeight: '440px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: '100%', height: '460px', backgroundColor: '#f8fafc', borderRadius: '28px', border: '2px solid #68D8D8', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+        <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '1100px', margin: '0 auto 16px auto', padding: '0 16px', boxSizing: 'border-box', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '100%', height: '420px', backgroundColor: '#f8fafc', borderRadius: '28px', border: '2px solid #68D8D8', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             
-            <div style={{ position: 'absolute', width: '380px', height: '380px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.6)' }} />
-            <div style={{ position: 'absolute', width: '260px', height: '260px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.7)' }} />
-            <div style={{ position: 'absolute', width: '140px', height: '140px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.8)' }} />
+            <div style={{ position: 'absolute', width: '340px', height: '340px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.6)' }} />
+            <div style={{ position: 'absolute', width: '220px', height: '220px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.7)' }} />
+            <div style={{ position: 'absolute', width: '100px', height: '100px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.8)' }} />
             
-            <div style={{ position: 'absolute', width: '100%', height: '1px', backgroundColor: 'rgba(104,216,216,0.3)' }} />
-            <div style={{ position: 'absolute', width: '1px', height: '100%', backgroundColor: 'rgba(104,216,216,0.3)' }} />
-
             <div className="fighter-sweep-beam" />
 
-            <div style={{ width: '22px', height: '22px', backgroundColor: '#000000', borderRadius: '50%', boxShadow: '0 0 20px #68D8D8', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '8px', height: '8px', backgroundColor: '#68D8D8', borderRadius: '50%' }} />
+            <div style={{ width: '20px', height: '20px', backgroundColor: '#000', borderRadius: '50%', boxShadow: '0 0 15px #68D8D8', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '6px', height: '6px', backgroundColor: '#68D8D8', borderRadius: '50%' }} />
             </div>
 
             {bikersWithin2Km.length === 0 ? (
-              <div style={{ position: 'absolute', zIndex: 20, textAlign: 'center', backgroundColor: '#ffffff', padding: '16px 24px', borderRadius: '20px', border: '2px solid #68D8D8', color: '#000000', boxShadow: '0 8px 20px rgba(0,0,0,0.05)' }}>
-                <Compass size={32} color="#000000" style={{ margin: '0 auto 8px auto', animation: 'spin 4s linear infinite' }} />
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#000000' }}>Scanning 2 KM Radius...</h4>
-                <p style={{ margin: 0, fontSize: '11px', color: '#334155', fontWeight: '600' }}>Waiting for active bikers to report GPS coordinates</p>
+              <div style={{ position: 'absolute', zIndex: 20, textAlign: 'center', backgroundColor: '#ffffff', padding: '14px 20px', borderRadius: '16px', border: '2px solid #68D8D8' }}>
+                <Compass size={28} color="#000" style={{ margin: '0 auto 6px auto', animation: 'spin 4s linear infinite' }} />
+                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900' }}>Scanning 2km... 🛰️</h4>
               </div>
             ) : (
               bikersWithin2Km.map((biker, idx) => {
                 const angle = (idx * 90) * (Math.PI / 180);
-                const radius = 110 + (idx * 30);
+                const radius = 100 + (idx * 25);
                 const x = Math.cos(angle) * radius;
                 const y = Math.sin(angle) * radius;
 
@@ -624,15 +621,14 @@ export default function App() {
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
-                      alignItems: 'center',
-                      animation: 'bounce 2s infinite'
+                      alignItems: 'center'
                     }}
                   >
-                    <div style={{ backgroundColor: '#68D8D8', padding: '8px', borderRadius: '50%', border: '2px solid #000000', boxShadow: '0 0 15px rgba(104,216,216,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Bike size={20} color="#000000" />
+                    <div style={{ backgroundColor: '#68D8D8', padding: '6px', borderRadius: '50%', border: '2px solid #000000' }}>
+                      <Bike size={18} color="#000000" />
                     </div>
-                    <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#ffffff', color: '#000000', padding: '2px 6px', borderRadius: '6px', marginTop: '4px', border: '1px solid #68D8D8' }}>
-                      {biker.name} ({biker.distance} KM)
+                    <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#fff', padding: '1px 4px', borderRadius: '4px', marginTop: '2px' }}>
+                      {biker.distance}km 🏍️
                     </span>
                   </div>
                 );
@@ -640,53 +636,16 @@ export default function App() {
             )}
 
             {selectedRiderDetail && (
-              <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', maxWidth: '340px', margin: '0 auto', zIndex: 50, backgroundColor: '#ffffff', color: '#000000', borderRadius: '24px', padding: '16px 20px', boxShadow: '0 14px 35px rgba(0,0,0,0.15)', border: '2px solid #68D8D8' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#000000', backgroundColor: '#68D8D8', padding: '2px 8px', borderRadius: '6px' }}>
-                    🏍️ {selectedRiderDetail.distance} KM AWAY
-                  </span>
-                  <button onClick={() => setSelectedRiderDetail(null)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <X size={14} />
-                  </button>
-                </div>
-                <h4 style={{ margin: '0 0 2px 0', fontSize: '16px', fontWeight: '900' }}>{selectedRiderDetail.name}</h4>
-                <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: '#334155', fontWeight: '600' }}>Active GPS Pilot within 2 KM range</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <a href={`tel:${selectedRiderDetail.phone}`} style={{ padding: '10px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    <Phone size={13} /> Call
-                  </a>
-                  <a href={`https://wa.me/91${selectedRiderDetail.phone}`} target="_blank" rel="noreferrer" style={{ padding: '10px', borderRadius: '12px', backgroundColor: '#000000', color: '#68D8D8', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    <MessageCircle size={13} /> WhatsApp
-                  </a>
+              <div style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', maxWidth: '300px', margin: '0 auto', zIndex: 50, backgroundColor: '#ffffff', borderRadius: '20px', padding: '14px', border: '2px solid #68D8D8', textAlign: 'center' }}>
+                <h4 style={{ margin: '0 0 2px 0', fontSize: '14px', fontWeight: '900' }}>{selectedRiderDetail.name} 🏍️</h4>
+                <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#334155' }}>📍 {selectedRiderDetail.distance} KM</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <a href={`tel:${selectedRiderDetail.phone}`} style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '11px', textDecoration: 'none' }}>📞 Call</a>
+                  <a href={`https://wa.me/91${selectedRiderDetail.phone}`} target="_blank" rel="noreferrer" style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#000', color: '#68D8D8', fontWeight: '900', fontSize: '11px', textDecoration: 'none' }}>💬 WA</a>
                 </div>
               </div>
             )}
           </div>
-        </div>
-
-        <div style={{ padding: '0 16px 20px 16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-          {bikersWithin2Km.length > 0 && (
-            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none' }}>
-              {bikersWithin2Km.map((biker, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setSelectedRiderDetail(biker)}
-                  style={{ minWidth: '240px', backgroundColor: '#ffffff', color: '#000000', padding: '14px', borderRadius: '20px', border: '2px solid #68D8D8', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Bike size={20} />
-                    </div>
-                    <div style={{ overflow: 'hidden' }}>
-                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{biker.name}</h4>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000' }}>📍 {biker.distance} KM</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#334155', fontWeight: '700' }}>Tap to view contact</div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -703,90 +662,87 @@ export default function App() {
               src="/logo.png" 
               alt="Logo" 
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.1))' }} 
+              style={{ width: '80px', height: '80px', objectFit: 'contain' }} 
             />
           </div>
 
-          <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#000000', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>SPCT AVENGERS</h1>
-          <p style={{ fontSize: '13px', color: '#334155', fontWeight: '800', marginBottom: '28px' }}>Hostel Ride-Pooling Hub</p>
+          <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#000000', margin: '0 0 4px 0' }}>SPCT AVENGERS 🏴‍☠️</h1>
+          <p style={{ fontSize: '12px', color: '#334155', fontWeight: '800', marginBottom: '24px' }}>Hostel Ride-Pooling Hub 🏍️</p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '22px', cursor: 'pointer' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '54px', height: '54px', borderRadius: '18px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000' }}>
-                  <Bike size={28} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000' }}>
+                  <Bike size={24} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#000000', textTransform: 'uppercase' }}>RIDER / PILOT</span>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>I Have a Bike</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '600' }}>Give lifts to hostel students</p>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>I Have a Bike 🏍️</h3>
+                  <span style={{ fontSize: '11px', color: '#334155', fontWeight: '700' }}>Rider / Pilot</span>
                 </div>
               </div>
-              <ArrowRight size={20} color="#000000" />
+              <ArrowRight size={18} color="#000" />
             </button>
 
             <button
               onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '22px', cursor: 'pointer' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '54px', height: '54px', borderRadius: '18px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000' }}>
-                  <UserCheck size={28} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000' }}>
+                  <UserCheck size={24} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#000000', textTransform: 'uppercase' }}>PASSENGER</span>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Need a Ride</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '600' }}>Request bikes leaving hostel</p>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>Need a Ride 🙋‍♂️</h3>
+                  <span style={{ fontSize: '11px', color: '#334155', fontWeight: '700' }}>Passenger</span>
                 </div>
               </div>
-              <ArrowRight size={20} color="#000000" />
+              <ArrowRight size={18} color="#000" />
             </button>
 
             <button
               onClick={() => setShowRadarPage(true)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#000000', border: '2px solid #68D8D8', borderRadius: '26px', cursor: 'pointer', boxShadow: '0 6px 18px rgba(0,0,0,0.15)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#000000', border: '2px solid #68D8D8', borderRadius: '22px', cursor: 'pointer' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '54px', height: '54px', borderRadius: '18px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000' }}>
-                  <Radio size={28} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000' }}>
+                  <Radio size={24} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#68D8D8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GPS RADAR</span>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ffffff' }}>Live Radar (2 KM)</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Fighter jet sweep of active bikes</p>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fff' }}>Live Radar 📡</h3>
+                  <span style={{ fontSize: '11px', color: '#68D8D8', fontWeight: '700' }}>2 KM Geo-fence</span>
                 </div>
               </div>
-              <ArrowRight size={20} color="#68D8D8" />
+              <ArrowRight size={18} color="#68D8D8" />
             </button>
           </div>
         </div>
 
         {showAuthModal && (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ backgroundColor: '#fff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', position: 'relative', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8' }}>
-              <button onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }} style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={16} />
+            <div style={{ backgroundColor: '#fff', borderRadius: '28px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', textAlign: 'center', border: '2px solid #68D8D8' }}>
+              <button onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={15} />
               </button>
 
               {!tempGoogleUser && (
-                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '16px', marginBottom: '16px' }}>
-                  <button onClick={() => { setAuthTab('login'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '900', fontSize: '12px', backgroundColor: authTab === 'login' ? '#68D8D8' : 'transparent', color: '#000000' }}>Log In</button>
-                  <button onClick={() => { setAuthTab('signup'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '900', fontSize: '12px', backgroundColor: authTab === 'signup' ? '#68D8D8' : 'transparent', color: '#000000' }}>Sign Up</button>
+                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '14px', marginBottom: '14px' }}>
+                  <button onClick={() => { setAuthTab('login'); setErrorMsg(''); }} style={{ flex: 1, padding: '7px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '11px', backgroundColor: authTab === 'login' ? '#68D8D8' : 'transparent', color: '#000' }}>🔑 Login</button>
+                  <button onClick={() => { setAuthTab('signup'); setErrorMsg(''); }} style={{ flex: 1, padding: '7px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '900', fontSize: '11px', backgroundColor: authTab === 'signup' ? '#68D8D8' : 'transparent', color: '#000' }}>📝 Register</button>
                 </div>
               )}
 
-              <h2 style={{ fontSize: '18px', fontWeight: '900', color: '#000000', margin: '0 0 6px 0' }}>
-                {tempGoogleUser ? "Contact Details" : (authTab === 'login' ? "Welcome Back" : `Join as ${selectedRole === 'biker' ? 'Rider' : 'Passenger'}`)}
+              <h2 style={{ fontSize: '17px', fontWeight: '900', color: '#000', margin: '0 0 4px 0' }}>
+                {tempGoogleUser ? "📱 Mobile Number" : (authTab === 'login' ? "Welcome Back 🚀" : "Create Account 🌟")}
               </h2>
-              <p style={{ fontSize: '12px', color: '#334155', fontWeight: '600', marginBottom: '20px' }}>
-                {tempGoogleUser ? "Enter your mobile number for commuter connection" : "Sign in using your Google account"}
+              <p style={{ fontSize: '11px', color: '#334155', fontWeight: '700', marginBottom: '16px' }}>
+                {tempGoogleUser ? "Required for rider connection" : "Google Sign-In"}
               </p>
 
               {errorMsg && (
-                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '11px', padding: '10px 14px', borderRadius: '14px', marginBottom: '14px', textAlign: 'left' }}>
+                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '11px', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px', textAlign: 'left' }}>
                   {errorMsg}
                 </div>
               )}
@@ -794,43 +750,43 @@ export default function App() {
               {!tempGoogleUser ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50px' }}>
                   <div ref={googleBtnRef}></div>
-                  {authLoading && <p style={{ fontSize: '12px', color: '#000000', fontWeight: 'bold', marginTop: '10px' }}>Connecting...</p>}
+                  {authLoading && <p style={{ fontSize: '11px', color: '#000', fontWeight: 'bold', marginTop: '8px' }}>Loading...</p>}
                 </div>
               ) : (
-                <form onSubmit={handleCompleteAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #68D8D8' }}>
+                <form onSubmit={handleCompleteAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1.5px solid #68D8D8' }}>
                     {tempGoogleUser.avatar ? (
-                      <img src={tempGoogleUser.avatar} alt="User" style={{ width: '38px', height: '38px', borderRadius: '50%' }} />
+                      <img src={tempGoogleUser.avatar} alt="User" style={{ width: '34px', height: '34px', borderRadius: '50%' }} />
                     ) : (
-                      <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#68D8D8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                        {tempGoogleUser.fullName.charAt(0)}
+                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#68D8D8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                        👤
                       </div>
                     )}
-                    <div>
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#000000' }}>{tempGoogleUser.fullName}</p>
-                      <p style={{ margin: 0, fontSize: '10px', color: '#334155' }}>{tempGoogleUser.email}</p>
+                    <div style={{ overflow: 'hidden' }}>
+                      <p style={{ margin: 0, fontSize: '11px', fontWeight: 'bold', color: '#000' }}>{tempGoogleUser.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '9px', color: '#334155' }}>{tempGoogleUser.email}</p>
                     </div>
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#000000', display: 'block', marginBottom: '4px' }}>10-Digit Mobile Number</label>
+                    <label style={{ fontSize: '10px', fontWeight: '900', color: '#000', display: 'block', marginBottom: '3px' }}>10-Digit Phone 📱</label>
                     <input 
                       type="tel"
                       required
                       maxLength={10}
-                      placeholder="e.g. 9876543210"
+                      placeholder="9876543210"
                       value={phoneInput}
                       onChange={(e) => setPhoneInput(e.target.value)}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '14px', border: '2px solid #68D8D8', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '2px solid #68D8D8', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={authLoading}
-                    style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '13px', cursor: 'pointer', boxShadow: '0 8px 18px rgba(104,216,216,0.3)' }}
+                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
                   >
-                    {authLoading ? "Launching..." : "Complete & Enter"}
+                    {authLoading ? "Saving..." : "Enter Hub 🚀"}
                   </button>
                 </form>
               )}
@@ -844,109 +800,72 @@ export default function App() {
   // VIEW 3: MASTER ADMIN WORKSPACE
   if (isAdmin) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', border: '3px solid #000000', boxShadow: '0 25px 50px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-          <header style={{ padding: '18px 24px', backgroundColor: '#000000', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000' }}>
-                <Crown size={24} />
+      <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '12px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '28px', border: '2px solid #000', overflow: 'hidden' }}>
+          <header style={{ padding: '14px 20px', backgroundColor: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '12px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000' }}>
+                👑
               </div>
               <div>
-                <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>SPCT AVENGERS MASTER ADMIN</h1>
-                <span style={{ fontSize: '11px', color: '#68D8D8', fontWeight: '600' }}>Root: {currentUser.email}</span>
+                <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>ADMIN ROOT ⚡</h1>
+                <span style={{ fontSize: '10px', color: '#68D8D8' }}>{currentUser.email}</span>
               </div>
             </div>
 
-            <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '8px 12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700' }}>
-              <LogOut size={16} /> Logout
+            <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#fff', padding: '6px 10px', borderRadius: '10px', cursor: 'pointer', fontSize: '11px', fontWeight: '800' }}>
+              🚪
             </button>
           </header>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr minmax(280px, 340px)', minHeight: '740px' }}>
-            <div style={{ borderRight: '3px solid #000000', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Bike size={20} color="#000000" /> Riders List
-                </h2>
-                <span style={{ fontSize: '11px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '8px' }}>
-                  {bikersList.length} Registered
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1, maxHeight: '640px' }}>
-                {bikersList.map((biker) => (
-                  <div key={biker._id} style={{ backgroundColor: '#ffffff', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {biker.avatar ? (
-                      <img src={biker.avatar} alt="Rider" style={{ width: '38px', height: '38px', borderRadius: '12px', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
-                        {biker.fullName.charAt(0)}
-                      </div>
-                    )}
-                    <div style={{ overflow: 'hidden', flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#000000', truncate: true }}>{biker.fullName}</p>
-                      <p style={{ margin: 0, fontSize: '11px', color: '#334155', fontFamily: 'monospace' }}>{biker.phone || 'No Phone'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 300px) 1fr minmax(260px, 320px)', minHeight: '650px' }}>
+            <div style={{ borderRight: '2px solid #000', padding: '16px', backgroundColor: '#f8fafc' }}>
+              <h2 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '900' }}>🏍️ Bikers ({bikersList.length})</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '550px' }}>
+                {bikersList.map((b) => (
+                  <div key={b._id} style={{ backgroundColor: '#fff', border: '1.5px solid #68D8D8', borderRadius: '14px', padding: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>🏍️</div>
+                    <div style={{ overflow: 'hidden' }}>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', truncate: true }}>{b.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '10px', color: '#334155' }}>{b.phone || 'No Phone'}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#000000' }}>Admin Controls & Operations</h2>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-                <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '16px', borderRadius: '20px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000' }}>TOTAL RIDES</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#000000' }}>{rides.length}</p>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900' }}>📊 Overview</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '12px', borderRadius: '16px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900' }}>TOTAL</span>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900' }}>{rides.length}</p>
                 </div>
-                <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '16px', borderRadius: '20px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000' }}>CONNECTED</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#000000' }}>{rides.filter(r => r.status === 'accepted').length}</p>
+                <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '12px', borderRadius: '16px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900' }}>MATCHED</span>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900' }}>{rides.filter(r => r.status === 'accepted').length}</p>
                 </div>
-                <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '16px', borderRadius: '20px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000' }}>WAITING</span>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '28px', fontWeight: '900', color: '#000000' }}>{rides.filter(r => r.status !== 'accepted').length}</p>
+                <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '12px', borderRadius: '16px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900' }}>PENDING</span>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900' }}>{rides.filter(r => r.status !== 'accepted').length}</p>
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '24px', padding: '20px' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '900', color: '#000000' }}>Hostel Pool Actions</h3>
-                <button
-                  onClick={handleClearAllRides}
-                  style={{ width: '100%', padding: '14px 18px', borderRadius: '16px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Trash2 size={16} /> Flush & Wipe All Active Rides
-                </button>
-              </div>
+              <button onClick={handleClearAllRides} style={{ padding: '12px', borderRadius: '14px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
+                🗑️ Flush & Wipe All Rides
+              </button>
             </div>
 
-            <div style={{ borderLeft: '3px solid #000000', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UserCheck size={20} color="#000000" /> Active Requests
-                </h2>
-                <span style={{ fontSize: '11px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '8px' }}>
-                  {rides.length} Live
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, maxHeight: '640px' }}>
-                {rides.map((ride) => (
-                  <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #68D8D8', borderRadius: '18px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#000000' }}>{ride.creatorName}</span>
-                      <button onClick={() => handleDeleteRide(ride._id)} style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '4px', borderRadius: '8px', cursor: 'pointer' }}>
-                        <Trash2 size={14} />
-                      </button>
+            <div style={{ borderLeft: '2px solid #000', padding: '16px', backgroundColor: '#f8fafc' }}>
+              <h2 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '900' }}>📋 Active Pool</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '550px' }}>
+                {rides.map((r) => (
+                  <div key={r._id} style={{ backgroundColor: '#fff', border: '1.5px solid #68D8D8', borderRadius: '14px', padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '11px', fontWeight: '900' }}>{r.creatorName}</p>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#334155' }}>{r.fromLocation} ➔ {r.toLocation}</p>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#334155', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>{ride.fromLocation}</span>
-                      <ArrowRight size={12} color="#000000" />
-                      <span>{ride.toLocation}</span>
-                    </div>
+                    <button onClick={() => handleDeleteRide(r._id)} style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}>❌</button>
                   </div>
                 ))}
               </div>
@@ -959,119 +878,115 @@ export default function App() {
 
   // VIEW 4: MAIN WORKSPACE
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '12px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       
-      {/* GLASS EFFECT NOTIFICATION TOAST */}
       {glassNotification && (
         <div style={{
           position: 'fixed',
-          top: '20px',
-          right: '20px',
+          top: '16px',
+          right: '16px',
           zIndex: 999,
-          backgroundColor: 'rgba(255, 255, 255, 0.85)',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(12px)',
-          border: '1.5px solid rgba(104, 216, 216, 0.8)',
-          borderRadius: '20px',
-          padding: '14px 20px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+          border: '1.5px solid #68D8D8',
+          borderRadius: '16px',
+          padding: '12px 16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          maxWidth: '360px'
+          gap: '10px',
+          maxWidth: '320px'
         }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={20} />
+          <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#68D8D8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            🔔
           </div>
           <div style={{ overflow: 'hidden' }}>
-            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#000000' }}>{glassNotification.title}</h4>
-            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#334155', fontWeight: '600', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{glassNotification.message}</p>
+            <h4 style={{ margin: 0, fontSize: '12px', fontWeight: '900' }}>{glassNotification.title}</h4>
+            <p style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#334155', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{glassNotification.message}</p>
           </div>
         </div>
       )}
 
-      <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '2px solid #68D8D8', overflow: 'hidden' }}>
+      <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '28px', boxShadow: '0 16px 35px rgba(0,0,0,0.05)', border: '2px solid #68D8D8', overflow: 'hidden' }}>
         
-        <header style={{ padding: '16px 24px', borderBottom: '2px solid #68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <header style={{ padding: '14px 20px', borderBottom: '2px solid #68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {currentUser?.avatar ? (
-              <img src={currentUser.avatar} alt="Avatar" style={{ width: '42px', height: '42px', borderRadius: '14px', objectFit: 'cover' }} />
+              <img src={currentUser.avatar} alt="Avatar" style={{ width: '38px', height: '38px', borderRadius: '12px', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '15px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
                 {currentUser?.name?.charAt(0) || 'U'}
               </div>
             )}
             <div>
-              <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#000000' }}>{currentUser?.name || 'User'}</h2>
-              <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#000000', backgroundColor: '#68D8D8', padding: '2px 8px', borderRadius: '6px' }}>
-                {isBiker ? 'Rider / Pilot' : 'Passenger'}
+              <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: '#000000' }}>{currentUser?.name || 'User'}</h2>
+              <span style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', color: '#000', backgroundColor: '#68D8D8', padding: '2px 6px', borderRadius: '6px' }}>
+                {isBiker ? '🏍️ Rider' : '🙋‍♂️ Passenger'}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowRadarPage(true)}
-              style={{ padding: '8px 14px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '7px 12px', borderRadius: '10px', border: '1.5px solid #000', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
-              <Radio size={14} /> 2 KM Radar
+              📡 Radar
             </button>
 
             <button
               onClick={() => setShowHistoryModal(true)}
-              style={{ padding: '8px 14px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#f8fafc', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '7px 12px', borderRadius: '10px', border: '1.5px solid #000', backgroundColor: '#f8fafc', color: '#000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
-              <History size={14} /> History ({completedTripsHistory.length})
+              📜 History ({completedTripsHistory.length})
             </button>
 
             <button
               onClick={handleClearAllRides}
-              style={{ padding: '8px 12px', borderRadius: '12px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '7px 10px', borderRadius: '10px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
             >
-              <Trash2 size={14} /> Clear Stream
+              🗑️
             </button>
             
-            <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#f1f5f9', padding: '8px', borderRadius: '12px', cursor: 'pointer', color: '#000000' }}>
-              <LogOut size={16} />
+            <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#f1f5f9', padding: '7px', borderRadius: '10px', cursor: 'pointer' }}>
+              🚪
             </button>
           </div>
         </header>
 
-        <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <main style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {!isBiker && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '28px', padding: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Navigation size={18} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '24px', padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '10px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    📍
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Request A Ride</h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '600' }}>Pick a spot or type your custom route</p>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>Request Ride 🚀</h3>
                   </div>
                 </div>
 
-                <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handlePostRide} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div ref={fromContainerRef} style={{ position: 'relative' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#000000', display: 'block', marginBottom: '4px' }}>From Location</label>
+                    <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '3px' }}>FROM 📍</label>
                     <div style={{ position: 'relative' }}>
                       <input 
                         type="text" 
                         required
-                        placeholder="e.g. Hostel Block B, Main Gate" 
+                        placeholder="Hostel Block B" 
                         value={fromLoc}
                         onFocus={() => setShowFromDropdown(true)}
                         onChange={(e) => {
                           setFromLoc(e.target.value);
                           setShowFromDropdown(true);
                         }}
-                        style={{ width: '100%', padding: '12px 36px 12px 14px', borderRadius: '14px', border: '2px solid #68D8D8', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '700', color: '#000' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '2px solid #68D8D8', fontSize: '12px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '700' }}
                       />
-                      <ChevronDown size={18} color="#000000" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                     </div>
 
                     {showFromDropdown && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', backgroundColor: '#ffffff', borderRadius: '16px', border: '2px solid #68D8D8', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 40, maxHeight: '180px', overflowY: 'auto' }}>
-                        <div style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '900', color: '#000000', textTransform: 'uppercase' }}>Select Location</div>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', backgroundColor: '#ffffff', borderRadius: '14px', border: '2px solid #68D8D8', zIndex: 40, maxHeight: '160px', overflowY: 'auto' }}>
                         {PRESET_LOCATIONS.map((loc, idx) => (
                           <div
                             key={idx}
@@ -1079,10 +994,9 @@ export default function App() {
                               setFromLoc(loc);
                               setShowFromDropdown(false);
                             }}
-                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '800', color: '#000000', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            style={{ padding: '8px 12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
                           >
-                            <MapPin size={13} color="#000000" />
-                            <span>{loc}</span>
+                            📍 {loc}
                           </div>
                         ))}
                       </div>
@@ -1090,26 +1004,24 @@ export default function App() {
                   </div>
 
                   <div ref={toContainerRef} style={{ position: 'relative' }}>
-                    <label style={{ fontSize: '11px', fontWeight: '900', color: '#000000', display: 'block', marginBottom: '4px' }}>To Destination</label>
+                    <label style={{ fontSize: '10px', fontWeight: '900', display: 'block', marginBottom: '3px' }}>TO 🏁</label>
                     <div style={{ position: 'relative' }}>
                       <input 
                         type="text" 
                         required
-                        placeholder="e.g. Metro Station, Campus 2" 
+                        placeholder="Metro Station" 
                         value={toLoc}
                         onFocus={() => setShowToDropdown(true)}
                         onChange={(e) => {
                           setToLoc(e.target.value);
                           setShowToDropdown(true);
                         }}
-                        style={{ width: '100%', padding: '12px 36px 12px 14px', borderRadius: '14px', border: '2px solid #68D8D8', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '700', color: '#000' }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '2px solid #68D8D8', fontSize: '12px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontWeight: '700' }}
                       />
-                      <ChevronDown size={18} color="#000000" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                     </div>
 
                     {showToDropdown && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '6px', backgroundColor: '#ffffff', borderRadius: '16px', border: '2px solid #68D8D8', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 40, maxHeight: '180px', overflowY: 'auto' }}>
-                        <div style={{ padding: '6px 12px', fontSize: '10px', fontWeight: '900', color: '#000000', textTransform: 'uppercase' }}>Select Destination</div>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', backgroundColor: '#ffffff', borderRadius: '14px', border: '2px solid #68D8D8', zIndex: 40, maxHeight: '160px', overflowY: 'auto' }}>
                         {PRESET_LOCATIONS.map((loc, idx) => (
                           <div
                             key={idx}
@@ -1117,79 +1029,42 @@ export default function App() {
                               setToLoc(loc);
                               setShowToDropdown(false);
                             }}
-                            style={{ padding: '9px 14px', fontSize: '12px', fontWeight: '800', color: '#000000', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            style={{ padding: '8px 12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
                           >
-                            <MapPin size={13} color="#000000" />
-                            <span>{loc}</span>
+                            🏁 {loc}
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  <div style={{ backgroundColor: '#ffffff', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Clock size={16} color="#000000" />
-                        <span style={{ fontSize: '12px', fontWeight: '900', color: '#000000' }}>
-                          Timing: <span style={{ color: '#000000' }}>{isScheduled ? 'Scheduled Ahead' : 'Now (Instant)'}</span>
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsScheduled(!isScheduled)}
-                        style={{ border: 'none', background: '#68D8D8', color: '#000000', fontSize: '11px', fontWeight: '900', padding: '6px 12px', borderRadius: '10px', cursor: 'pointer' }}
-                      >
-                        {isScheduled ? 'Switch to Now' : '+ Pick Future Time'}
-                      </button>
-                    </div>
-
-                    {isScheduled && (
-                      <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #68D8D8' }}>
-                        <label style={{ fontSize: '11px', fontWeight: '900', color: '#000000', display: 'block', marginBottom: '4px' }}>Choose Departure Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          required={isScheduled}
-                          value={scheduleTime}
-                          onChange={(e) => setScheduleTime(e.target.value)}
-                          style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '2px solid #68D8D8', fontSize: '12px', fontWeight: '800', color: '#000000', outline: 'none', boxSizing: 'border-box' }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
                   <button 
                     type="submit"
-                    style={{ padding: '14px', borderRadius: '14px', border: '2px solid #000000', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 6px 16px rgba(0,0,0,0.1)' }}
+                    style={{ padding: '12px', borderRadius: '12px', border: '2px solid #000', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '12px', cursor: 'pointer', marginTop: '4px' }}
                   >
-                    <span>Post Ride Request</span>
-                    <ArrowRight size={16} />
+                    Post Request ⚡
                   </button>
                 </form>
               </div>
 
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: '900', color: '#000000' }}>Active Trip Requests</span>
-                  <span style={{ fontSize: '11px', fontWeight: '900', padding: '3px 8px', backgroundColor: '#68D8D8', color: '#000000', borderRadius: '9999px' }}>
-                    {rides.length} Active
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '900' }}>Active Pool 📋</span>
+                  <span style={{ fontSize: '10px', fontWeight: '900', padding: '2px 8px', backgroundColor: '#68D8D8', borderRadius: '9999px' }}>{rides.length}</span>
                 </div>
 
                 {rides.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '24px', border: '2px solid #68D8D8' }}>
-                    <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '900', color: '#000000' }}>No requests in the pool</p>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#334155', fontWeight: '600' }}>Post your route above to notify departing bikers.</p>
+                  <div style={{ textAlign: 'center', padding: '24px', backgroundColor: '#f8fafc', borderRadius: '20px', border: '2px solid #68D8D8' }}>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800' }}>No active requests 🍃</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {rides.map((ride) => (
                       <div 
                         key={ride._id} 
                         style={{
-                          padding: '14px 18px',
-                          borderRadius: '20px',
+                          padding: '12px 16px',
+                          borderRadius: '16px',
                           backgroundColor: '#ffffff',
                           border: '2px solid #68D8D8',
                           display: 'flex',
@@ -1198,23 +1073,19 @@ export default function App() {
                         }}
                       >
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '900', color: '#000000', marginBottom: '4px' }}>
-                            <span>{ride.fromLocation}</span>
-                            <ArrowRight size={14} color="#000000" />
-                            <span>{ride.toLocation}</span>
+                          <div style={{ fontSize: '12px', fontWeight: '900', marginBottom: '2px' }}>
+                            {ride.fromLocation} ➔ {ride.toLocation}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#334155', fontWeight: '700' }}>
-                            <span>By: {ride.creatorName}</span>
-                          </div>
+                          <span style={{ fontSize: '10px', color: '#334155', fontWeight: '700' }}>👤 {ride.creatorName}</span>
                         </div>
 
                         {ride.status === 'accepted' ? (
-                          <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', padding: '4px 10px', backgroundColor: '#68D8D8', borderRadius: '10px' }}>
-                            Accepted ✓
+                          <span style={{ fontSize: '10px', fontWeight: '900', padding: '3px 8px', backgroundColor: '#68D8D8', borderRadius: '8px' }}>
+                            Accepted ✅
                           </span>
                         ) : (
-                          <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', padding: '4px 10px', backgroundColor: '#fef3c7', borderRadius: '10px' }}>
-                            Waiting...
+                          <span style={{ fontSize: '10px', fontWeight: '900', padding: '3px 8px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                            Waiting ⏳
                           </span>
                         )}
                       </div>
@@ -1228,137 +1099,68 @@ export default function App() {
           {isBiker && (
             <div>
               {riderAcceptedRide ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', alignItems: 'start' }}>
-                  <div style={{ backgroundColor: '#ffffff', border: '3px solid #68D8D8', borderRadius: '28px', padding: '24px', boxShadow: '0 14px 30px rgba(0,0,0,0.08)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: '#68D8D8', color: '#000000', padding: '4px 12px', borderRadius: '9999px' }}>
-                        ● CURRENT ACCEPTED RIDE
-                      </span>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000' }}>In Progress</span>
-                    </div>
+                <div style={{ backgroundColor: '#ffffff', border: '3px solid #68D8D8', borderRadius: '24px', padding: '20px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', padding: '3px 10px', borderRadius: '9999px' }}>
+                    🚀 ACTIVE RIDE
+                  </span>
+                  <h3 style={{ margin: '8px 0 4px 0', fontSize: '17px', fontWeight: '900' }}>
+                    {riderAcceptedRide.fromLocation} ➔ {riderAcceptedRide.toLocation}
+                  </h3>
+                  <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: '#334155' }}>
+                    Passenger: <strong>{riderAcceptedRide.creatorName}</strong> 🙋‍♂️
+                  </p>
 
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '900', color: '#000000' }}>
-                      {riderAcceptedRide.fromLocation} ➔ {riderAcceptedRide.toLocation}
-                    </h3>
-                    <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#334155', fontWeight: '600' }}>
-                      Passenger: <strong style={{ color: '#000000' }}>{riderAcceptedRide.creatorName}</strong>
-                    </p>
-
-                    <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '16px', marginBottom: '18px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#000000', textTransform: 'uppercase' }}>Passenger Phone</span>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '900', color: '#000000', fontFamily: 'monospace' }}>
-                        {riderAcceptedRide.creatorPhone}
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <a
-                        href={`tel:${riderAcceptedRide.creatorPhone}`}
-                        style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                      >
-                        <Phone size={15} /> Call Passenger
-                      </a>
-
-                      <a
-                        href={`https://wa.me/91${riderAcceptedRide.creatorPhone}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#000000', color: '#68D8D8', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                      >
-                        <MessageCircle size={15} /> WhatsApp
-                      </a>
-                    </div>
-
-                    <button
-                      onClick={() => handleDeleteRide(riderAcceptedRide._id, riderAcceptedRide)}
-                      style={{ marginTop: '14px', width: '100%', padding: '12px', borderRadius: '14px', border: '2px solid #68D8D8', backgroundColor: '#f8fafc', color: '#000000', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
-                    >
-                      Complete / Finish Trip
-                    </button>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <a href={`tel:${riderAcceptedRide.creatorPhone}`} style={{ padding: '10px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '11px', textDecoration: 'none', textAlign: 'center' }}>📞 Call</a>
+                    <a href={`https://wa.me/91${riderAcceptedRide.creatorPhone}`} target="_blank" rel="noreferrer" style={{ padding: '10px', borderRadius: '12px', backgroundColor: '#000', color: '#68D8D8', fontWeight: '900', fontSize: '11px', textDecoration: 'none', textAlign: 'center' }}>💬 WhatsApp</a>
                   </div>
 
-                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '28px', padding: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>Other Waiting Requests</span>
-                      <span style={{ fontSize: '11px', fontWeight: '900', padding: '2px 8px', backgroundColor: '#68D8D8', color: '#000000', borderRadius: '8px' }}>
-                        {unacceptedRidesForBikers.length}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
-                      {unacceptedRidesForBikers.length === 0 ? (
-                        <p style={{ fontSize: '12px', color: '#334155', textAlign: 'center', padding: '20px', fontWeight: '600' }}>No other waiting requests.</p>
-                      ) : (
-                        unacceptedRidesForBikers.map((ride) => (
-                          <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px 14px' }}>
-                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#000000', marginBottom: '4px' }}>
-                              {ride.fromLocation} ➔ {ride.toLocation}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#334155', fontWeight: '600' }}>
-                              {ride.creatorName} • Waiting
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => handleDeleteRide(riderAcceptedRide._id, riderAcceptedRide)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '12px', border: '2px solid #dc2626', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    Finish Trip 🏁
+                  </button>
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#f8fafc', borderRadius: '22px', border: '2px solid #68D8D8' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#000000', display: 'inline-block' }} />
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#000000' }}>Live Rider Stream</h3>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#334155', fontWeight: '600' }}>Tap the checkmark to accept a passenger's route</p>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '12px', fontWeight: '900', padding: '4px 10px', backgroundColor: '#68D8D8', color: '#000000', borderRadius: '9999px' }}>
-                      {unacceptedRidesForBikers.length} Waiting
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '18px', border: '2px solid #68D8D8' }}>
+                    <h3 style={{ margin: 0, fontSize: '13px', fontWeight: '900' }}>Stream Pool 🏍️</h3>
+                    <span style={{ fontSize: '11px', fontWeight: '900', padding: '2px 8px', backgroundColor: '#68D8D8', borderRadius: '9999px' }}>{unacceptedRidesForBikers.length}</span>
                   </div>
 
                   {unacceptedRidesForBikers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '50px 20px', backgroundColor: '#f8fafc', borderRadius: '28px', border: '2px solid #68D8D8' }}>
-                      <Bike size={36} color="#000000" style={{ marginBottom: '10px' }} />
-                      <p style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#000000' }}>Stream is quiet</p>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '600' }}>All requests have been accepted or no student has requested yet.</p>
+                    <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: '#f8fafc', borderRadius: '24px', border: '2px solid #68D8D8' }}>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '900' }}>No pending passenger requests 🍃</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {unacceptedRidesForBikers.map((ride) => (
                         <div 
                           key={ride._id} 
                           style={{
-                            padding: '16px 20px',
-                            borderRadius: '24px',
+                            padding: '14px 16px',
+                            borderRadius: '18px',
                             backgroundColor: '#ffffff',
                             border: '2px solid #68D8D8',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                            justifyContent: 'space-between'
                           }}
                         >
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '900', color: '#000000', marginBottom: '4px' }}>
-                              <span>{ride.fromLocation}</span>
-                              <ArrowRight size={14} color="#000000" />
-                              <span>{ride.toLocation}</span>
+                            <div style={{ fontSize: '13px', fontWeight: '900', marginBottom: '2px' }}>
+                              {ride.fromLocation} ➔ {ride.toLocation}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155', fontWeight: '700' }}>
-                              <span>Passenger</span>
-                              <span>•</span>
-                              <span>{ride.creatorName}</span>
-                            </div>
+                            <span style={{ fontSize: '10px', color: '#334155', fontWeight: '700' }}>👤 {ride.creatorName}</span>
                           </div>
 
                           <button 
                             onClick={() => handleAcceptRide(ride)}
-                            title="Accept and give a ride"
-                            style={{ width: '46px', height: '46px', borderRadius: '16px', border: '2px solid #000000', backgroundColor: '#68D8D8', color: '#000000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            title="Accept"
+                            style={{ width: '40px', height: '40px', borderRadius: '12px', border: '2px solid #000', backgroundColor: '#68D8D8', color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}
                           >
-                            <Check size={24} strokeWidth={3} />
+                            ✅
                           </button>
                         </div>
                       ))}
@@ -1371,159 +1173,120 @@ export default function App() {
         </main>
       </div>
 
-      {/* Matched Ride Modal */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '20px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
-              <Check size={32} />
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '20px', width: '100%', maxWidth: '360px', textAlign: 'center', border: '2px solid #68D8D8', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: '#68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto', fontSize: '20px' }}>
+              🎉
             </div>
 
-            <span style={{ fontSize: '10px', fontWeight: '900', color: '#000000', textTransform: 'uppercase', backgroundColor: '#68D8D8', padding: '4px 12px', borderRadius: '9999px' }}>
-              Commute Matched
+            <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#68D8D8', padding: '3px 10px', borderRadius: '9999px' }}>
+              MATCHED ✅
             </span>
-            <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#000000', margin: '8px 0 2px 0' }}>Ride Confirmed!</h2>
-            <p style={{ fontSize: '12px', color: '#334155', fontWeight: '600', margin: '0 0 14px 0' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '900', margin: '6px 0 2px 0' }}>Ride Confirmed!</h2>
+            <p style={{ fontSize: '11px', color: '#334155', fontWeight: '700', margin: '0 0 12px 0' }}>
               {matchedRide.fromLocation} ➔ {matchedRide.toLocation}
             </p>
 
-            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px', textAlign: 'left', marginBottom: '14px' }}>
-              <p style={{ fontSize: '10px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Partner Contact</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>
-                  {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}
-                </span>
-                <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', padding: '2px 6px', backgroundColor: '#68D8D8', borderRadius: '6px', color: '#000000' }}>
-                  {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.role : matchedRide.creatorRole}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#000000', fontWeight: '900' }}>
-                <Phone size={14} color="#000000" />
-                <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}</span>
+            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '16px', padding: '10px', textAlign: 'left', marginBottom: '12px' }}>
+              <p style={{ fontSize: '9px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Partner 🤝</p>
+              <div style={{ fontSize: '12px', fontWeight: '900' }}>
+                {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}
               </div>
             </div>
 
-            {/* IN-APP QUICK CHAT BOX */}
-            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px', textAlign: 'left', marginBottom: '14px' }}>
-              <p style={{ fontSize: '10px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <MessageCircle size={13} /> In-App Quick Chat
-              </p>
+            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '16px', padding: '10px', textAlign: 'left', marginBottom: '12px' }}>
+              <p style={{ fontSize: '9px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Quick Chat 💬</p>
 
-              <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '8px', height: '90px', overflowY: 'auto', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '6px', height: '70px', overflowY: 'auto', marginBottom: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 {chatMessages.filter(m => m.rideId === matchedRide._id).length === 0 ? (
-                  <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: 'auto' }}>No messages yet. Send a quick preset below!</p>
+                  <p style={{ fontSize: '10px', color: '#94a3b8', textAlign: 'center', margin: 'auto' }}>Tap preset below 👇</p>
                 ) : (
                   chatMessages.filter(m => m.rideId === matchedRide._id).map((m, idx) => (
-                    <div key={idx} style={{ fontSize: '11px', backgroundColor: m.senderName === currentUser.name ? '#eff6ff' : '#f1f5f9', padding: '4px 8px', borderRadius: '8px', alignSelf: m.senderName === currentUser.name ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                      <strong>{m.senderName}:</strong> {m.text} <span style={{ fontSize: '9px', color: '#64748b' }}>({m.time})</span>
+                    <div key={idx} style={{ fontSize: '10px', backgroundColor: m.senderName === currentUser.name ? '#eff6ff' : '#f1f5f9', padding: '3px 6px', borderRadius: '6px', alignSelf: m.senderName === currentUser.name ? 'flex-end' : 'flex-start' }}>
+                      <strong>{m.senderName}:</strong> {m.text}
                     </div>
                   ))
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', gap: '3px', overflowX: 'auto', paddingBottom: '3px', scrollbarWidth: 'none', marginBottom: '6px' }}>
                 {QUICK_CHAT_PRESETS.map((preset, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSendChatMessage(preset)}
-                    style={{ whiteSpace: 'nowrap', backgroundColor: '#e2e8f0', border: 'none', padding: '4px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: '700', cursor: 'pointer', color: '#000000' }}
+                    style={{ whiteSpace: 'nowrap', backgroundColor: '#e2e8f0', border: 'none', padding: '3px 6px', borderRadius: '6px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
                   >
                     {preset}
                   </button>
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: '6px' }}>
+              <div style={{ display: 'flex', gap: '4px' }}>
                 <input
                   type="text"
-                  placeholder="Type message..."
+                  placeholder="Type..."
                   value={customChatMessage}
                   onChange={(e) => setCustomChatMessage(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSendChatMessage(customChatMessage); }}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', outline: 'none' }}
                 />
                 <button
                   onClick={() => handleSendChatMessage(customChatMessage)}
-                  style={{ background: '#68D8D8', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900' }}
+                  style={{ background: '#68D8D8', border: 'none', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '900', fontSize: '10px' }}
                 >
-                  <Send size={14} />
+                  Send 🚀
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <a 
-                href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
-                style={{ padding: '10px', borderRadius: '14px', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <Phone size={13} /> Call Now
-              </a>
-
-              <a 
-                href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ padding: '10px', borderRadius: '14px', backgroundColor: '#000000', color: '#68D8D8', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <MessageCircle size={13} /> WhatsApp
-              </a>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+              <a href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`} style={{ padding: '8px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '11px', textDecoration: 'none' }}>📞 Call</a>
+              <a href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`} target="_blank" rel="noreferrer" style={{ padding: '8px', borderRadius: '12px', backgroundColor: '#000', color: '#68D8D8', fontWeight: '900', fontSize: '11px', textDecoration: 'none' }}>💬 WA</a>
             </div>
 
             <button
               onClick={() => handleDeleteRide(matchedRide._id, matchedRide)}
-              style={{ width: '100%', padding: '10px', borderRadius: '14px', border: '2px solid #dc2626', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '9px', borderRadius: '12px', border: '2px solid #dc2626', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
             >
-              Finish & Save to History
+              Finish Trip 🏁
             </button>
           </div>
         </div>
       )}
 
-      {/* RIDE HISTORY & STATS MODAL */}
       {showHistoryModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '20px', width: '100%', maxWidth: '380px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <History size={20} color="#000000" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Ride History & Stats</h3>
-              </div>
-              <button onClick={() => setShowHistoryModal(false)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={16} />
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '2px solid #68D8D8', paddingBottom: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>📜 History & Stats</h3>
+              <button onClick={() => setShowHistoryModal(false)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer' }}>✕</button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Total Trips</span>
-                <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{completedTripsHistory.length}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '10px', borderRadius: '16px', textAlign: 'center' }}>
+                <span style={{ fontSize: '9px', fontWeight: '900' }}>TRIPS</span>
+                <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '900' }}>{completedTripsHistory.length}</p>
               </div>
-              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Est. KM Saved</span>
-                <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{totalKmSavedSum} KM</p>
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '10px', borderRadius: '16px', textAlign: 'center' }}>
+                <span style={{ fontSize: '9px', fontWeight: '900' }}>KM SAVED</span>
+                <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '900' }}>{totalKmSavedSum}</p>
               </div>
             </div>
 
-            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px' }}>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px' }}>
               {completedTripsHistory.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                  <History size={36} color="#94a3b8" style={{ margin: '0 auto 8px auto' }} />
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#000000' }}>No completed trips yet</p>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#334155' }}>Completed pooled rides will be archived here.</p>
-                </div>
+                <p style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', padding: '30px' }}>No history yet 🍃</p>
               ) : (
                 completedTripsHistory.map((trip) => (
-                  <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
-                      <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '6px' }}>+{trip.kmSaved} KM</span>
+                  <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '900' }}>
+                      <span>{trip.route}</span>
+                      <span>+{trip.kmSaved}km</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#334155', fontWeight: '700' }}>
-                      <span>Partner: {trip.partner}</span>
-                      <span>{trip.date}</span>
-                    </div>
+                    <span style={{ fontSize: '9px', color: '#334155' }}>Partner: {trip.partner}</span>
                   </div>
                 ))
               )}
@@ -1531,9 +1294,9 @@ export default function App() {
 
             <button
               onClick={() => setShowHistoryModal(false)}
-              style={{ marginTop: '16px', width: '100%', padding: '12px', borderRadius: '14px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+              style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '12px', border: 'none', backgroundColor: '#68D8D8', color: '#000', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
             >
-              Close History
+              Close
             </button>
           </div>
         </div>
