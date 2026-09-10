@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
@@ -6,7 +6,7 @@ import {
   Bike, UserCheck, Check, Phone, ArrowRight, ArrowLeft,
   MapPin, LogOut, MessageCircle, AlertCircle, X, 
   Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio, RotateCw,
-  Crosshair, ShieldCheck, Map
+  Crosshair, ShieldCheck, Map, History, Send, Bell
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -23,6 +23,14 @@ const PRESET_LOCATIONS = [
   "Tambul",
   "Zundal Circle",
   "Kathiyavadi Pan Parlour"
+];
+
+const QUICK_CHAT_PRESETS = [
+  "Reached pickup spot 📍",
+  "2 mins away 🏍️",
+  "Where are you? 🔍",
+  "Running late, wait 1 min ⏱️",
+  "Heading to destination 🚀"
 ];
 
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
@@ -68,6 +76,7 @@ export default function App() {
   const [authTab, setAuthTab] = useState('login');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRadarPage, setShowRadarPage] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -84,6 +93,21 @@ export default function App() {
   const [rides, setRides] = useState([]);
   const [bikersList, setBikersList] = useState([]);
   const [matchedRide, setMatchedRide] = useState(null);
+  const [completedTripsHistory, setCompletedTripsHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('spct_trip_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // In-App Chat States
+  const [chatMessages, setChatMessages] = useState([]);
+  const [customChatMessage, setCustomChatMessage] = useState('');
+
+  // Glass Effect Notification Toast State
+  const [glassNotification, setGlassNotification] = useState(null);
 
   // Real-time GPS & Radar states
   const [userLocation, setUserLocation] = useState(DEFAULT_CENTER);
@@ -99,21 +123,35 @@ export default function App() {
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
 
-  const bikersWithin2Km = liveNearbyRiders
-    .filter(r => r.userId !== currentUser?._id)
-    .map(r => {
-      const distance = userLocation 
-        ? calculateDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng)
-        : '0.4';
-      return { ...r, distance: distance || '0.5' };
-    })
-    .filter(r => parseFloat(r.distance) <= 2.0);
+  // Audio Tone Generator for Glass Notifications
+  const playNotificationTone = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 note
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {}
+  }, []);
 
-  const riderAcceptedRide = isBiker 
-    ? rides.find(r => r.status === 'accepted' && r.acceptedBy?.phone === currentUser.phone)
-    : null;
+  const triggerGlassNotification = useCallback((title, message) => {
+    playNotificationTone();
+    setGlassNotification({ title, message, id: Date.now() });
+    setTimeout(() => {
+      setGlassNotification(null);
+    }, 4500);
+  }, [playNotificationTone]);
 
-  const unacceptedRidesForBikers = rides.filter(r => r.status !== 'accepted');
+  useEffect(() => {
+    localStorage.setItem('spct_trip_history', JSON.stringify(completedTripsHistory));
+  }, [completedTripsHistory]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -175,6 +213,7 @@ export default function App() {
 
     socketRef.current.on('new_ride_broadcast', (newRide) => {
       setRides(prev => [newRide, ...prev]);
+      triggerGlassNotification("New Ride Request!", `${newRide.creatorName} is heading from ${newRide.fromLocation}`);
     });
 
     socketRef.current.on('all_rides_cleared', () => {
@@ -195,15 +234,21 @@ export default function App() {
         const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
         if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
           setMatchedRide(updatedRide);
+          triggerGlassNotification("Ride Matched Successfully! 🎉", `Commute connected for ${updatedRide.fromLocation} to ${updatedRide.toLocation}`);
           confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
         }
       } catch (e) {}
     });
 
+    socketRef.current.on('receive_in_app_chat', (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+      triggerGlassNotification(`Message from ${msg.senderName}`, msg.text);
+    });
+
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
-  }, [isAdmin]);
+  }, [isAdmin, triggerGlassNotification]);
 
   const handleRefreshRadar = () => {
     setIsRefreshingRadar(true);
@@ -244,6 +289,7 @@ export default function App() {
           localStorage.setItem('spct_user', JSON.stringify(res.data.user));
           setShowAuthModal(false);
           setTempGoogleUser(null);
+          triggerGlassNotification("Welcome Back!", `Logged in successfully as ${res.data.user.name}`);
         }
       } else {
         setTempGoogleUser(googleData);
@@ -316,6 +362,7 @@ export default function App() {
         localStorage.setItem('spct_user', JSON.stringify(res.data.user));
         setShowAuthModal(false);
         setTempGoogleUser(null);
+        triggerGlassNotification("Account Created!", "Welcome to SPCT Avengers Hub");
       }
     } catch (err) {
       const serverMsg = err.response?.data?.error;
@@ -353,6 +400,7 @@ export default function App() {
     setScheduleTime('');
     setShowFromDropdown(false);
     setShowToDropdown(false);
+    triggerGlassNotification("Ride Posted!", "Nearby bikers have been notified.");
   };
 
   const handleAcceptRide = (ride) => {
@@ -374,11 +422,24 @@ export default function App() {
     }
   };
 
-  const handleDeleteRide = async (rideId) => {
-    if (!window.confirm("Remove this ride record permanently?")) return;
+  const handleDeleteRide = async (rideId, rideObj) => {
+    if (!window.confirm("Complete & finish this trip? It will be archived to your History.")) return;
     try {
+      if (rideObj) {
+        const tripEntry = {
+          id: rideObj._id || Date.now(),
+          route: `${rideObj.fromLocation} ➔ ${rideObj.toLocation}`,
+          date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          kmSaved: (Math.random() * 4 + 1.5).toFixed(1),
+          partner: rideObj.creatorName === currentUser?.name ? (rideObj.acceptedBy?.name || 'Pooled Student') : rideObj.creatorName
+        };
+        setCompletedTripsHistory(prev => [tripEntry, ...prev]);
+      }
+
       await axios.delete(`${BACKEND_URL}/api/rides/${rideId}`);
       setRides(prev => prev.filter(r => r._id !== rideId));
+      if (matchedRide?._id === rideId) setMatchedRide(null);
+      triggerGlassNotification("Trip Completed! 🏁", "Saved to your Ride History & Commute Stats.");
     } catch (err) {
       alert("Delete failed: " + err.message);
     }
@@ -394,17 +455,44 @@ export default function App() {
     }
   };
 
+  const handleSendChatMessage = (textToSend) => {
+    if (!textToSend || !textToSend.trim() || !matchedRide) return;
+    const msgPayload = {
+      rideId: matchedRide._id,
+      senderName: currentUser.name,
+      text: textToSend.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    if (socketRef.current) {
+      socketRef.current.emit('send_in_app_chat', msgPayload);
+    }
+    setChatMessages(prev => [...prev, msgPayload]);
+    setCustomChatMessage('');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('spct_user');
     setCurrentUser(null);
   };
 
-  // VIEW 1: FIGHTER JET ROTATING SWEEP RADAR VIEW (68D8D8 Theme & Black Text)
+  const bikersWithin2Km = liveNearbyRiders
+    .filter(r => r.userId !== currentUser?._id)
+    .map(r => {
+      const distance = userLocation 
+        ? calculateDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng)
+        : '0.4';
+      return { ...r, distance: distance || '0.5' };
+    })
+    .filter(r => parseFloat(r.distance) <= 2.0);
+
+  const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
+
+  // VIEW 1: RADAR VIEW (Fighter-Jet Rotating Sweep & 68D8D8 Theme)
   if (showRadarPage) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', color: '#000000', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
         
-        {/* CSS Keyframe Injection for Fighter Jet Radar Sweep */}
         <style>{`
           @keyframes radarSweep {
             0% { transform: rotate(0deg); }
@@ -414,13 +502,13 @@ export default function App() {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 240px;
-            height: 240px;
-            margin-top: -120px;
-            margin-left: -120px;
-            background: conic-gradient(from 0deg at 50% 50%, rgba(104, 216, 216, 0.45) 0deg, rgba(104, 216, 216, 0.0) 60deg, transparent 360deg);
+            width: 260px;
+            height: 260px;
+            margin-top: -130px;
+            margin-left: -130px;
+            background: conic-gradient(from 0deg at 50% 50%, rgba(104, 216, 216, 0.5) 0deg, rgba(104, 216, 216, 0.0) 65deg, transparent 360deg);
             border-radius: 50%;
-            animation: radarSweep 3.5s linear infinite;
+            animation: radarSweep 3.2s linear infinite;
             pointer-events: none;
             transform-origin: center center;
           }
@@ -480,28 +568,23 @@ export default function App() {
           </div>
         </div>
 
-        {/* FIGHTER JET CONTINUOUS ROTATING RADAR CONTAINER */}
+        {/* FIGHTER JET ROTATING SWEEP RADAR CONTAINER */}
         <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '1100px', margin: '0 auto 16px auto', padding: '0 16px', boxSizing: 'border-box', minHeight: '440px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '100%', height: '460px', backgroundColor: '#f8fafc', borderRadius: '28px', border: '2px solid #68D8D8', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
             
-            {/* Concentric Radar Rings */}
             <div style={{ position: 'absolute', width: '380px', height: '380px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.6)' }} />
             <div style={{ position: 'absolute', width: '260px', height: '260px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.7)' }} />
             <div style={{ position: 'absolute', width: '140px', height: '140px', borderRadius: '50%', border: '1px dashed rgba(104,216,216,0.8)' }} />
             
-            {/* Crosshair Axis Lines */}
             <div style={{ position: 'absolute', width: '100%', height: '1px', backgroundColor: 'rgba(104,216,216,0.3)' }} />
             <div style={{ position: 'absolute', width: '1px', height: '100%', backgroundColor: 'rgba(104,216,216,0.3)' }} />
 
-            {/* Fighter Jet Rotating Sweep Beam */}
             <div className="fighter-sweep-beam" />
 
-            {/* Center User Dot */}
             <div style={{ width: '22px', height: '22px', backgroundColor: '#000000', borderRadius: '50%', boxShadow: '0 0 20px #68D8D8', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: '8px', height: '8px', backgroundColor: '#68D8D8', borderRadius: '50%' }} />
             </div>
 
-            {/* Floating Bike Icons around Radar */}
             {bikersWithin2Km.length === 0 ? (
               <div style={{ position: 'absolute', zIndex: 20, textAlign: 'center', backgroundColor: '#ffffff', padding: '16px 24px', borderRadius: '20px', border: '2px solid #68D8D8', color: '#000000', boxShadow: '0 8px 20px rgba(0,0,0,0.05)' }}>
                 <Compass size={32} color="#000000" style={{ margin: '0 auto 8px auto', animation: 'spin 4s linear infinite' }} />
@@ -541,7 +624,6 @@ export default function App() {
               })
             )}
 
-            {/* Selected Rider Popup Card */}
             {selectedRiderDetail && (
               <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', maxWidth: '340px', margin: '0 auto', zIndex: 50, backgroundColor: '#ffffff', color: '#000000', borderRadius: '24px', padding: '16px 20px', boxShadow: '0 14px 35px rgba(0,0,0,0.15)', border: '2px solid #68D8D8' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -660,7 +742,7 @@ export default function App() {
                 <div style={{ textAlign: 'left' }}>
                   <span style={{ fontSize: '10px', fontWeight: '900', color: '#68D8D8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>GPS RADAR</span>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ffffff' }}>Live Radar (2 KM)</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Visual pulse of active nearby bikes</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Fighter jet sweep of active bikes</p>
                 </div>
               </div>
               <ArrowRight size={20} color="#68D8D8" />
@@ -861,9 +943,39 @@ export default function App() {
     );
   }
 
-  // VIEW 4: MAIN WORKSPACE
+  // VIEW 4: MAIN WORKSPACE (WITH RIDE HISTORY & IN-APP CHAT PRESETS)
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
+      
+      {/* GLASS EFFECT NOTIFICATION TOAST WITH TONE */}
+      {glassNotification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 999,
+          backgroundColor: 'rgba(255, 255, 255, 0.82)',
+          backdropFilter: 'blur(12px)',
+          border: '1.5px solid rgba(104, 216, 216, 0.6)',
+          borderRadius: '20px',
+          padding: '14px 20px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          maxWidth: '360px',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', shrink: 0 }}>
+            <Bell size={20} />
+          </div>
+          <div style={{ overflow: 'hidden' }}>
+            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#000000' }}>{glassNotification.title}</h4>
+            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#334155', fontWeight: '600', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{glassNotification.message}</p>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: '1080px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '32px', boxShadow: '0 20px 45px rgba(0,0,0,0.06)', border: '2px solid #68D8D8', overflow: 'hidden' }}>
         
         <header style={{ padding: '16px 24px', borderBottom: '2px solid #68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
@@ -883,12 +995,19 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowRadarPage(true)}
               style={{ padding: '8px 14px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <Radio size={14} /> Open 2 KM Radar
+              <Radio size={14} /> 2 KM Radar
+            </button>
+
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              style={{ padding: '8px 14px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#f8fafc', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <History size={14} /> History ({completedTripsHistory.length})
             </button>
 
             <button
@@ -1138,7 +1257,7 @@ export default function App() {
                     </div>
 
                     <button
-                      onClick={() => handleDeleteRide(riderAcceptedRide._id)}
+                      onClick={() => handleDeleteRide(riderAcceptedRide._id, riderAcceptedRide)}
                       style={{ marginTop: '14px', width: '100%', padding: '12px', borderRadius: '14px', border: '2px solid #68D8D8', backgroundColor: '#f8fafc', color: '#000000', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
                     >
                       Complete / Finish Trip
@@ -1239,10 +1358,10 @@ export default function App() {
         </main>
       </div>
 
-      {/* Matched Ride Modal */}
+      {/* MATCHED RIDE MODAL WITH IN-APP QUICK CHAT PRESETS */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ width: '56px', height: '56px', borderRadius: '20px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
               <Check size={32} />
             </div>
@@ -1251,14 +1370,14 @@ export default function App() {
               Commute Matched
             </span>
             <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#000000', margin: '8px 0 2px 0' }}>Ride Confirmed!</h2>
-            <p style={{ fontSize: '12px', color: '#334155', fontWeight: '600', margin: '0 0 16px 0' }}>
+            <p style={{ fontSize: '12px', color: '#334155', fontWeight: '600', margin: '0 0 14px 0' }}>
               {matchedRide.fromLocation} ➔ {matchedRide.toLocation}
             </p>
 
-            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
-              <p style={{ fontSize: '10px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Contact Details</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '14px', fontWeight: '900', color: '#000000' }}>
+            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px', textAlign: 'left', marginBottom: '14px' }}>
+              <p style={{ fontSize: '10px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Partner Contact</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>
                   {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}
                 </span>
                 <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', padding: '2px 6px', backgroundColor: '#68D8D8', borderRadius: '6px', color: '#000000' }}>
@@ -1271,33 +1390,144 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {/* IN-APP QUICK CHAT BOX */}
+            <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px', textAlign: 'left', marginBottom: '14px' }}>
+              <p style={{ fontSize: '10px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <MessageCircle size={13} /> In-App Quick Chat
+              </p>
+
+              <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '8px', height: '90px', overflowY: 'auto', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {chatMessages.filter(m => m.rideId === matchedRide._id).length === 0 ? (
+                  <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: 'auto' }}>No messages yet. Send a quick preset below!</p>
+                ) : (
+                  chatMessages.filter(m => m.rideId === matchedRide._id).map((m, idx) => (
+                    <div key={idx} style={{ fontSize: '11px', backgroundColor: m.senderName === currentUser.name ? '#eff6ff' : '#f1f5f9', padding: '4px 8px', borderRadius: '8px', alignSelf: m.senderName === currentUser.name ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                      <strong>{m.senderName}:</strong> {m.text} <span style={{ fontSize: '9px', color: '#64748b' }}>({m.time})</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Presets Chips */}
+              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '8px' }}>
+                {QUICK_CHAT_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendChatMessage(preset)}
+                    style={{ whiteSpace: 'nowrap', backgroundColor: '#e2e8f0', border: 'none', padding: '4px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: '700', cursor: 'pointer', color: '#000000' }}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="Type message..."
+                  value={customChatMessage}
+                  onChange={(e) => setCustomChatMessage(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSendChatMessage(customChatMessage); }}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '11px', outline: 'none' }}
+                />
+                <button
+                  onClick={() => handleSendChatMessage(customChatMessage)}
+                  style={{ background: '#68D8D8', border: 'none', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '900' }}
+                >
+                  <Send size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
               <a 
                 href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
-                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ padding: '10px', borderRadius: '14px', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                <Phone size={14} /> Call Now
+                <Phone size={13} /> Call Now
               </a>
 
               <a 
                 href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
                 target="_blank"
                 rel="noreferrer"
-                style={{ padding: '12px', borderRadius: '14px', backgroundColor: '#000000', color: '#68D8D8', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ padding: '10px', borderRadius: '14px', backgroundColor: '#000000', color: '#68D8D8', fontWeight: '900', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                <MessageCircle size={14} /> WhatsApp
+                <MessageCircle size={13} /> WhatsApp
               </a>
             </div>
 
-            <button 
-              onClick={() => setMatchedRide(null)}
-              style={{ marginTop: '12px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: '700', color: '#334155', cursor: 'pointer' }}
+            <button
+              onClick={() => handleDeleteRide(matchedRide._id, matchedRide)}
+              style={{ width: '100%', padding: '10px', borderRadius: '14px', border: '2px solid #dc2626', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
             >
-              Close
+              Finish & Save to History
             </button>
           </div>
         </div>
       )}
+
+      {/* RIDE HISTORY & STATS MODAL */}
+      {showHistoryModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <History size={20} color="#000000" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Ride History & Stats</h3>
+              </div>
+              <button onClick={() => setShowHistoryModal(false)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Stats Summary Card */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Total Trips</span>
+                <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{completedTripsHistory.length}</p>
+              </div>
+              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Est. KM Saved</span>
+                <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{totalKmSavedSum} KM</p>
+              </div>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px' }}>
+              {completedTripsHistory.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <History size={36} color="#94a3b8" style={{ margin: '0 auto 8px auto' }} />
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#000000' }}>No completed trips yet</p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#334155' }}>Completed pooled rides will be archived here.</p>
+                </div>
+              ) : (
+                completedTripsHistory.map((trip) => (
+                  <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
+                      <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '6px' }}>+{trip.kmSaved} KM</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#334155', fontWeight: '700' }}>
+                      <span>Partner: {trip.partner}</span>
+                      <span>{trip.date}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowHistoryModal(false)}
+              style={{ marginTop: '16px', width: '100%', padding: '12px', borderRadius: '14px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Close History
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
