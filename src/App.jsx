@@ -181,20 +181,25 @@ export default function App() {
     } catch (e) {}
   }, [completedTripsHistory]);
 
-  // Register PWA Service Worker & Push Subscriptions
+  // Automatic Notification Permission & Service Worker Registration
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.register('/sw.js').then(async (reg) => {
         swRegistrationRef.current = reg;
         try {
-          let subscription = await reg.pushManager.getSubscription();
-          if (!subscription) {
-            subscription = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-            });
+          if ('Notification' in window && Notification.permission === 'default') {
+            await Notification.requestPermission();
           }
-          await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription).catch(() => {});
+          if (Notification.permission === 'granted') {
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription) {
+              subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+              });
+            }
+            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription).catch(() => {});
+          }
         } catch (e) {}
       }).catch(() => {});
     }
@@ -514,7 +519,6 @@ export default function App() {
     }
   };
 
-  // ADMIN ACTION: Send Push Permission Alert to a Specific Biker
   const handleSendPermissionAlert = async (bikerEmail, bikerPhone) => {
     try {
       await axios.post(`${BACKEND_URL}/api/admin/send-alert`, {
@@ -552,7 +556,6 @@ export default function App() {
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
 
-  // VIEW 1: RADAR VIEW (Professional Typography & Theme)
   if (showRadarPage) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', color: '#000000', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -691,7 +694,6 @@ export default function App() {
     );
   }
 
-  // VIEW 2: SPLASH / ROLE SELECTION
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -837,7 +839,6 @@ export default function App() {
     );
   }
 
-  // VIEW 3: MASTER ADMIN WORKSPACE WITH PERMISSION ALERT BUTTON
   if (isAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -860,7 +861,6 @@ export default function App() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 340px) 1fr minmax(300px, 360px)', minHeight: '700px' }}>
             
-            {/* REGISTERED RIDERS LIST WITH ALERT BUTTON */}
             <div style={{ borderRight: '3px solid #000', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000' }}>Registered Riders</h2>
@@ -882,7 +882,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* ALERT BUTTON FOR PUSH NOTIFICATION PERMISSION */}
                     <button
                       onClick={() => handleSendPermissionAlert(b.email, b.phone)}
                       title="Send Notification Permission Reminder"
@@ -906,7 +905,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* SYSTEM CONTROLS & STATS */}
             <div style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#000' }}>Operations & Metrics</h2>
@@ -938,7 +936,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* LIVE REQUESTS FEED */}
             <div style={{ borderLeft: '3px solid #000', padding: '20px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
                 <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000' }}>Live Commute Stream</h2>
@@ -972,7 +969,6 @@ export default function App() {
     );
   }
 
-  // VIEW 4: MAIN WORKSPACE (Professional, Emoji-Free Typography)
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       
@@ -1208,11 +1204,12 @@ export default function App() {
             </div>
           )}
 
+          {/* RIDER VIEW FIXED WITH RESPONSIVE FLEX LAYOUT (NO BREAKDOWN) */}
           {isBiker && (
             <div>
               {riderAcceptedRide ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', alignItems: 'start' }}>
-                  <div style={{ backgroundColor: '#ffffff', border: '3px solid #68D8D8', borderRadius: '28px', padding: '24px', boxShadow: '0 14px 30px rgba(0,0,0,0.08)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ backgroundColor: '#ffffff', border: '3px solid #68D8D8', borderRadius: '28px', padding: '24px', boxShadow: '0 14px 30px rgba(0,0,0,0.08)', width: '100%', boxSizing: 'border-box' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                       <span style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', backgroundColor: '#68D8D8', color: '#000000', padding: '4px 12px', borderRadius: '9999px' }}>
                         Active Trip Assigned
@@ -1220,7 +1217,7 @@ export default function App() {
                       <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000' }}>In Progress</span>
                     </div>
 
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '900', color: '#000000' }}>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900', color: '#000000', wordBreak: 'break-word' }}>
                       {riderAcceptedRide.fromLocation} to {riderAcceptedRide.toLocation}
                     </h3>
                     <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#334155', fontWeight: '700' }}>
@@ -1258,32 +1255,6 @@ export default function App() {
                     >
                       Complete & Finish Trip
                     </button>
-                  </div>
-
-                  <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '28px', padding: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>Other Pending Requests</span>
-                      <span style={{ fontSize: '11px', fontWeight: '900', padding: '2px 8px', backgroundColor: '#68D8D8', color: '#000000', borderRadius: '8px' }}>
-                        {unacceptedRidesForBikers.length}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
-                      {unacceptedRidesForBikers.length === 0 ? (
-                        <p style={{ fontSize: '12px', color: '#334155', textAlign: 'center', padding: '20px', fontWeight: '700' }}>No pending requests.</p>
-                      ) : (
-                        unacceptedRidesForBikers.map((ride) => (
-                          <div key={ride._id} style={{ backgroundColor: '#ffffff', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px 14px' }}>
-                            <div style={{ fontSize: '12px', fontWeight: '900', color: '#000000', marginBottom: '4px' }}>
-                              {ride.fromLocation} to {ride.toLocation}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#334155', fontWeight: '700' }}>
-                              Passenger: {ride.creatorName}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -1352,7 +1323,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Matched Ride Modal */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1384,7 +1354,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* QUICK CHAT BOX */}
             <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', borderRadius: '18px', padding: '12px', textAlign: 'left', marginBottom: '14px' }}>
               <p style={{ fontSize: '10px', color: '#334155', fontWeight: '900', textTransform: 'uppercase', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <MessageCircle size={13} /> In-App Quick Messages
@@ -1461,7 +1430,6 @@ export default function App() {
         </div>
       )}
 
-      {/* RIDE HISTORY & STATS MODAL */}
       {showHistoryModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
