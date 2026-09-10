@@ -66,7 +66,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('spct_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Ensure name and email fields exist to prevent rendering crash
+      if (parsed && (parsed.name || parsed.email)) {
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -123,14 +129,29 @@ export default function App() {
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
 
-  // Audio Tone Generator for Glass Notifications
+  const bikersWithin2Km = liveNearbyRiders
+    .filter(r => r && r.userId !== currentUser?._id)
+    .map(r => {
+      const distance = userLocation 
+        ? calculateDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng)
+        : '0.4';
+      return { ...r, distance: distance || '0.5' };
+    })
+    .filter(r => parseFloat(r.distance) <= 2.0);
+
+  const riderAcceptedRide = isBiker && rides.length > 0
+    ? rides.find(r => r && r.status === 'accepted' && r.acceptedBy?.phone === currentUser?.phone)
+    : null;
+
+  const unacceptedRidesForBikers = rides.filter(r => r && r.status !== 'accepted');
+
   const playNotificationTone = useCallback(() => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 note
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
       gain.gain.setValueAtTime(0.12, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
@@ -150,7 +171,9 @@ export default function App() {
   }, [playNotificationTone]);
 
   useEffect(() => {
-    localStorage.setItem('spct_trip_history', JSON.stringify(completedTripsHistory));
+    try {
+      localStorage.setItem('spct_trip_history', JSON.stringify(completedTripsHistory));
+    } catch (e) {}
   }, [completedTripsHistory]);
 
   useEffect(() => {
@@ -212,8 +235,10 @@ export default function App() {
     }
 
     socketRef.current.on('new_ride_broadcast', (newRide) => {
-      setRides(prev => [newRide, ...prev]);
-      triggerGlassNotification("New Ride Request!", `${newRide.creatorName} is heading from ${newRide.fromLocation}`);
+      if (newRide) {
+        setRides(prev => [newRide, ...prev]);
+        triggerGlassNotification("New Ride Request!", `${newRide.creatorName || 'Student'} is heading from ${newRide.fromLocation}`);
+      }
     });
 
     socketRef.current.on('all_rides_cleared', () => {
@@ -221,7 +246,7 @@ export default function App() {
     });
 
     socketRef.current.on('ride_deleted_broadcast', (deletedId) => {
-      setRides(prev => prev.filter(r => r._id !== deletedId));
+      setRides(prev => prev.filter(r => r && r._id !== deletedId));
     });
 
     socketRef.current.on('nearby_riders_update', (ridersList) => {
@@ -229,7 +254,8 @@ export default function App() {
     });
 
     socketRef.current.on('ride_accepted_broadcast', (updatedRide) => {
-      setRides(prev => prev.map(r => r._id === updatedRide._id ? updatedRide : r));
+      if (!updatedRide) return;
+      setRides(prev => prev.map(r => r && r._id === updatedRide._id ? updatedRide : r));
       try {
         const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
         if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
@@ -241,8 +267,10 @@ export default function App() {
     });
 
     socketRef.current.on('receive_in_app_chat', (msg) => {
-      setChatMessages(prev => [...prev, msg]);
-      triggerGlassNotification(`Message from ${msg.senderName}`, msg.text);
+      if (msg) {
+        setChatMessages(prev => [...prev, msg]);
+        triggerGlassNotification(`Message from ${msg.senderName || 'Partner'}`, msg.text);
+      }
     });
 
     return () => {
@@ -284,7 +312,7 @@ export default function App() {
           mode: 'login'
         });
 
-        if (res.data.success) {
+        if (res.data && res.data.success && res.data.user) {
           setCurrentUser(res.data.user);
           localStorage.setItem('spct_user', JSON.stringify(res.data.user));
           setShowAuthModal(false);
@@ -357,7 +385,7 @@ export default function App() {
         mode: 'signup'
       });
 
-      if (res.data.success) {
+      if (res.data && res.data.success && res.data.user) {
         setCurrentUser(res.data.user);
         localStorage.setItem('spct_user', JSON.stringify(res.data.user));
         setShowAuthModal(false);
@@ -437,7 +465,7 @@ export default function App() {
       }
 
       await axios.delete(`${BACKEND_URL}/api/rides/${rideId}`);
-      setRides(prev => prev.filter(r => r._id !== rideId));
+      setRides(prev => prev.filter(r => r && r._id !== rideId));
       if (matchedRide?._id === rideId) setMatchedRide(null);
       triggerGlassNotification("Trip Completed! 🏁", "Saved to your Ride History & Commute Stats.");
     } catch (err) {
@@ -476,19 +504,9 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  const bikersWithin2Km = liveNearbyRiders
-    .filter(r => r.userId !== currentUser?._id)
-    .map(r => {
-      const distance = userLocation 
-        ? calculateDistanceKm(userLocation.lat, userLocation.lng, r.lat, r.lng)
-        : '0.4';
-      return { ...r, distance: distance || '0.5' };
-    })
-    .filter(r => parseFloat(r.distance) <= 2.0);
-
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
 
-  // VIEW 1: RADAR VIEW (Fighter-Jet Rotating Sweep & 68D8D8 Theme)
+  // VIEW 1: RADAR VIEW (Safe & Crash-proof)
   if (showRadarPage) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', color: '#000000', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -514,7 +532,6 @@ export default function App() {
           }
         `}</style>
 
-        {/* Top Header */}
         <div style={{ padding: '16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', padding: '12px 20px', borderRadius: '22px', boxShadow: '0 4px 14px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' }}>
             <button
@@ -548,7 +565,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Live Geofence Banner */}
         <div style={{ padding: '0 16px 14px 16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '20px 24px', borderRadius: '26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', color: '#000000', boxShadow: '0 10px 25px rgba(0,0,0,0.03)' }}>
             <div>
@@ -568,7 +584,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* FIGHTER JET ROTATING SWEEP RADAR CONTAINER */}
         <div style={{ flex: 1, position: 'relative', width: '100%', maxWidth: '1100px', margin: '0 auto 16px auto', padding: '0 16px', boxSizing: 'border-box', minHeight: '440px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '100%', height: '460px', backgroundColor: '#f8fafc', borderRadius: '28px', border: '2px solid #68D8D8', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
             
@@ -649,7 +664,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bottom Bikers List */}
         <div style={{ padding: '0 16px 20px 16px', maxWidth: '1100px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
           {bikersWithin2Km.length > 0 && (
             <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none' }}>
@@ -687,7 +701,7 @@ export default function App() {
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
             <img 
               src="/logo.png" 
-              alt="Pirate Logo" 
+              alt="Logo" 
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
               style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.1))' }} 
             />
@@ -943,30 +957,29 @@ export default function App() {
     );
   }
 
-  // VIEW 4: MAIN WORKSPACE (WITH RIDE HISTORY & IN-APP CHAT PRESETS)
+  // VIEW 4: MAIN WORKSPACE
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       
-      {/* GLASS EFFECT NOTIFICATION TOAST WITH TONE */}
+      {/* GLASS EFFECT NOTIFICATION TOAST */}
       {glassNotification && (
         <div style={{
           position: 'fixed',
           top: '20px',
           right: '20px',
           zIndex: 999,
-          backgroundColor: 'rgba(255, 255, 255, 0.82)',
+          backgroundColor: 'rgba(255, 255, 255, 0.85)',
           backdropFilter: 'blur(12px)',
-          border: '1.5px solid rgba(104, 216, 216, 0.6)',
+          border: '1.5px solid rgba(104, 216, 216, 0.8)',
           borderRadius: '20px',
           padding: '14px 20px',
           boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          maxWidth: '360px',
-          animation: 'slideIn 0.3s ease-out'
+          maxWidth: '360px'
         }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', shrink: 0 }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Bell size={20} />
           </div>
           <div style={{ overflow: 'hidden' }}>
@@ -980,15 +993,15 @@ export default function App() {
         
         <header style={{ padding: '16px 24px', borderBottom: '2px solid #68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {currentUser.avatar ? (
+            {currentUser?.avatar ? (
               <img src={currentUser.avatar} alt="Avatar" style={{ width: '42px', height: '42px', borderRadius: '14px', objectFit: 'cover' }} />
             ) : (
               <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '15px' }}>
-                {currentUser.name?.charAt(0)}
+                {currentUser?.name?.charAt(0) || 'U'}
               </div>
             )}
             <div>
-              <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#000000' }}>{currentUser.name}</h2>
+              <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#000000' }}>{currentUser?.name || 'User'}</h2>
               <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#000000', backgroundColor: '#68D8D8', padding: '2px 8px', borderRadius: '6px' }}>
                 {isBiker ? 'Rider / Pilot' : 'Passenger'}
               </span>
@@ -1358,7 +1371,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* MATCHED RIDE MODAL WITH IN-APP QUICK CHAT PRESETS */}
+      {/* Matched Ride Modal */}
       {matchedRide && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '32px', padding: '24px', width: '100%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '2px solid #68D8D8', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1408,7 +1421,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Presets Chips */}
               <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '8px' }}>
                 {QUICK_CHAT_PRESETS.map((preset, idx) => (
                   <button
@@ -1483,7 +1495,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Stats Summary Card */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
               <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
                 <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Total Trips</span>
