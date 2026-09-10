@@ -181,29 +181,50 @@ export default function App() {
     } catch (e) {}
   }, [completedTripsHistory]);
 
-  // Automatic Notification Permission & Service Worker Registration
+  // Robust Push Subscription Registration
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.register('/sw.js').then(async (reg) => {
         swRegistrationRef.current = reg;
         try {
-          if ('Notification' in window && Notification.permission === 'default') {
-            await Notification.requestPermission();
-          }
-          if (Notification.permission === 'granted') {
-            let subscription = await reg.pushManager.getSubscription();
-            if (!subscription) {
-              subscription = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-              });
+          if ('Notification' in window) {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+              let subscription = await reg.pushManager.getSubscription();
+              if (!subscription) {
+                subscription = await reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+                });
+              }
+              await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
             }
-            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription).catch(() => {});
           }
-        } catch (e) {}
-      }).catch(() => {});
+        } catch (e) {
+          console.error("Push registration error:", e);
+        }
+      }).catch((err) => {
+        console.error("SW registration failed:", err);
+      });
     }
   }, []);
+
+  // Test Notification Button Handler
+  const handleTestLocalPush = async () => {
+    if (!swRegistrationRef.current) {
+      alert("Service Worker not ready yet.");
+      return;
+    }
+    try {
+      await swRegistrationRef.current.showNotification("SPCT Test Alert", {
+        body: "Push notifications are successfully configured and working!",
+        icon: "/logo.png",
+        vibrate: [200, 100, 200]
+      });
+    } catch (err) {
+      alert("Notification failed: " + err.message);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1019,6 +1040,15 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* TEST NOTIFICATION BUTTON */}
+            <button
+              onClick={handleTestLocalPush}
+              style={{ padding: '8px 12px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#fef08a', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Test Push Notification"
+            >
+              <Bell size={14} /> Test Push
+            </button>
+
             <button
               onClick={() => setShowRadarPage(true)}
               style={{ padding: '8px 14px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -1204,7 +1234,6 @@ export default function App() {
             </div>
           )}
 
-          {/* RIDER VIEW FIXED WITH RESPONSIVE FLEX LAYOUT (NO BREAKDOWN) */}
           {isBiker && (
             <div>
               {riderAcceptedRide ? (
