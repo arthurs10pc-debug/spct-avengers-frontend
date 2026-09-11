@@ -181,13 +181,15 @@ export default function App() {
     } catch (e) {}
   }, [completedTripsHistory]);
 
-  // Automatic Push Subscription Sync with Backend
+  // Robust Automatic Push Subscription Sync with Backend
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.register('/sw.js').then(async (reg) => {
         swRegistrationRef.current = reg;
+        console.log("Service Worker registered successfully.");
         try {
           const permission = await Notification.requestPermission();
+          console.log("Notification permission status:", permission);
           if (permission === 'granted') {
             let subscription = await reg.pushManager.getSubscription();
             if (!subscription) {
@@ -196,7 +198,9 @@ export default function App() {
                 applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
               });
             }
-            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+            console.log("Push subscription object obtained, sending to backend...");
+            const res = await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+            console.log("Backend response for subscription:", res.data);
           }
         } catch (e) {
           console.error("Push subscription sync error:", e);
@@ -1474,7 +1478,7 @@ export default function App() {
                 <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Total Trips</span>
                 <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{completedTripsHistory.length}</p>
               </div>
-              <div style={{ backgroundColor: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
+              <div style={{ background: '#f8fafc', border: '2px solid #68D8D8', padding: '14px', borderRadius: '20px', textAlign: 'center' }}>
                 <span style={{ fontSize: '10px', fontWeight: '900', color: '#334155', textTransform: 'uppercase' }}>Est. KM Saved</span>
                 <p style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#000000' }}>{totalKmSavedSum} KM</p>
               </div>
@@ -1490,7 +1494,7 @@ export default function App() {
               ) : (
                 completedTripsHistory.map((trip) => (
                   <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-animated', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
                       <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '6px' }}>+{trip.kmSaved} KM</span>
                     </div>
