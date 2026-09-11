@@ -181,48 +181,45 @@ export default function App() {
     } catch (e) {}
   }, [completedTripsHistory]);
 
-  // Robust Push Subscription Registration
+  // Automatic Push Subscription Sync with Backend
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.register('/sw.js').then(async (reg) => {
         swRegistrationRef.current = reg;
         try {
-          if ('Notification' in window) {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-              let subscription = await reg.pushManager.getSubscription();
-              if (!subscription) {
-                subscription = await reg.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-                });
-              }
-              await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription) {
+              subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+              });
             }
+            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
           }
         } catch (e) {
-          console.error("Push registration error:", e);
+          console.error("Push subscription sync error:", e);
         }
       }).catch((err) => {
-        console.error("SW registration failed:", err);
+        console.error("Service worker registration error:", err);
       });
     }
   }, []);
 
-  // Test Notification Button Handler
   const handleTestLocalPush = async () => {
     if (!swRegistrationRef.current) {
-      alert("Service Worker not ready yet.");
+      alert("Service Worker not active.");
       return;
     }
     try {
       await swRegistrationRef.current.showNotification("SPCT Test Alert", {
-        body: "Push notifications are successfully configured and working!",
+        body: "Push notifications are working perfectly!",
         icon: "/logo.png",
         vibrate: [200, 100, 200]
       });
     } catch (err) {
-      alert("Notification failed: " + err.message);
+      alert("Error: " + err.message);
     }
   };
 
@@ -1040,7 +1037,6 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* TEST NOTIFICATION BUTTON */}
             <button
               onClick={handleTestLocalPush}
               style={{ padding: '8px 12px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#fef08a', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -1401,7 +1397,7 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '8px' }}>
-                {QUICK_CHAT_PRESETS.map((preset, idx) => (
+                {QUICK_CHATS.map((preset, idx) => (
                   <button
                     key={idx}
                     type="button"

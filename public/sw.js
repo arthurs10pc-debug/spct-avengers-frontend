@@ -1,13 +1,5 @@
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('push', (event) => {
-  let data = { title: 'SPCT Avengers', body: 'New commute update available.' };
+self.addEventListener('push', function (event) {
+  let data = { title: 'SPCT Avengers', body: 'New notification received' };
   
   if (event.data) {
     try {
@@ -22,8 +14,11 @@ self.addEventListener('push', (event) => {
     icon: '/logo.png',
     badge: '/logo.png',
     vibrate: [200, 100, 200],
-    tag: 'spct_ride_alert',
-    renotify: true
+    tag: 'spct-ride-notification',
+    renotify: true,
+    data: {
+      url: self.location.origin
+    }
   };
 
   event.waitUntil(
@@ -31,15 +26,19 @@ self.addEventListener('push', (event) => {
   );
 });
 
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if ('focus' in client) return client.focus();
+        if (client.url === event.notification.data.url && 'focus' in client) {
+          return client.focus();
+        }
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.url);
+      }
     })
   );
 });
