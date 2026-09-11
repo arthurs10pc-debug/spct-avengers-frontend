@@ -12,7 +12,7 @@ import {
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
-const PUBLIC_VAPID_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-8vMeAtA5cHmDkJ0d8Q9cW4vG0mJ5M3Q5lK0P8vWq6X5LwG0J7j6W0Yg';
+const PUBLIC_VAPID_KEY = 'BKnGwCb7MAP4ancXdc4cV2oMaD9iF5EqLfgotpIHFH8ZT7LO8weEeIqHANDMCpwVohpCiompbhEh2Xjb93mS8pUw';
 
 const DEFAULT_CENTER = { lat: 23.0880, lng: 72.5350 };
 
@@ -1397,7 +1397,7 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '8px' }}>
-                {QUICK_CHATS.map((preset, idx) => (
+                {QUICK_CHAT_PRESETS.map((preset, idx) => (
                   <button
                     key={idx}
                     type="button"
