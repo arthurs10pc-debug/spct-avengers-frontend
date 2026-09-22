@@ -1,4 +1,3 @@
-// App.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
@@ -93,6 +92,11 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRadarPage, setShowRadarPage] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  
+  // Mandatory Notification Gate State
+  const [notificationGranted, setNotificationGranted] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(true);
+
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -182,33 +186,59 @@ export default function App() {
     } catch (e) {}
   }, [completedTripsHistory]);
 
-  // Robust Automatic Push Subscription Sync with Backend
-  useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.register('/sw.js').then(async (reg) => {
+  // Mandatory Notification Permission Handler
+  const requestNotificationPermissionAndSubscribe = async () => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        alert("Push messaging is not supported in this browser.");
+        setNotificationGranted(true);
+        setShowPermissionModal(false);
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        setNotificationGranted(true);
+        setShowPermissionModal(false);
+
+        const reg = await navigator.serviceWorker.register('/sw.js');
         swRegistrationRef.current = reg;
-        console.log("Service Worker registered successfully.");
-        try {
-          const permission = await Notification.requestPermission();
-          console.log("Notification permission status:", permission);
-          if (permission === 'granted') {
-            let subscription = await reg.pushManager.getSubscription();
-            if (!subscription) {
-              subscription = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-              });
-            }
-            console.log("Push subscription object obtained, sending to backend...");
-            const res = await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
-            console.log("Backend response for subscription:", res.data);
-          }
-        } catch (e) {
-          console.error("Push subscription sync error:", e);
+        
+        let subscription = await reg.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+          });
         }
-      }).catch((err) => {
-        console.error("Service worker registration error:", err);
-      });
+        await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+        triggerGlassNotification("Notifications Active", "You are fully synced for alerts.");
+      } else {
+        alert("Permission denied! You must allow notifications to use this app.");
+      }
+    } catch (e) {
+      console.error("Permission request error:", e);
+      alert("Error enabling notifications: " + e.message);
+    }
+  };
+
+  useEffect(() => {
+    if (Notification.permission === 'granted') {
+      setNotificationGranted(true);
+      setShowPermissionModal(false);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(async (reg) => {
+          swRegistrationRef.current = reg;
+          let subscription = await reg.pushManager.getSubscription();
+          if (!subscription) {
+            subscription = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+            });
+          }
+          await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+        }).catch(() => {});
+      }
     }
   }, []);
 
@@ -578,6 +608,29 @@ export default function App() {
   };
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
+
+  // Mandatory Permission Modal Block
+  if (showPermissionModal && !notificationGranted) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ backgroundColor: '#111827', border: '3px solid #68D8D8', borderRadius: '32px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+            <Bell size={32} />
+          </div>
+          <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 8px 0' }}>Enable Notifications</h2>
+          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '24px' }}>
+            To receive live ride requests and instant updates as a Rider or Passenger, you must allow browser notifications.
+          </p>
+          <button
+            onClick={requestNotificationPermissionAndSubscribe}
+            style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(104,216,216,0.3)' }}
+          >
+            Allow Notifications & Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (showRadarPage) {
     return (
