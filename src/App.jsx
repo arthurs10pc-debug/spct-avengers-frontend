@@ -186,7 +186,6 @@ export default function App() {
     } catch (e) {}
   }, [completedTripsHistory]);
 
-  // Mandatory Notification Permission Handler
   const requestNotificationPermissionAndSubscribe = async () => {
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -609,7 +608,6 @@ export default function App() {
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
 
-  // Mandatory Permission Modal Block
   if (showPermissionModal && !notificationGranted) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
