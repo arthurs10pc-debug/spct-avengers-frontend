@@ -92,10 +92,8 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   
-  // Bottom Navigation tab: 'ride', 'radar', or 'panel'
   const [bottomNavTab, setBottomNavTab] = useState('ride');
 
-  // Mandatory Notification Gate State
   const [notificationGranted, setNotificationGranted] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(true);
 
@@ -1333,7 +1331,8 @@ export default function App() {
           zIndex: 90,
           boxShadow: '0 -4px 20px rgba(0,0,0,0.04)',
           maxWidth: '1080px',
-          margin: '0 auto'
+          margin: '0 auto',
+          boxSizing: 'border-box'
         }}>
           <button
             onClick={() => setBottomNavTab('ride')}
