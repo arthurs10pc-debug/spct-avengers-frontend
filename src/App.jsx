@@ -92,7 +92,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   
-  // Bottom Navigation state: 'ride', 'radar', or 'panel'
+  // Bottom Navigation tab: 'ride', 'radar', or 'panel'
   const [bottomNavTab, setBottomNavTab] = useState('ride');
 
   // Mandatory Notification Gate State
@@ -888,7 +888,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', paddingBottom: '80px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', paddingBottom: '90px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       
       {glassNotification && (
         <div style={{
@@ -958,7 +958,7 @@ export default function App() {
           </div>
         </header>
 
-        <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '450px' }}>
+        <main style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '480px', boxSizing: 'border-box' }}>
           
           {/* TAB 1: RIDE */}
           {bottomNavTab === 'ride' && (
@@ -1318,7 +1318,7 @@ export default function App() {
 
         </main>
 
-        {/* BOTTOM NAVIGATION BAR AS SHOWN IN IMAGE */}
+        {/* BOTTOM NAVIGATION BAR */}
         <nav style={{
           position: 'fixed',
           bottom: 0,
@@ -1328,7 +1328,7 @@ export default function App() {
           borderTop: '2px solid #e2e8f0',
           padding: '10px 0 16px 0',
           display: 'flex',
-          justify-content: 'space-around',
+          justifyContent: 'space-around',
           alignItems: 'center',
           zIndex: 90,
           boxShadow: '0 -4px 20px rgba(0,0,0,0.04)',
