@@ -12,7 +12,6 @@ import {
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
-const PUBLIC_VAPID_KEY = 'BKnGwCb7MAP4ancXdc4cV2oMaD9iF5EqLfgotpIHFH8ZT7LO8weEeIqHANDMCpwVohpCiompbhEh2Xjb93mS8pUw';
 
 const DEFAULT_CENTER = { lat: 23.0880, lng: 72.5350 };
 
@@ -33,17 +32,6 @@ const QUICK_CHAT_PRESETS = [
   "Running slightly late",
   "En route to destination"
 ];
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
@@ -94,9 +82,6 @@ export default function App() {
   
   const [bottomNavTab, setBottomNavTab] = useState('ride');
 
-  const [notificationGranted, setNotificationGranted] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(true);
-
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -123,7 +108,9 @@ export default function App() {
 
   const [chatMessages, setChatMessages] = useState([]);
   const [customChatMessage, setCustomChatMessage] = useState('');
-  const [glassNotification, setGlassNotification] = useState(null);
+  
+  // Bouncing Floating Banner State
+  const [bouncingBanner, setBouncingBanner] = useState(null);
 
   const [userLocation, setUserLocation] = useState(DEFAULT_CENTER);
   const [liveNearbyRiders, setLiveNearbyRiders] = useState([]);
@@ -134,7 +121,6 @@ export default function App() {
   const googleBtnRef = useRef(null);
   const fromContainerRef = useRef(null);
   const toContainerRef = useRef(null);
-  const swRegistrationRef = useRef(null);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
@@ -155,105 +141,37 @@ export default function App() {
 
   const unacceptedRidesForBikers = rides.filter(r => r && r.status !== 'accepted');
 
-  const playNotificationTone = useCallback(() => {
+  const playPingSound = useCallback(() => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+      osc.stop(ctx.currentTime + 0.4);
     } catch (e) {}
   }, []);
 
-  const triggerGlassNotification = useCallback((title, message) => {
-    playNotificationTone();
-    setGlassNotification({ title, message, id: Date.now() });
+  const triggerBouncingBanner = useCallback((rideObj) => {
+    playPingSound();
+    setBouncingBanner(rideObj);
+    // Auto dismiss after 10 seconds if not clicked
     setTimeout(() => {
-      setGlassNotification(null);
-    }, 4500);
-  }, [playNotificationTone]);
+      setBouncingBanner(null);
+    }, 10000);
+  }, [playPingSound]);
 
   useEffect(() => {
     try {
       localStorage.setItem('spct_trip_history', JSON.stringify(completedTripsHistory));
     } catch (e) {}
   }, [completedTripsHistory]);
-
-  const requestNotificationPermissionAndSubscribe = async () => {
-    try {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setNotificationGranted(true);
-        setShowPermissionModal(false);
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        setNotificationGranted(true);
-        setShowPermissionModal(false);
-
-        const reg = await navigator.serviceWorker.register('/sw.js');
-        swRegistrationRef.current = reg;
-        
-        let subscription = await reg.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-          });
-        }
-        await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
-        triggerGlassNotification("Notifications Active", "Aap notifications ke liye fully synced hain.");
-      } else {
-        alert("Permission denied! Kripya notifications allow karein.");
-      }
-    } catch (e) {
-      console.error("Permission request error:", e);
-    }
-  };
-
-  useEffect(() => {
-    if (Notification.permission === 'granted') {
-      setNotificationGranted(true);
-      setShowPermissionModal(false);
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').then(async (reg) => {
-          swRegistrationRef.current = reg;
-          let subscription = await reg.pushManager.getSubscription();
-          if (!subscription) {
-            subscription = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-            });
-          }
-          await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
-        }).catch(() => {});
-      }
-    }
-  }, []);
-
-  const handleTestLocalPush = async () => {
-    if (!swRegistrationRef.current) {
-      alert("Service Worker active nahi hai.");
-      return;
-    }
-    try {
-      await swRegistrationRef.current.showNotification("SPCT Test Alert", {
-        body: "Push notifications successfully chal rahi hain!",
-        icon: "/logo.png",
-        vibrate: [200, 100, 200]
-      });
-    } catch (err) {
-      alert("Error: " + err.message);
-    }
-  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -323,7 +241,7 @@ export default function App() {
     socketRef.current.on('new_ride_broadcast', (newRide) => {
       if (newRide) {
         setRides(prev => [newRide, ...prev]);
-        triggerGlassNotification("New Ride Request", `Passenger heading from ${newRide.fromLocation}`);
+        triggerBouncingBanner(newRide);
       }
     });
 
@@ -346,7 +264,6 @@ export default function App() {
         const localUser = JSON.parse(localStorage.getItem('spct_user') || '{}');
         if (localUser && (localUser._id === updatedRide.creatorId || localUser.phone === updatedRide.acceptedBy?.phone)) {
           setMatchedRide(updatedRide);
-          triggerGlassNotification("Ride Confirmation", `${updatedRide.fromLocation} to ${updatedRide.toLocation}`);
           confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
         }
       } catch (e) {}
@@ -355,14 +272,13 @@ export default function App() {
     socketRef.current.on('receive_in_app_chat', (msg) => {
       if (msg) {
         setChatMessages(prev => [...prev, msg]);
-        triggerGlassNotification(`Message from ${msg.senderName || 'Partner'}`, msg.text);
       }
     });
 
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
-  }, [isAdmin, triggerGlassNotification, fetchLiveGPS]);
+  }, [isAdmin, triggerBouncingBanner, fetchLiveGPS]);
 
   const handleRefreshRadar = () => {
     setIsRefreshingRadar(true);
@@ -403,7 +319,6 @@ export default function App() {
           localStorage.setItem('spct_user', JSON.stringify(res.data.user));
           setShowAuthModal(false);
           setTempGoogleUser(null);
-          triggerGlassNotification("Login Successful", `Welcome back, ${res.data.user.name}`);
         }
       } else {
         setTempGoogleUser(googleData);
@@ -475,7 +390,6 @@ export default function App() {
         localStorage.setItem('spct_user', JSON.stringify(res.data.user));
         setShowAuthModal(false);
         setTempGoogleUser(null);
-        triggerGlassNotification("Registration Complete", "SPCT Avengers mein swagat hai!");
       }
     } catch (err) {
       const serverMsg = err.response?.data?.error;
@@ -512,7 +426,6 @@ export default function App() {
     setScheduleTime('');
     setShowFromDropdown(false);
     setShowToDropdown(false);
-    triggerGlassNotification("Ride Posted", "Nearby pilots ko notify kar diya gaya hai.");
   };
 
   const handleAcceptRide = (ride) => {
@@ -532,6 +445,7 @@ export default function App() {
         }
       });
     }
+    setBouncingBanner(null);
   };
 
   const handleDeleteRide = async (rideId, rideObj) => {
@@ -551,7 +465,6 @@ export default function App() {
       await axios.delete(`${BACKEND_URL}/api/rides/${rideId}`);
       setRides(prev => prev.filter(r => r && r._id !== rideId));
       if (matchedRide?._id === rideId) setMatchedRide(null);
-      triggerGlassNotification("Trip Finalized", "History mein record save ho gaya hai.");
     } catch (err) {
       alert("Operation failed: " + err.message);
     }
@@ -564,20 +477,6 @@ export default function App() {
       setRides([]);
     } catch (err) {
       alert("Failed to clear: " + err.message);
-    }
-  };
-
-  const handleSendPermissionAlert = async (bikerEmail, bikerPhone) => {
-    try {
-      await axios.post(`${BACKEND_URL}/api/admin/send-alert`, {
-        targetEmail: bikerEmail,
-        targetPhone: bikerPhone,
-        title: "Action Required: Enable Notifications",
-        body: "Kripya active ride requests receive karne ke liye notifications enable karein."
-      });
-      alert("Notification warning bhej di gayi hai.");
-    } catch (err) {
-      alert("Failed to send alert: " + (err.response?.data?.error || err.message));
     }
   };
 
@@ -603,28 +502,6 @@ export default function App() {
   };
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
-
-  if (showPermissionModal && !notificationGranted) {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-        <div style={{ backgroundColor: '#111827', border: '3px solid #68D8D8', borderRadius: '32px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
-            <Bell size={32} />
-          </div>
-          <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 8px 0' }}>Enable Notifications</h2>
-          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '24px' }}>
-            Live ride requests aur instant updates pane ke liye notifications allow karna zaroori hai.
-          </p>
-          <button
-            onClick={requestNotificationPermissionAndSubscribe}
-            style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(104,216,216,0.3)' }}
-          >
-            Allow Notifications & Continue
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!currentUser) {
     return (
@@ -797,25 +674,6 @@ export default function App() {
                         <p style={{ margin: 0, fontSize: '11px', color: '#334155', fontFamily: 'monospace' }}>{b.phone || 'No phone'}</p>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => handleSendPermissionAlert(b.email, b.phone)}
-                      title="Send Notification Permission Reminder"
-                      style={{
-                        backgroundColor: '#fef2f2',
-                        border: '1.5px solid #fecaca',
-                        color: '#dc2626',
-                        padding: '8px',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        shrink: 0
-                      }}
-                    >
-                      <AlertTriangle size={16} />
-                    </button>
                   </div>
                 ))}
               </div>
@@ -888,29 +746,57 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', paddingBottom: '90px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       
-      {glassNotification && (
+      {/* BOUNCING FLOATING BANNER FOR NEW RIDE REQUESTS */}
+      {bouncingBanner && isBiker && !riderAcceptedRide && (
         <div style={{
           position: 'fixed',
           top: '20px',
-          right: '20px',
-          zIndex: 999,
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(12px)',
-          border: '1.5px solid #68D8D8',
-          borderRadius: '20px',
-          padding: '14px 20px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          maxWidth: '360px'
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          width: '90%',
+          maxWidth: '420px',
+          backgroundColor: '#000000',
+          border: '3px solid #68D8D8',
+          borderRadius: '24px',
+          padding: '16px 20px',
+          boxShadow: '0 15px 35px rgba(104,216,216,0.4)',
+          color: '#ffffff',
+          animation: 'bounce 1s infinite'
         }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#68D8D8', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell size={20} />
+          <style>{`
+            @keyframes bounce {
+              0%, 100% { transform: translateX(-50%) translateY(0); }
+              50% { transform: translateX(-50%) translateY(-8px); }
+            }
+          `}</style>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+              🚨 Incoming Ride Request
+            </span>
+            <button onClick={() => setBouncingBanner(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+              <X size={16} />
+            </button>
           </div>
-          <div style={{ overflow: 'hidden' }}>
-            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#000' }}>{glassNotification.title}</h4>
-            <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#334155', fontWeight: '700', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{glassNotification.message}</p>
+          <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#68D8D8' }}>
+            {bouncingBanner.fromLocation} ➔ {bouncingBanner.toLocation}
+          </h4>
+          <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#94a3b8', fontWeight: '700' }}>
+            Passenger: {bouncingBanner.creatorName}
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => handleAcceptRide(bouncingBanner)}
+              style={{ flex: 1, padding: '10px', backgroundColor: '#68D8D8', color: '#000', border: 'none', borderRadius: '12px', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Accept Ride Now
+            </button>
+            <button
+              onClick={() => setBouncingBanner(null)}
+              style={{ padding: '10px 14px', backgroundColor: '#334155', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}
@@ -935,14 +821,6 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleTestLocalPush}
-              style={{ padding: '8px 12px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#fef08a', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              title="Test Push Notification"
-            >
-              <Bell size={14} /> Test Push
-            </button>
-
             <button
               onClick={() => setShowHistoryModal(true)}
               style={{ padding: '8px 14px', borderRadius: '12px', border: '2px solid #000000', backgroundColor: '#f8fafc', color: '#000000', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -970,7 +848,7 @@ export default function App() {
                       </div>
                       <div>
                         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Request Commute</h3>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '700' }}>Specify route to notify nearby pilots</p>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '700' }}>Specify route to notify nearby pilots with audio ping & banner</p>
                       </div>
                     </div>
 
