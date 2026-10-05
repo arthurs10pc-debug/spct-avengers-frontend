@@ -879,7 +879,7 @@ export default function App() {
           `}</style>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
-              🚨 Auto-Triggered Alert
+              🚨 Live In-App Alert
             </span>
             <button onClick={() => setBouncingBanner(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
               <X size={16} />
@@ -1518,7 +1518,7 @@ export default function App() {
                   <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#000000' }}>No completed trips recorded</p>
                 </div>
               ) : (
-                completedTripsHistory.map((trip) => (
+                completedTripsHistory.main?.map((trip) => (
                   <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
@@ -1530,7 +1530,18 @@ export default function App() {
                     </div>
                   </div>
                 ))
-              )}
+              ) || completedTripsHistory.map((trip) => (
+                <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '6px' }}>+{trip.kmSaved} KM</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#334155', fontWeight: '700' }}>
+                    <span>Partner: {trip.partner}</span>
+                    <span>{trip.date}</span>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <button
