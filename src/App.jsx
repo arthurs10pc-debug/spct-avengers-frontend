@@ -598,13 +598,13 @@ export default function App() {
           </div>
           <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 8px 0' }}>Instant Ride Alerts</h2>
           <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '24px' }}>
-            Rider alerts ko automatic enable karne ke liye niche click karein. Phir browser permission allow karein taaki manual settings ki zaroorat na pade.
+            Background mein ride requests pane ke liye kripya niche diye gaye button par click karke notifications allow karein.
           </p>
           <button
             onClick={requestNotificationPermissionAndSubscribe}
             style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(104,216,216,0.3)' }}
           >
-            Enable Auto-Permissions Now
+            Click to Allow Notifications
           </button>
         </div>
       </div>
