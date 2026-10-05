@@ -14,7 +14,9 @@ import {
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
-const PUBLIC_VAPID_KEY = 'BKnGwCb7MAP4ancXdc4cV2oMaD9iF5EqLfgotpIHFH8ZT7LO8weEeIqHANDMCpwVohpCiompbhEh2Xjb93mS8pUw';
+
+// Aapki updated VAPID Key yahan set kar di gayi hai
+const PUBLIC_VAPID_KEY = 'BNp5iirw54SBOS_8VOAKw7gpSzvkktgKWNzq_mDeAztqClikXufNCdCHk_vvB7cSD-djbSQXosHRzEtMERwEQhQ';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa",
