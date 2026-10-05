@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
+import { initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, ArrowLeft,
   MapPin, LogOut, MessageCircle, AlertCircle, X, 
@@ -12,6 +14,20 @@ import {
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
+const PUBLIC_VAPID_KEY = 'BKnGwCb7MAP4ancXdc4cV2oMaD9iF5EqLfgotpIHFH8ZT7LO8weEeIqHANDMCpwVohpCiompbhEh2Xjb93mS8pUw';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa",
+  authDomain: "spct-avengers-65de1.firebaseapp.com",
+  projectId: "spct-avengers-65de1",
+  storageBucket: "spct-avengers-65de1.appspot.com",
+  messagingSenderId: "1085189203233",
+  appId: "1:1085189203233:web:c568f971709a4c7846ca60",
+  measurementId: "G-WJ3P8YTDZD"
+};
+
+const appFb = initializeApp(firebaseConfig);
+const messaging = typeof window !== 'undefined' ? getMessaging(appFb) : null;
 
 const DEFAULT_CENTER = { lat: 23.0880, lng: 72.5350 };
 
@@ -32,6 +48,17 @@ const QUICK_CHAT_PRESETS = [
   "Running slightly late",
   "En route to destination"
 ];
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
@@ -82,6 +109,9 @@ export default function App() {
   
   const [bottomNavTab, setBottomNavTab] = useState('ride');
 
+  const [notificationGranted, setNotificationGranted] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(true);
+
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -108,8 +138,6 @@ export default function App() {
 
   const [chatMessages, setChatMessages] = useState([]);
   const [customChatMessage, setCustomChatMessage] = useState('');
-  
-  // Bouncing Floating Banner State
   const [bouncingBanner, setBouncingBanner] = useState(null);
 
   const [userLocation, setUserLocation] = useState(DEFAULT_CENTER);
@@ -121,6 +149,7 @@ export default function App() {
   const googleBtnRef = useRef(null);
   const fromContainerRef = useRef(null);
   const toContainerRef = useRef(null);
+  const swRegistrationRef = useRef(null);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
@@ -161,11 +190,68 @@ export default function App() {
   const triggerBouncingBanner = useCallback((rideObj) => {
     playPingSound();
     setBouncingBanner(rideObj);
-    // Auto dismiss after 10 seconds if not clicked
     setTimeout(() => {
       setBouncingBanner(null);
     }, 10000);
   }, [playPingSound]);
+
+  const requestNotificationPermissionAndSubscribe = async () => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setNotificationGranted(true);
+        setShowPermissionModal(false);
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        setNotificationGranted(true);
+        setShowPermissionModal(false);
+
+        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        swRegistrationRef.current = reg;
+        
+        let subscription = await reg.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+          });
+        }
+        await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+
+        if (messaging) {
+          try {
+            await getToken(messaging, { serviceWorkerRegistration: reg, vapidKey: PUBLIC_VAPID_KEY });
+          } catch (err) {}
+        }
+      } else {
+        alert("Permission denied! Kripya notifications allow karein.");
+      }
+    } catch (e) {
+      console.error("Permission error:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (Notification.permission === 'granted') {
+      setNotificationGranted(true);
+      setShowPermissionModal(false);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js').then(async (reg) => {
+          swRegistrationRef.current = reg;
+          let subscription = await reg.pushManager.getSubscription();
+          if (!subscription) {
+            subscription = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+            });
+          }
+          await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+        }).catch(() => {});
+      }
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -503,6 +589,28 @@ export default function App() {
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
 
+  if (showPermissionModal && !notificationGranted) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#000000', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div style={{ backgroundColor: '#111827', border: '3px solid #68D8D8', borderRadius: '32px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+            <Bell size={32} />
+          </div>
+          <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 8px 0' }}>Enable High-Priority Push</h2>
+          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '24px' }}>
+            Screen off ya app background mein hone par bhi instant ride alerts pane ke liye notification permissions allow karein.
+          </p>
+          <button
+            onClick={requestNotificationPermissionAndSubscribe}
+            style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(104,216,216,0.3)' }}
+          >
+            Allow Notifications & Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -518,7 +626,7 @@ export default function App() {
           </div>
 
           <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#000000', margin: '0 0 4px 0' }}>SPCT AVENGERS</h1>
-          <p style={{ fontSize: '13px', color: '#334155', fontWeight: '800', marginBottom: '28px' }}>Campus Ride-Pooling System</p>
+          <p style={{ fontSize: '13px', color: '#334155', fontWeight: '800', marginBottom: '28px' }}>Campus Ride-Pooling System (FCM Powered)</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <button
@@ -577,7 +685,7 @@ export default function App() {
               </p>
 
               {errorMsg && (
-                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '11px', padding: '10px 14px', borderRadius: '12px', marginBottom: '14px', textAlign: 'left' }}>
+                <div style={{ backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontSize: '11px', padding: '10px 14px', borderRadius: '12px', marginBottom: '14px', textAlign: 'left' }}>
                   {errorMsg}
                 </div>
               )}
@@ -746,7 +854,6 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fdfdfd', paddingBottom: '90px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       
-      {/* BOUNCING FLOATING BANNER FOR NEW RIDE REQUESTS */}
       {bouncingBanner && isBiker && !riderAcceptedRide && (
         <div style={{
           position: 'fixed',
@@ -772,7 +879,7 @@ export default function App() {
           `}</style>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
-              🚨 Incoming Ride Request
+              🚨 FCM High-Priority Alert
             </span>
             <button onClick={() => setBouncingBanner(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
               <X size={16} />
@@ -847,8 +954,8 @@ export default function App() {
                         <Navigation size={18} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Request Commute</h3>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '700' }}>Specify route to notify nearby pilots with audio ping & banner</p>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Request Commute (FCM Bridge)</h3>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '700' }}>Screen off ya background hone par bhi notification aayegi</p>
                       </div>
                     </div>
 
