@@ -14,8 +14,6 @@ import {
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
-
-// Aapki updated VAPID Key yahan set kar di gayi hai
 const PUBLIC_VAPID_KEY = 'BNp5iirw54SBOS_8VOAKw7gpSzvkktgKWNzq_mDeAztqClikXufNCdCHk_vvB7cSD-djbSQXosHRzEtMERwEQhQ';
 
 const firebaseConfig = {
@@ -598,15 +596,15 @@ export default function App() {
           <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#68D8D8', color: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
             <Bell size={32} />
           </div>
-          <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 8px 0' }}>Enable High-Priority Push</h2>
+          <h2 style={{ fontSize: '22px', fontWeight: '900', margin: '0 0 8px 0' }}>Instant Ride Alerts</h2>
           <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '24px' }}>
-            Screen off ya app background mein hone par bhi instant ride alerts pane ke liye notification permissions allow karein.
+            Rider alerts ko automatic enable karne ke liye niche click karein. Phir browser permission allow karein taaki manual settings ki zaroorat na pade.
           </p>
           <button
             onClick={requestNotificationPermissionAndSubscribe}
             style={{ width: '100%', padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#68D8D8', color: '#000000', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(104,216,216,0.3)' }}
           >
-            Allow Notifications & Continue
+            Enable Auto-Permissions Now
           </button>
         </div>
       </div>
@@ -628,7 +626,7 @@ export default function App() {
           </div>
 
           <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#000000', margin: '0 0 4px 0' }}>SPCT AVENGERS</h1>
-          <p style={{ fontSize: '13px', color: '#334155', fontWeight: '800', marginBottom: '28px' }}>Campus Ride-Pooling System (FCM Powered)</p>
+          <p style={{ fontSize: '13px', color: '#334155', fontWeight: '800', marginBottom: '28px' }}>Campus Ride-Pooling System (Smart Auto-Flow)</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <button
@@ -881,7 +879,7 @@ export default function App() {
           `}</style>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000', padding: '2px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
-              🚨 FCM High-Priority Alert
+              🚨 Auto-Triggered Alert
             </span>
             <button onClick={() => setBouncingBanner(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
               <X size={16} />
@@ -956,8 +954,8 @@ export default function App() {
                         <Navigation size={18} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Request Commute (FCM Bridge)</h3>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '700' }}>Screen off ya background hone par bhi notification aayegi</p>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000000' }}>Request Commute (Auto Flow)</h3>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#334155', fontWeight: '700' }}>Bina manual settings ke direct background alerts</p>
                       </div>
                     </div>
 
