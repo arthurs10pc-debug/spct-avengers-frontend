@@ -1085,15 +1085,36 @@ export default function App() {
                               </div>
                             </div>
 
-                            {ride.status === 'accepted' ? (
-                              <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', padding: '4px 10px', backgroundColor: '#68D8D8', borderRadius: '10px' }}>
-                                Accepted
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', padding: '4px 10px', backgroundColor: '#fef3c7', borderRadius: '10px' }}>
-                                Waiting
-                              </span>
-                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {ride.status !== 'accepted' && (
+                                <button
+                                  onClick={() => {
+                                    if (socketRef.current) {
+                                      socketRef.current.emit('ping_riders', {
+                                        rideId: ride._id,
+                                        from: ride.fromLocation,
+                                        to: ride.toLocation,
+                                        passenger: ride.creatorName
+                                      });
+                                      alert("🔔 Ring sent to all active riders!");
+                                    }
+                                  }}
+                                  style={{ padding: '6px 10px', backgroundColor: '#68D8D8', color: '#000000', border: 'none', borderRadius: '10px', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <Bell size={12} /> Ring Pilot
+                                </button>
+                              )}
+
+                              {ride.status === 'accepted' ? (
+                                <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', padding: '4px 10px', backgroundColor: '#68D8D8', borderRadius: '10px' }}>
+                                  Accepted
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '11px', fontWeight: '900', color: '#000000', padding: '4px 10px', backgroundColor: '#fef3c7', borderRadius: '10px' }}>
+                                  Waiting
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
