@@ -1292,7 +1292,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: PANEL (White Screen as requested) */}
+          {/* TAB 3: PANEL */}
           {bottomNavTab === 'panel' && (
             <div style={{ backgroundColor: '#ffffff', height: '380px', borderRadius: '28px', border: '2px solid #68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <p style={{ fontSize: '15px', fontWeight: '900', color: '#94a3b8' }}>White Screen Panel</p>
@@ -1518,7 +1518,7 @@ export default function App() {
                   <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#000000' }}>No completed trips recorded</p>
                 </div>
               ) : (
-                completedTripsHistory.main?.map((trip) => (
+                completedTripsHistory.map((trip) => (
                   <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
@@ -1530,18 +1530,7 @@ export default function App() {
                     </div>
                   </div>
                 ))
-              ) || completedTripsHistory.map((trip) => (
-                <div key={trip.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#000000' }}>{trip.route}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#68D8D8', color: '#000000', padding: '2px 8px', borderRadius: '6px' }}>+{trip.kmSaved} KM</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#334155', fontWeight: '700' }}>
-                    <span>Partner: {trip.partner}</span>
-                    <span>{trip.date}</span>
-                  </div>
-                </div>
-              ))}
+              )}
             </div>
 
             <button
