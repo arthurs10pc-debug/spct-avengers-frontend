@@ -8,7 +8,7 @@ import {
   Bike, UserCheck, Check, Phone, ArrowRight, ArrowLeft,
   MapPin, LogOut, MessageCircle, AlertCircle, X, 
   Navigation, Trash2, ChevronDown, Clock, Crown, Compass, Radio, RotateCw,
-  Crosshair, ShieldCheck, Map, History, Send, Bell, AlertTriangle, User
+  Crosshair, ShieldCheck, Map, History, Send, Bell, AlertTriangle, User, Info
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -47,6 +47,14 @@ const QUICK_CHAT_PRESETS = [
   "Where are you?",
   "Running slightly late",
   "En route to destination"
+];
+
+const NOTICES_LIST = [
+  "🔔 Kindly allow all notifications & location permissions for seamless ride alerts.",
+  "⚡ Always keep your GPS active so nearby pilots can track your live commute.",
+  "🛡️ Verify your partner details and mobile number before starting the trip.",
+  "🕒 Be punctual at pickup points to ensure smooth campus ride-pooling.",
+  "💬 Use in-app quick messages or direct call in case of any route delays."
 ];
 
 function urlBase64ToUint8Array(base64String) {
@@ -1313,10 +1321,59 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: PANEL */}
+          {/* TAB 3: PANEL (Continuous 3-Item Scrolling Notices) */}
           {bottomNavTab === 'panel' && (
-            <div style={{ backgroundColor: '#ffffff', height: '380px', borderRadius: '28px', border: '2px solid #68D8D8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ fontSize: '15px', fontWeight: '900', color: '#94a3b8' }}>White Screen Panel</p>
+            <div style={{ backgroundColor: '#ffffff', height: '380px', borderRadius: '28px', border: '2px solid #68D8D8', padding: '20px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '2px solid #68D8D8', paddingBottom: '10px' }}>
+                <Info size={20} color="#000" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#000' }}>Important Campus Notices</h3>
+              </div>
+
+              <style>{`
+                @keyframes scrollNotices {
+                  0% { transform: translateY(0); }
+                  100% { transform: translateY(-50%); }
+                }
+                .notice-ticker-container {
+                  height: 240px;
+                  overflow: hidden;
+                  position: relative;
+                  background: #f8fafc;
+                  border: 2px solid #68D8D8;
+                  border-radius: 20px;
+                  padding: 12px;
+                }
+                .notice-ticker-track {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                  animation: scrollNotices 10s linear infinite;
+                }
+                .notice-ticker-track:hover {
+                  animation-play-state: paused;
+                }
+                .notice-item {
+                  background: #ffffff;
+                  border: 1.5px solid #68D8D8;
+                  border-radius: 14px;
+                  padding: 14px 16px;
+                  font-size: 13px;
+                  font-weight: 800;
+                  color: #000;
+                  box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+                }
+              `}</style>
+
+              <div className="notice-ticker-container">
+                <div className="notice-ticker-track">
+                  {/* Duplicated array for smooth infinite ticker loop */}
+                  {[...NOTICES_LIST, ...NOTICES_LIST].map((notice, idx) => (
+                    <div key={idx} className="notice-item">
+                      {notice}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
