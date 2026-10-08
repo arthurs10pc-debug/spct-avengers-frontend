@@ -103,7 +103,7 @@ export default function App() {
       const saved = localStorage.getItem('spct_user');
       if (!saved) return null;
       const parsed = JSON.parse(saved);
-      if (parsed && (parsed.name || parsed.email)) return parsed;
+      if (parsed && (parsed.name || parsed.email || parsed.fullName)) return parsed;
       return null;
     } catch {
       return null;
@@ -305,7 +305,7 @@ export default function App() {
           if (isBiker && socketRef.current && currentUser) {
             socketRef.current.emit('update_rider_gps', {
               userId: currentUser._id,
-              name: currentUser.name,
+              name: currentUser.name || currentUser.fullName,
               phone: currentUser.phone,
               avatar: currentUser.avatar,
               lat: coords.lat,
@@ -321,7 +321,7 @@ export default function App() {
 
   useEffect(() => {
     fetchLiveGPS();
-    const interval = setInterval(fetchLiveGPS, 8000);
+    const interval = setInterval(fetchLiveGPS, 5000);
     return () => clearInterval(interval);
   }, [fetchLiveGPS]);
 
@@ -592,6 +592,13 @@ export default function App() {
     }
   };
 
+  const handleClearHistory = () => {
+    const confirmation = window.confirm("Are you sure you want to clear all trip history? Click OK for Yes, Cancel for No.");
+    if (!confirmation) return;
+    setCompletedTripsHistory([]);
+    localStorage.removeItem('spct_trip_history');
+  };
+
   const handlePermanentDeleteUser = async (userId, userName) => {
     const confirmation = window.confirm(`Are you sure you want to permanently delete user "${userName}"? Click OK for Yes, Cancel for No.`);
     if (!confirmation) return;
@@ -642,7 +649,7 @@ export default function App() {
           </p>
           <button
             onClick={requestNotificationPermissionAndSubscribe}
-            style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'background 0.2s' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
           >
             Allow Notifications & GPS
           </button>
@@ -871,7 +878,7 @@ export default function App() {
                   {inactiveUsers.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '12px' }}>
                       <CheckCircle2 size={24} color="#38bdf8" style={{ margin: '0 auto 6px auto' }} />
-                      All connected users have successfully allowed permissions.
+                      No permission blocks detected across active users.
                     </div>
                   ) : (
                     inactiveUsers.map((u) => (
@@ -991,7 +998,7 @@ export default function App() {
               <img src={currentUser.avatar} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '12px', objectFit: 'cover' }} />
             ) : (
               <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '14px' }}>
-                {(currentUser?.name || currentUser?.fullName)?.charAt(0) || 'U'}
+                {(currentUser?.name || currentUser?.fullName || currentUser?.email)?.charAt(0) || 'U'}
               </div>
             )}
             <div>
@@ -1635,9 +1642,16 @@ export default function App() {
                 <History size={18} color="#38bdf8" />
                 <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Commute History & Stats</h3>
               </div>
-              <button onClick={() => setShowHistoryModal(false)} style={{ border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {completedTripsHistory.length > 0 && (
+                  <button onClick={handleClearHistory} title="Clear History" style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', borderRadius: '8px', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Trash2 size={14} />
+                  </button>
+                )}
+                <button onClick={() => setShowHistoryModal(false)} style={{ border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
