@@ -8,7 +8,7 @@ import {
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, MessageCircle, X, 
   Navigation, Trash2, ChevronDown, Crown, Radio, RotateCw,
-  History, Send, Bell, User, ShieldAlert, CheckCircle2
+  History, Send, Bell, User, ShieldAlert, CheckCircle2, Database
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -620,6 +620,21 @@ export default function App() {
     }
   };
 
+  const handleExportDatabase = async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/admin/export-db`);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "spct_avengers_db_export.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (err) {
+      alert("Failed to export database details.");
+    }
+  };
+
   const handleSendChatMessage = (textToSend) => {
     if (!textToSend || !textToSend.trim() || !matchedRide) return;
     const senderName = currentUser.name || currentUser.fullName;
@@ -813,9 +828,17 @@ export default function App() {
               </div>
             </div>
 
-            <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#f8fafc', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
-              Logout
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={handleExportDatabase}
+                style={{ border: 'none', background: '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Database size={14} /> Export DB Data
+              </button>
+              <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#f8fafc', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
+                Logout
+              </button>
+            </div>
           </header>
 
           <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 340px', flex: 1, overflow: 'hidden' }}>
