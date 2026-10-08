@@ -8,7 +8,7 @@ import {
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, MessageCircle, X, 
   Navigation, Trash2, ChevronDown, Crown, Radio, RotateCw,
-  History, Send, Bell, User, ShieldAlert, CheckCircle2, Database
+  History, Send, Bell, User, ShieldAlert, CheckCircle2, FileText, AlertOctagon
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -400,6 +400,15 @@ export default function App() {
       }
     });
 
+    socketRef.current.on('db_cleared_broadcast', () => {
+      localStorage.removeItem('spct_user');
+      localStorage.removeItem('spct_trip_history');
+      setCurrentUser(null);
+      setRides([]);
+      setCompletedTripsHistory([]);
+      alert("Database has been completely reset by admin.");
+    });
+
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
@@ -620,18 +629,73 @@ export default function App() {
     }
   };
 
-  const handleExportDatabase = async () => {
+  const handleClearFullDB = async () => {
+    const firstCheck = window.confirm("WARNING: You are about to wipe the entire database! All users, rides, and history will be permanently deleted. Do you want to proceed?");
+    if (!firstCheck) return;
+
+    const secondCheck = window.confirm("FINAL CONFIRMATION: Are you 100% sure? This action cannot be undone and will reset the application to zero.");
+    if (!secondCheck) return;
+
+    try {
+      await axios.post(`${BACKEND_URL}/api/admin/clear-full-db`);
+      localStorage.clear();
+      setCurrentUser(null);
+      setRides([]);
+      setCompletedTripsHistory([]);
+      alert("Database wiped successfully. Application reset to zero.");
+      window.location.reload();
+    } catch (err) {
+      alert("Failed to clear database: " + err.message);
+    }
+  };
+
+  const handleExportDatabasePDF = async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/admin/export-db`);
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "spct_avengers_db_export.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+      const dbData = res.data;
+
+      let htmlContent = `
+        <html>
+          <head>
+            <title>SPCT Avengers Database Report</title>
+            <style>
+              body { font-family: Helvetica, Arial, sans-serif; color: #1e293b; padding: 20px; }
+              h1 { color: #0f172a; border-bottom: 2px solid #38bdf8; padding-bottom: 10px; }
+              h2 { color: #334155; margin-top: 30px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th, td { border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 11px; text-align: left; }
+              th { background-color: #f1f5f9; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <h1>SPCT Avengers - System Database Report</h1>
+            <p><strong>Export Date:</strong> ${new Date(dbData.exportTimestamp).toLocaleString()}</p>
+            <p><strong>Total Users:</strong> ${dbData.totalUsers} | <strong>Total Rides:</strong> ${dbData.totalRides}</p>
+
+            <h2>1. Users Directory</h2>
+            <table>
+              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Notif Allowed</th><th>GPS Allowed</th></tr>
+              ${dbData.users.map(u => `<tr><td>${u.fullName || '-'}</td><td>${u.email}</td><td>${u.phone || '-'}</td><td>${u.role}</td><td>${u.notificationAllowed}</td><td>${u.gpsAllowed}</td></tr>`).join('')}
+            </table>
+
+            <h2>2. Rides Pool</h2>
+            <table>
+              <tr><th>Creator</th><th>Phone</th><th>From</th><th>To</th><th>Status</th></tr>
+              ${dbData.rides.map(r => `<tr><td>${r.creatorName}</td><td>${r.creatorPhone || '-'}</td><td>${r.fromLocation}</td><td>${r.toLocation}</td><td>${r.status}</td></tr>`).join('')}
+            </table>
+          </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
     } catch (err) {
-      alert("Failed to export database details.");
+      alert("Failed to generate PDF report.");
     }
   };
 
@@ -828,12 +892,18 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <button
-                onClick={handleExportDatabase}
+                onClick={handleClearFullDB}
+                style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <AlertOctagon size={14} /> Clear Full DB
+              </button>
+              <button
+                onClick={handleExportDatabasePDF}
                 style={{ border: 'none', background: '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Database size={14} /> Export DB Data
+                <FileText size={14} /> Export PDF
               </button>
               <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#f8fafc', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
                 Logout
