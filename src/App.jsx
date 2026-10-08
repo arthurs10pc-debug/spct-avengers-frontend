@@ -401,12 +401,17 @@ export default function App() {
     });
 
     socketRef.current.on('db_cleared_broadcast', () => {
-      localStorage.removeItem('spct_user');
-      localStorage.removeItem('spct_trip_history');
-      setCurrentUser(null);
-      setRides([]);
-      setCompletedTripsHistory([]);
-      alert("Database has been completely reset by admin.");
+      if (currentUser && currentUser.email !== ADMIN_EMAIL) {
+        localStorage.removeItem('spct_user');
+        localStorage.removeItem('spct_trip_history');
+        setCurrentUser(null);
+        setRides([]);
+        setCompletedTripsHistory([]);
+        alert("Database has been reset by admin.");
+      } else {
+        setRides([]);
+        loadAdminData();
+      }
     });
 
     return () => {
@@ -630,20 +635,17 @@ export default function App() {
   };
 
   const handleClearFullDB = async () => {
-    const firstCheck = window.confirm("WARNING: You are about to wipe the entire database! All users, rides, and history will be permanently deleted. Do you want to proceed?");
+    const firstCheck = window.confirm("WARNING: You are about to clear all user profiles, riders, and ride requests! Admin account will remain active. Proceed?");
     if (!firstCheck) return;
 
-    const secondCheck = window.confirm("FINAL CONFIRMATION: Are you 100% sure? This action cannot be undone and will reset the application to zero.");
+    const secondCheck = window.confirm("FINAL CONFIRMATION: Are you 100% sure you want to wipe all non-admin database records?");
     if (!secondCheck) return;
 
     try {
       await axios.post(`${BACKEND_URL}/api/admin/clear-full-db`);
-      localStorage.clear();
-      setCurrentUser(null);
       setRides([]);
-      setCompletedTripsHistory([]);
-      alert("Database wiped successfully. Application reset to zero.");
-      window.location.reload();
+      loadAdminData();
+      alert("Database cleared successfully. All users and rides removed except admin.");
     } catch (err) {
       alert("Failed to clear database: " + err.message);
     }
