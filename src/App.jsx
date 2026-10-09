@@ -782,17 +782,17 @@ export default function App() {
   if (showPermissionModal && !notificationGranted) {
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
-        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '24px', padding: '24px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '16px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto' }}>
-            <Bell size={26} />
+        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '24px', padding: '28px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+            <Bell size={28} />
           </div>
-          <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 6px 0', color: '#f8fafc' }}>Instant Ride Alerts</h2>
-          <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.4', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 8px 0', color: '#f8fafc' }}>Instant Ride Alerts</h2>
+          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.4', marginBottom: '22px' }}>
             Please allow notifications and location access to receive real-time ride requests and updates in the background.
           </p>
           <button
             onClick={requestNotificationPermissionAndSubscribe}
-            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
           >
             Allow Notifications & GPS
           </button>
@@ -804,78 +804,78 @@ export default function App() {
   if (!currentUser) {
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
-        <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center', boxSizing: 'border-box' }}>
+        <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center', boxSizing: 'border-box' }}>
           
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
             <img 
               src="/logo.png" 
               alt="Logo" 
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              style={{ width: '64px', height: '64px', objectFit: 'contain' }} 
+              style={{ width: '72px', height: '72px', objectFit: 'contain' }} 
             />
           </div>
 
-          <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#f8fafc', margin: '0 0 2px 0', letterSpacing: '-0.5px' }}>SPCT AVENGERS</h1>
-          <p style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600', marginBottom: '24px' }}>Campus Ride-Pooling Infrastructure</p>
+          <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>SPCT AVENGERS</h1>
+          <p style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginBottom: '28px' }}>Campus Ride-Pooling Infrastructure</p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <button
               onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '18px', cursor: 'pointer', boxSizing: 'border-box' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '20px', cursor: 'pointer', boxSizing: 'border-box' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
-                  <Bike size={20} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
+                  <Bike size={22} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>I Have a Bike</h3>
-                  <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Register as Rider Pilot</span>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>I Have a Bike</h3>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Register as Rider Pilot</span>
                 </div>
               </div>
-              <ArrowRight size={16} color="#94a3b8" />
+              <ArrowRight size={18} color="#94a3b8" />
             </button>
 
             <button
               onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '18px', cursor: 'pointer', boxSizing: 'border-box' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '20px', cursor: 'pointer', boxSizing: 'border-box' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
-                  <UserCheck size={20} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
+                  <UserCheck size={22} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Need a Ride</h3>
-                  <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Register as Passenger</span>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Need a Ride</h3>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Register as Passenger</span>
                 </div>
               </div>
-              <ArrowRight size={16} color="#94a3b8" />
+              <ArrowRight size={18} color="#94a3b8" />
             </button>
           </div>
         </div>
 
         {showAuthModal && (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-            <div style={{ backgroundColor: '#1e293b', borderRadius: '24px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', textAlign: 'center', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
-              <button onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={15} />
+            <div style={{ backgroundColor: '#1e293b', borderRadius: '28px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', textAlign: 'center', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
+              <button onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }} style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
               </button>
 
               {!tempGoogleUser && (
-                <div style={{ display: 'flex', backgroundColor: '#0f172a', padding: '3px', borderRadius: '12px', marginBottom: '16px', border: '1px solid #334155' }}>
-                  <button onClick={() => { setAuthTab('login'); setErrorMsg(''); }} style={{ flex: 1, padding: '7px', border: 'none', borderRadius: '9px', cursor: 'pointer', fontWeight: '800', fontSize: '11px', backgroundColor: authTab === 'login' ? '#38bdf8' : 'transparent', color: authTab === 'login' ? '#0f172a' : '#94a3b8' }}>Login</button>
-                  <button onClick={() => { setAuthTab('signup'); setErrorMsg(''); }} style={{ flex: 1, padding: '7px', border: 'none', borderRadius: '9px', cursor: 'pointer', fontWeight: '800', fontSize: '11px', backgroundColor: authTab === 'signup' ? '#38bdf8' : 'transparent', color: authTab === 'signup' ? '#0f172a' : '#94a3b8' }}>Register</button>
+                <div style={{ display: 'flex', backgroundColor: '#0f172a', padding: '4px', borderRadius: '14px', marginBottom: '20px', border: '1px solid #334155' }}>
+                  <button onClick={() => { setAuthTab('login'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '12px', backgroundColor: authTab === 'login' ? '#38bdf8' : 'transparent', color: authTab === 'login' ? '#0f172a' : '#94a3b8' }}>Login</button>
+                  <button onClick={() => { setAuthTab('signup'); setErrorMsg(''); }} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '12px', backgroundColor: authTab === 'signup' ? '#38bdf8' : 'transparent', color: authTab === 'signup' ? '#0f172a' : '#94a3b8' }}>Register</button>
                 </div>
               )}
 
-              <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', margin: '0 0 3px 0' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: '0 0 4px 0' }}>
                 {tempGoogleUser ? "Contact Details" : (authTab === 'login' ? "Welcome Back" : "Create Account")}
               </h2>
-              <p style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600', marginBottom: '16px' }}>
+              <p style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600', marginBottom: '20px' }}>
                 {tempGoogleUser ? "Enter mobile number for ride connectivity" : "Authenticate via Google Workspace"}
               </p>
 
               {errorMsg && (
-                <div style={{ backgroundColor: '#7f1d1d', border: '1px solid #991b1b', color: '#fecaca', fontSize: '10px', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px', textAlign: 'left' }}>
+                <div style={{ backgroundColor: '#7f1d1d', border: '1px solid #991b1b', color: '#fecaca', fontSize: '11px', padding: '10px 14px', borderRadius: '12px', marginBottom: '14px', textAlign: 'left' }}>
                   {errorMsg}
                 </div>
               )}
@@ -883,26 +883,26 @@ export default function App() {
               {!tempGoogleUser ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50px' }}>
                   <div ref={googleBtnRef}></div>
-                  {authLoading && <p style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 'bold', marginTop: '10px' }}>Authenticating...</p>}
+                  {authLoading && <p style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 'bold', marginTop: '12px' }}>Authenticating...</p>}
                 </div>
               ) : (
-                <form onSubmit={handleCompleteAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', boxSizing: 'border-box' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', backgroundColor: '#0f172a', borderRadius: '14px', border: '1px solid #334155' }}>
+                <form onSubmit={handleCompleteAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #334155' }}>
                     {tempGoogleUser.avatar ? (
-                      <img src={tempGoogleUser.avatar} alt="User" style={{ width: '34px', height: '34px', borderRadius: '50%' }} />
+                      <img src={tempGoogleUser.avatar} alt="User" style={{ width: '38px', height: '38px', borderRadius: '50%' }} />
                     ) : (
-                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                      <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                         {tempGoogleUser.fullName.charAt(0)}
                       </div>
                     )}
                     <div style={{ overflow: 'hidden' }}>
-                      <p style={{ margin: 0, fontSize: '11px', fontWeight: 'bold', color: '#f8fafc' }}>{tempGoogleUser.fullName}</p>
-                      <p style={{ margin: 0, fontSize: '9px', color: '#94a3b8' }}>{tempGoogleUser.email}</p>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', color: '#f8fafc' }}>{tempGoogleUser.fullName}</p>
+                      <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>{tempGoogleUser.email}</p>
                     </div>
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>10-Digit Mobile Number</label>
+                    <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>10-Digit Mobile Number</label>
                     <input 
                       type="tel"
                       required
@@ -910,14 +910,14 @@ export default function App() {
                       placeholder="9876543210"
                       value={phoneInput}
                       onChange={(e) => setPhoneInput(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={authLoading}
-                    style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
                   >
                     {authLoading ? "Saving..." : "Complete & Enter Hub"}
                   </button>
@@ -1228,7 +1228,7 @@ export default function App() {
           </div>
         </header>
 
-        <main style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', boxSizing: 'border-box' }}>
+        <main style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', boxSizing: 'border-box', transition: 'all 0.3s ease-in-out' }}>
           
           {/* TAB 1: RIDE */}
           {bottomNavTab === 'ride' && (
@@ -1598,7 +1598,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: PANEL (Full Screen Single Border Smooth Ticker Scrolling Upwards) */}
+          {/* TAB 3: PANEL (Full Screen Single Border Smooth Ticker Scrolling Upwards with dynamic size) */}
           {bottomNavTab === 'panel' && (
             <div style={{ backgroundColor: '#0f172a', height: '100%', flex: 1, borderRadius: '16px', border: '1px solid #334155', padding: '14px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', borderBottom: '1px solid #334155', paddingBottom: '6px', flexShrink: 0 }}>
@@ -1638,6 +1638,7 @@ export default function App() {
                   font-weight: 700;
                   color: #f8fafc;
                   box-sizing: border-box;
+                  width: 100%;
                 }
               `}</style>
 
@@ -1646,22 +1647,22 @@ export default function App() {
                   {[...noticesList, ...noticesList].map((n, idx) => (
                     <div key={idx} className="notice-item">
                       {n.type === 'image' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                           <span>Image Notice:</span>
-                          <img src={n.content} alt="Notice" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', borderRadius: '6px' }} />
+                          <img src={n.content} alt="Notice" style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '6px' }} />
                         </div>
                       ) : n.type === 'video' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                           <span>Video Notice:</span>
-                          <video src={n.content} controls style={{ width: '100%', maxHeight: '140px', borderRadius: '6px' }} />
+                          <video src={n.content} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
                         </div>
                       ) : n.type === 'audio' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                           <span>Audio Notice:</span>
                           <audio src={n.content} controls style={{ width: '100%' }} />
                         </div>
                       ) : (
-                        <span>{n.content}</span>
+                        <span style={{ wordBreak: 'break-word' }}>{n.content}</span>
                       )}
                     </div>
                   ))}
@@ -1902,7 +1903,7 @@ export default function App() {
                       <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>{trip.route}</span>
                       <span style={{ fontSize: '8px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px' }}>+{trip.kmSaved} KM</span>
                     </div>
-                    <div style={{ translateY: '0', display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#94a3b8' }}>
                       <span>Partner: {trip.partner}</span>
                       <span>{trip.date}</span>
                     </div>
