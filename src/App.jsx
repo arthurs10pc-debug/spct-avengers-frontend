@@ -155,6 +155,7 @@ export default function App() {
   const fromContainerRef = useRef(null);
   const toContainerRef = useRef(null);
   const swRegistrationRef = useRef(null);
+  const touchStartX = useRef(0);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
   const isBiker = currentUser?.role === 'biker';
@@ -1026,7 +1027,7 @@ export default function App() {
               {/* Local File / Text Notice Form */}
               <form onSubmit={handleAddNotice} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Publish Notice / Media</label>
+                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Add Notice / Media</label>
                   <select
                     value={mediaTypeInput}
                     onChange={(e) => { setMediaTypeInput(e.target.value); setMediaTextInput(''); setMediaFileInput(null); }}
@@ -1130,7 +1131,22 @@ export default function App() {
   }
 
   return (
-    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', paddingBottom: '60px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div 
+      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        const diff = touchStartX.current - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            if (bottomNavTab === 'ride') setBottomNavTab('radar');
+            else if (bottomNavTab === 'radar') setBottomNavTab('panel');
+          } else {
+            if (bottomNavTab === 'panel') setBottomNavTab('radar');
+            else if (bottomNavTab === 'radar') setBottomNavTab('ride');
+          }
+        }
+      }}
+      style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', paddingBottom: '60px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+    >
       
       {bouncingBanner && isBiker && !riderAcceptedRide && (
         <div style={{
@@ -1582,7 +1598,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: PANEL (Full Screen Single Border Smooth Ticker) */}
+          {/* TAB 3: PANEL (Full Screen Single Border Smooth Ticker Scrolling Upwards) */}
           {bottomNavTab === 'panel' && (
             <div style={{ backgroundColor: '#0f172a', height: '100%', flex: 1, borderRadius: '16px', border: '1px solid #334155', padding: '14px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', borderBottom: '1px solid #334155', paddingBottom: '6px', flexShrink: 0 }}>
@@ -1833,7 +1849,7 @@ export default function App() {
 
             <button
               onClick={() => handleDeleteRide(matchedRide._id, matchedRide)}
-              style={{ width: '7px', borderRadius: '8px', border: '1px solid #7f1d1d', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '800', fontSize: '10px', cursor: 'pointer', width: '100%', padding: '7px' }}
+              style={{ width: '100%', padding: '7px', borderRadius: '8px', border: '1px solid #7f1d1d', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '800', fontSize: '10px', cursor: 'pointer' }}
             >
               Finish & Save History
             </button>
@@ -1886,7 +1902,7 @@ export default function App() {
                       <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>{trip.route}</span>
                       <span style={{ fontSize: '8px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '1px 5px', borderRadius: '4px' }}>+{trip.kmSaved} KM</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#94a3b8' }}>
+                    <div style={{ translateY: '0', display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#94a3b8' }}>
                       <span>Partner: {trip.partner}</span>
                       <span>{trip.date}</span>
                     </div>
