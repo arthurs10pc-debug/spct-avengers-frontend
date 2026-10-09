@@ -8,7 +8,7 @@ import {
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, MessageCircle, X, 
   Navigation, Trash2, ChevronDown, Crown, Radio, RotateCw,
-  History, Send, Bell, User, ShieldAlert, CheckCircle2, FileText, AlertOctagon, PlusCircle, Image, Video, Music, Type
+  History, Send, Bell, User, ShieldAlert, CheckCircle2, FileText, AlertOctagon, PlusCircle, Edit3
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -126,11 +126,11 @@ export default function App() {
   const [allUsersList, setAllUsersList] = useState([]);
   
   const [noticesList, setNoticesList] = useState([
-    { type: 'text', content: 'System Notice: Kindly allow all notifications & location permissions for seamless ride coordination.' },
-    { type: 'text', content: 'Operational Update: Keep GPS active so nearby pilots can accurately track active commutes.' }
+    { type: 'text', content: 'System Notice: Kindly allow all notifications & location permissions for seamless ride coordination.' }
   ]);
   const [mediaTypeInput, setMediaTypeInput] = useState('text');
-  const [mediaContentInput, setMediaContentInput] = useState('');
+  const [mediaTextInput, setMediaTextInput] = useState('');
+  const [mediaFileInput, setMediaFileInput] = useState(null);
 
   const [matchedRide, setMatchedRide] = useState(null);
   const [completedTripsHistory, setCompletedTripsHistory] = useState(() => {
@@ -667,16 +667,40 @@ export default function App() {
 
   const handleAddNotice = async (e) => {
     e.preventDefault();
-    if (!mediaContentInput.trim()) return;
+    let contentToPublish = mediaTextInput;
+
+    if (mediaTypeInput !== 'text') {
+      if (!mediaFileInput) {
+        alert("Please select a file from your device.");
+        return;
+      }
+      contentToPublish = URL.createObjectURL(mediaFileInput);
+    } else {
+      if (!mediaTextInput.trim()) return;
+      contentToPublish = mediaTextInput.trim();
+    }
+
     try {
-      const newEntry = { type: mediaTypeInput, content: mediaContentInput.trim() };
+      const newEntry = { type: mediaTypeInput, content: contentToPublish };
       const updated = [newEntry, ...noticesList];
       await axios.post(`${BACKEND_URL}/api/admin/notices`, { notices: updated });
       setNoticesList(updated);
-      setMediaContentInput('');
-      alert("Media notice published successfully to panel.");
+      setMediaTextInput('');
+      setMediaFileInput(null);
+      alert("Notice published successfully to panel.");
     } catch (err) {
       alert("Failed to add notice.");
+    }
+  };
+
+  const handleDeleteNotice = async (index) => {
+    if (!window.confirm("Delete this notice?")) return;
+    try {
+      const updated = noticesList.filter((_, idx) => idx !== index);
+      await axios.post(`${BACKEND_URL}/api/admin/notices`, { notices: updated });
+      setNoticesList(updated);
+    } catch (err) {
+      alert("Failed to delete notice.");
     }
   };
 
@@ -978,10 +1002,10 @@ export default function App() {
               </div>
             </div>
 
-            {/* COLUMN 2: Metrics, Flush Button, and Advanced Media Notice Creator */}
+            {/* COLUMN 2: Metrics, Notice Publisher & Manager */}
             <div style={{ padding: '16px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
               <div style={{ borderBottom: '1px solid #334155', paddingBottom: '6px', flexShrink: 0 }}>
-                <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>Metrics & Rich Media Publisher</h2>
+                <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>Metrics & Notice Manager</h2>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', flexShrink: 0 }}>
@@ -999,58 +1023,65 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Rich Media Notice Form */}
-              <form onSubmit={handleAddNotice} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+              {/* Local File / Text Notice Form */}
+              <form onSubmit={handleAddNotice} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Add Media Notice to Panel</label>
+                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Publish Notice / Media</label>
                   <select
                     value={mediaTypeInput}
-                    onChange={(e) => setMediaTypeInput(e.target.value)}
+                    onChange={(e) => { setMediaTypeInput(e.target.value); setMediaTextInput(''); setMediaFileInput(null); }}
                     style={{ backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: '800', outline: 'none' }}
                   >
                     <option value="text">Text</option>
-                    <option value="image">Image URL</option>
-                    <option value="audio">Audio URL</option>
-                    <option value="video">Video URL</option>
+                    <option value="image">Image (Local File)</option>
+                    <option value="audio">Audio (Local File)</option>
+                    <option value="video">Video (Local File)</option>
                   </select>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
+
+                {mediaTypeInput === 'text' ? (
                   <input
                     type="text"
-                    placeholder={mediaTypeInput === 'text' ? "Type notice text..." : `Enter ${mediaTypeInput} direct link...`}
-                    value={mediaContentInput}
-                    onChange={(e) => setMediaContentInput(e.target.value)}
-                    style={{ flex: 1, padding: '7px 9px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
+                    placeholder="Type notice message..."
+                    value={mediaTextInput}
+                    onChange={(e) => setMediaTextInput(e.target.value)}
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
                   />
-                  <button
-                    type="submit"
-                    style={{ background: '#38bdf8', border: 'none', padding: '7px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}
-                  >
-                    <PlusCircle size={13} /> Add
-                  </button>
-                </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept={mediaTypeInput === 'image' ? 'image/*' : mediaTypeInput === 'audio' ? 'audio/*' : 'video/*'}
+                    onChange={(e) => setMediaFileInput(e.target.files[0])}
+                    style={{ width: '100%', fontSize: '10px', color: '#f8fafc' }}
+                  />
+                )}
+
+                <button
+                  type="submit"
+                  style={{ background: '#38bdf8', border: 'none', padding: '7px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px' }}
+                >
+                  <PlusCircle size={13} /> Publish to Panel
+                </button>
               </form>
 
-              {/* Permission Failure Diagnostic Box */}
-              <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Edit/Delete Notice Manager List */}
+              <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexShrink: 0 }}>
-                  <ShieldAlert size={14} color="#f87171" />
-                  <h3 style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>Permission Issues</h3>
+                  <Edit3 size={14} color="#38bdf8" />
+                  <h3 style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>Manage Active Notices</h3>
                 </div>
 
                 <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {inactiveUsers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '10px', color: '#94a3b8', fontSize: '10px' }}>
-                      No permission blocks detected.
+                  {noticesList.map((n, idx) => (
+                    <div key={idx} style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                        [{n.type.toUpperCase()}] {n.type === 'text' ? n.content : 'Media File Attached'}
+                      </span>
+                      <button onClick={() => handleDeleteNotice(idx)} style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '4px 6px', borderRadius: '6px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', flexShrink: 0 }}>
+                        Delete
+                      </button>
                     </div>
-                  ) : (
-                    inactiveUsers.map((u) => (
-                      <div key={u._id} style={{ backgroundColor: '#1e293b', border: '1px solid #7f1d1d', borderRadius: '8px', padding: '5px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>{u.fullName || u.email}</span>
-                        <span style={{ fontSize: '8px', backgroundColor: '#7f1d1d', color: '#fecaca', padding: '2px 5px', borderRadius: '4px', fontWeight: '700' }}>Blocked</span>
-                      </div>
-                    ))
-                  )}
+                  ))}
                 </div>
               </div>
 
@@ -1551,7 +1582,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: PANEL (Rich Media Ticker with single border) */}
+          {/* TAB 3: PANEL (Full Screen Single Border Smooth Ticker) */}
           {bottomNavTab === 'panel' && (
             <div style={{ backgroundColor: '#0f172a', height: '100%', flex: 1, borderRadius: '16px', border: '1px solid #334155', padding: '14px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', borderBottom: '1px solid #334155', paddingBottom: '6px', flexShrink: 0 }}>
@@ -1559,7 +1590,7 @@ export default function App() {
               </div>
 
               <style>{`
-                @keyframes scrollNotices {
+                @keyframes scrollNoticesUp {
                   0% { transform: translateY(0); }
                   100% { transform: translateY(-50%); }
                 }
@@ -1577,7 +1608,7 @@ export default function App() {
                   display: flex;
                   flex-direction: column;
                   gap: 10px;
-                  animation: scrollNotices 12s linear infinite;
+                  animation: scrollNoticesUp 12s linear infinite;
                 }
                 .notice-ticker-track:hover {
                   animation-play-state: paused;
@@ -1802,7 +1833,7 @@ export default function App() {
 
             <button
               onClick={() => handleDeleteRide(matchedRide._id, matchedRide)}
-              style={{ width: '100%', padding: '7px', borderRadius: '8px', border: '1px solid #7f1d1d', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '800', fontSize: '10px', cursor: 'pointer' }}
+              style={{ width: '7px', borderRadius: '8px', border: '1px solid #7f1d1d', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '800', fontSize: '10px', cursor: 'pointer', width: '100%', padding: '7px' }}
             >
               Finish & Save History
             </button>
