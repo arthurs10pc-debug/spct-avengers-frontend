@@ -8,7 +8,7 @@ import {
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, MessageCircle, X, 
   Navigation, Trash2, ChevronDown, Crown, Radio, RotateCw,
-  History, Send, Bell, User, ShieldAlert, CheckCircle2, FileText, AlertOctagon, PlusCircle, Edit3, Clock
+  History, Send, Bell, User, ShieldAlert, CheckCircle2, FileText, AlertOctagon, PlusCircle, Edit3, Clock, Download
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -110,6 +110,8 @@ export default function App() {
 
   const [notificationGranted, setNotificationGranted] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(true);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
   const [phoneInput, setPhoneInput] = useState('');
   const [tempGoogleUser, setTempGoogleUser] = useState(null);
@@ -250,6 +252,27 @@ export default function App() {
       localStorage.setItem('spct_watcher_reminders', JSON.stringify(watcherReminders));
     } catch (e) {}
   }, [watcherReminders]);
+
+  useEffect(() => {
+    const standaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    setIsPwaInstalled(standaloneMode);
+
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event);
+    };
+    const handleAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+      setIsPwaInstalled(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     const checkForDueReminders = () => {
@@ -832,6 +855,19 @@ export default function App() {
     }
   };
 
+  const handleInstallPwa = async () => {
+    if (isPwaInstalled) return;
+    if (!deferredInstallPrompt) {
+      alert('Installation is not available in this browser yet. Use the install icon in the address bar or choose Install app from the browser menu.');
+      return;
+    }
+
+    await deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
+    if (choice.outcome === 'accepted') setIsPwaInstalled(true);
+  };
+
   const handleExportDatabasePDF = async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/admin/export-db`);
@@ -1076,6 +1112,15 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleInstallPwa}
+                disabled={isPwaInstalled}
+                style={{ border: 'none', background: isPwaInstalled ? '#334155' : '#38bdf8', color: isPwaInstalled ? '#94a3b8' : '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: isPwaInstalled ? 'default' : 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {isPwaInstalled ? <CheckCircle2 size={14} /> : <Download size={14} />}
+                {isPwaInstalled ? 'Installed' : 'Install App'}
+              </button>
+
               {/* Watcher Button with Clock Icon */}
               <button
                 onClick={() => setShowWatcherModal(true)}
