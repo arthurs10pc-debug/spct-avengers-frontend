@@ -135,9 +135,19 @@ export default function App() {
   // Watcher State for Admin
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [watcherTask, setWatcherTask] = useState('');
-  const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
-  const [watcherActive, setWatcherActive] = useState(false);
-  const watcherIntervalRef = useRef(null);
+  const [watcherTime, setWatcherTime] = useState('09:00');
+  const [watcherEditingId, setWatcherEditingId] = useState(null);
+  const [watcherReminders, setWatcherReminders] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('spct_watcher_reminders') || '[]');
+      return Array.isArray(saved)
+        ? saved.filter(reminder => reminder && reminder.id && reminder.task && /^\d{2}:\d{2}$/.test(reminder.time)).slice(0, 10)
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  const watcherRemindersRef = useRef(watcherReminders);
 
   const [matchedRide, setMatchedRide] = useState(null);
   const [completedTripsHistory, setCompletedTripsHistory] = useState(() => {
@@ -233,6 +243,48 @@ export default function App() {
       setBouncingBanner(null);
     }, 10000);
   }, [playPingSound]);
+
+  useEffect(() => {
+    watcherRemindersRef.current = watcherReminders;
+    try {
+      localStorage.setItem('spct_watcher_reminders', JSON.stringify(watcherReminders));
+    } catch (e) {}
+  }, [watcherReminders]);
+
+  useEffect(() => {
+    const checkForDueReminders = () => {
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const dueReminders = watcherRemindersRef.current.filter(
+        reminder => reminder.time === currentTime && reminder.lastTriggeredDate !== today
+      );
+
+      if (dueReminders.length === 0) return;
+
+      const dueIds = new Set(dueReminders.map(reminder => reminder.id));
+      const updatedReminders = watcherRemindersRef.current.map(reminder =>
+        dueIds.has(reminder.id) ? { ...reminder, lastTriggeredDate: today } : reminder
+      );
+      watcherRemindersRef.current = updatedReminders;
+      setWatcherReminders(updatedReminders);
+
+      dueReminders.forEach(reminder => {
+        playWatcherReminderSound();
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('SPCT Watcher Reminder', {
+            body: reminder.task,
+            icon: '/logo.png',
+            tag: `spct-watcher-${reminder.id}-${today}`
+          });
+        }
+      });
+    };
+
+    checkForDueReminders();
+    const interval = window.setInterval(checkForDueReminders, 10000);
+    return () => window.clearInterval(interval);
+  }, [playWatcherReminderSound]);
 
   const reportPermissionStatus = async (granted, gpsActive) => {
     if (!currentUser) return;
@@ -738,50 +790,46 @@ export default function App() {
     }
   };
 
-  // Watcher Setup Function
+  // Watcher Reminder Functions
   const handleSetupWatcher = async (e) => {
     e.preventDefault();
-    if (!watcherTask.trim()) {
-      alert("Please enter a task for the watcher.");
+    if (!watcherTask.trim() || !watcherTime) {
+      alert("Please enter a task and reminder time.");
       return;
     }
 
-    if (Notification.permission !== 'granted') {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') {
-        alert("Notification permission is required for the Watcher feature.");
-        return;
-      }
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
     }
 
-    if (watcherIntervalRef.current) {
-      clearInterval(watcherIntervalRef.current);
+    if (!watcherEditingId && watcherReminders.length >= 10) {
+      alert("You can save up to 10 reminders.");
+      return;
     }
 
-    const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
-    watcherIntervalRef.current = setInterval(() => {
-      playWatcherReminderSound();
-      if (Notification.permission === 'granted') {
-        new Notification("SPCT Watcher Reminder", {
-          body: `Reminder: ${watcherTask}`,
-          icon: "/logo.png"
-        });
-      }
-      alert(`⏰ Watcher Reminder: ${watcherTask}`);
-    }, intervalMs);
+    const existingReminder = watcherReminders.find(reminder => reminder.id === watcherEditingId);
+    const savedReminder = {
+      id: watcherEditingId || `${Date.now()}`,
+      task: watcherTask.trim(),
+      time: watcherTime,
+      lastTriggeredDate: existingReminder?.time === watcherTime ? existingReminder.lastTriggeredDate : null
+    };
 
-    setWatcherActive(true);
-    setShowWatcherModal(false);
-    alert(`Watcher activated! You will be reminded every ${watcherIntervalMin} minutes.`);
+    setWatcherReminders(prev => watcherEditingId
+      ? prev.map(reminder => reminder.id === watcherEditingId ? savedReminder : reminder)
+      : [...prev, savedReminder]);
+    setWatcherTask('');
+    setWatcherTime('09:00');
+    setWatcherEditingId(null);
   };
 
-  const handleStopWatcher = () => {
-    if (watcherIntervalRef.current) {
-      clearInterval(watcherIntervalRef.current);
-      watcherIntervalRef.current = null;
+  const handleDeleteWatcherReminder = (reminderId) => {
+    setWatcherReminders(prev => prev.filter(reminder => reminder.id !== reminderId));
+    if (watcherEditingId === reminderId) {
+      setWatcherEditingId(null);
+      setWatcherTask('');
+      setWatcherTime('09:00');
     }
-    setWatcherActive(false);
-    alert("Watcher deactivated.");
   };
 
   const handleExportDatabasePDF = async () => {
@@ -1030,16 +1078,10 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {/* Watcher Button with Clock Icon */}
               <button
-                onClick={() => {
-                  if (!watcherActive) {
-                    setShowWatcherModal(true);
-                  } else {
-                    handleStopWatcher();
-                  }
-                }}
-                style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => setShowWatcherModal(true)}
+                style={{ border: 'none', background: watcherReminders.length > 0 ? '#059669' : '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Clock size={14} /> {watcherActive ? "Watcher Active (Stop)" : "Watcher"}
+                <Clock size={14} /> Watcher ({watcherReminders.length}/10)
               </button>
 
               <button
@@ -1222,8 +1264,8 @@ export default function App() {
 
         {/* Watcher Modal Setup */}
         {showWatcherModal && (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-            <div style={{ backgroundColor: '#1e293b', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', overflowY: 'auto' }}>
+            <div style={{ backgroundColor: '#1e293b', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
               <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={15} />
               </button>
@@ -1232,12 +1274,16 @@ export default function App() {
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Clock size={20} />
                 </div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Setup Task Watcher</h3>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Daily Reminders ({watcherReminders.length}/10)</h3>
               </div>
+
+              <p style={{ margin: '0 0 14px', fontSize: '11px', lineHeight: 1.5, color: '#94a3b8' }}>
+                Saved in this browser. Notifications run while the app is open.
+              </p>
 
               <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>What task to remember?</label>
+                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Reminder</label>
                   <input
                     type="text"
                     required
@@ -1249,24 +1295,68 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Remind every (minutes)</label>
+                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Time</label>
                   <input
-                    type="number"
-                    min="1"
+                    type="time"
                     required
-                    value={watcherIntervalMin}
-                    onChange={(e) => setWatcherIntervalMin(e.target.value)}
+                    value={watcherTime}
+                    onChange={(e) => setWatcherTime(e.target.value)}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
-                >
-                  Start Watcher
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="submit"
+                    disabled={!watcherEditingId && watcherReminders.length >= 10}
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: !watcherEditingId && watcherReminders.length >= 10 ? '#475569' : '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: !watcherEditingId && watcherReminders.length >= 10 ? 'not-allowed' : 'pointer' }}
+                  >
+                    {watcherEditingId ? 'Save Changes' : 'Add Reminder'}
+                  </button>
+                  {watcherEditingId && (
+                    <button
+                      type="button"
+                      onClick={() => { setWatcherEditingId(null); setWatcherTask(''); setWatcherTime('09:00'); }}
+                      style={{ padding: '12px', borderRadius: '12px', border: '1px solid #475569', backgroundColor: '#334155', color: '#f8fafc', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </form>
+
+              <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {watcherReminders.length === 0 ? (
+                  <p style={{ margin: 0, padding: '16px', textAlign: 'center', border: '1px dashed #475569', borderRadius: '10px', color: '#94a3b8', fontSize: '12px' }}>
+                    No reminders saved
+                  </p>
+                ) : (
+                  [...watcherReminders].sort((first, second) => first.time.localeCompare(second.time)).map(reminder => (
+                    <div key={reminder.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0f172a' }}>
+                      <time style={{ minWidth: '54px', fontSize: '13px', fontWeight: '800', color: '#38bdf8' }}>{reminder.time}</time>
+                      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', fontSize: '12px', color: '#f8fafc' }}>{reminder.task}</span>
+                      <button
+                        type="button"
+                        title="Edit reminder"
+                        aria-label={`Edit reminder: ${reminder.task}`}
+                        onClick={() => { setWatcherEditingId(reminder.id); setWatcherTask(reminder.task); setWatcherTime(reminder.time); }}
+                        style={{ border: 'none', background: '#334155', color: '#f8fafc', padding: '7px', borderRadius: '7px', cursor: 'pointer', display: 'flex' }}
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete reminder"
+                        aria-label={`Delete reminder: ${reminder.task}`}
+                        onClick={() => handleDeleteWatcherReminder(reminder.id)}
+                        style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '7px', borderRadius: '7px', cursor: 'pointer', display: 'flex' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
