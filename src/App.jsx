@@ -132,9 +132,9 @@ export default function App() {
   const [mediaTextInput, setMediaTextInput] = useState('');
   const [mediaFileInput, setMediaFileInput] = useState(null);
 
-  // Admin Watcher States
+  // Watcher State for Admin
   const [showWatcherModal, setShowWatcherModal] = useState(false);
-  const [watcherTaskText, setWatcherTaskText] = useState('');
+  const [watcherTask, setWatcherTask] = useState('');
   const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
   const [watcherActive, setWatcherActive] = useState(false);
   const watcherIntervalRef = useRef(null);
@@ -258,47 +258,6 @@ export default function App() {
       }
     } catch (e) {
       reportPermissionStatus(false, false);
-    }
-  };
-
-  // Watcher Click & Permission Handler
-  const handleOpenWatcher = async () => {
-    if (Notification.permission !== 'granted') {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') {
-        alert("Notification permission is required to use the Watcher feature.");
-        return;
-      }
-    }
-    setShowWatcherModal(true);
-  };
-
-  const handleToggleWatcher = (e) => {
-    e.preventDefault();
-    if (!watcherTaskText.trim()) {
-      alert("Please enter a task for the watcher.");
-      return;
-    }
-
-    if (watcherActive) {
-      clearInterval(watcherIntervalRef.current);
-      setWatcherActive(false);
-      alert("Watcher stopped.");
-    } else {
-      const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
-      watcherIntervalRef.current = setInterval(() => {
-        if (Notification.permission === 'granted') {
-          new Notification("⏰ Admin Watcher Reminder", {
-            body: `Task Reminder: ${watcherTaskText}`,
-            icon: "/logo.png"
-          });
-        }
-        playPingSound();
-      }, intervalMs);
-
-      setWatcherActive(true);
-      setShowWatcherModal(false);
-      alert(`Watcher activated! You will be reminded every ${watcherIntervalMin} minutes.`);
     }
   };
 
@@ -753,6 +712,52 @@ export default function App() {
     }
   };
 
+  // Watcher Setup Function
+  const handleSetupWatcher = async (e) => {
+    e.preventDefault();
+    if (!watcherTask.trim()) {
+      alert("Please enter a task for the watcher.");
+      return;
+    }
+
+    if (Notification.permission !== 'granted') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        alert("Notification permission is required for the Watcher feature.");
+        return;
+      }
+    }
+
+    if (watcherIntervalRef.current) {
+      clearInterval(watcherIntervalRef.current);
+    }
+
+    const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
+    watcherIntervalRef.current = setInterval(() => {
+      playPingSound();
+      if (Notification.permission === 'granted') {
+        new Notification("SPCT Watcher Reminder", {
+          body: `Reminder: ${watcherTask}`,
+          icon: "/logo.png"
+        });
+      }
+      alert(`⏰ Watcher Reminder: ${watcherTask}`);
+    }, intervalMs);
+
+    setWatcherActive(true);
+    setShowWatcherModal(false);
+    alert(`Watcher activated! You will be reminded every ${watcherIntervalMin} minutes.`);
+  };
+
+  const handleStopWatcher = () => {
+    if (watcherIntervalRef.current) {
+      clearInterval(watcherIntervalRef.current);
+      watcherIntervalRef.current = null;
+    }
+    setWatcherActive(false);
+    alert("Watcher deactivated.");
+  };
+
   const handleExportDatabasePDF = async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/admin/export-db`);
@@ -830,12 +835,12 @@ export default function App() {
   if (showPermissionModal && !notificationGranted) {
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
-        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '28px', padding: '32px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '18px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
-            <Bell size={32} />
+        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '24px', padding: '28px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+            <Bell size={28} />
           </div>
           <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 8px 0', color: '#f8fafc' }}>Instant Ride Alerts</h2>
-          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '24px' }}>
+          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.4', marginBottom: '22px' }}>
             Please allow notifications and location access to receive real-time ride requests and updates in the background.
           </p>
           <button
@@ -852,58 +857,58 @@ export default function App() {
   if (!currentUser) {
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
-        <div style={{ width: '100%', maxWidth: '420px', textAlign: 'center', boxSizing: 'border-box' }}>
+        <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center', boxSizing: 'border-box' }}>
           
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
             <img 
               src="/logo.png" 
               alt="Logo" 
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              style={{ width: '76px', height: '76px', objectFit: 'contain' }} 
+              style={{ width: '72px', height: '72px', objectFit: 'contain' }} 
             />
           </div>
 
-          <h1 style={{ fontSize: '26px', fontWeight: '900', color: '#f8fafc', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>SPCT AVENGERS</h1>
-          <p style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginBottom: '32px' }}>Campus Ride-Pooling Infrastructure</p>
+          <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>SPCT AVENGERS</h1>
+          <p style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginBottom: '28px' }}>Campus Ride-Pooling Infrastructure</p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <button
               onClick={() => { setSelectedRole('biker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '22px', cursor: 'pointer', boxSizing: 'border-box' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '20px', cursor: 'pointer', boxSizing: 'border-box' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
-                  <Bike size={24} />
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
+                  <Bike size={22} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#f8fafc' }}>I Have a Bike</h3>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>I Have a Bike</h3>
                   <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Register as Rider Pilot</span>
                 </div>
               </div>
-              <ArrowRight size={20} color="#94a3b8" />
+              <ArrowRight size={18} color="#94a3b8" />
             </button>
 
             <button
               onClick={() => { setSelectedRole('ride_taker'); setShowAuthModal(true); setErrorMsg(''); setTempGoogleUser(null); }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '22px', cursor: 'pointer', boxSizing: 'border-box' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '20px', cursor: 'pointer', boxSizing: 'border-box' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
-                  <UserCheck size={24} />
+                <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
+                  <UserCheck size={22} />
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#f8fafc' }}>Need a Ride</h3>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Need a Ride</h3>
                   <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Register as Passenger</span>
                 </div>
               </div>
-              <ArrowRight size={20} color="#94a3b8" />
+              <ArrowRight size={18} color="#94a3b8" />
             </button>
           </div>
         </div>
 
         {showAuthModal && (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-            <div style={{ backgroundColor: '#1e293b', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '380px', position: 'relative', textAlign: 'center', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
+            <div style={{ backgroundColor: '#1e293b', borderRadius: '28px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', textAlign: 'center', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
               <button onClick={() => { setShowAuthModal(false); setTempGoogleUser(null); }} style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -982,42 +987,48 @@ export default function App() {
     const inactiveUsers = allUsersList.filter(u => u.notificationAllowed === false || u.gpsAllowed === false);
 
     return (
-      <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', backgroundColor: '#1e293b', borderRadius: '28px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', padding: '12px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', backgroundColor: '#1e293b', borderRadius: '24px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
           
-          <header style={{ padding: '16px 24px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
-                <Crown size={22} />
+          <header style={{ padding: '14px 20px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}>
+                <Crown size={20} />
               </div>
               <div>
-                <h1 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#f8fafc' }}>MASTER ADMIN DASHBOARD</h1>
-                <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '600' }}>{currentUser.email}</span>
+                <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>MASTER ADMIN DASHBOARD</h1>
+                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '600' }}>{currentUser.email}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {/* Watcher Button with Clock Icon */}
               <button
-                onClick={handleOpenWatcher}
-                title="Task Watcher Reminder"
-                style={{ border: 'none', background: watcherActive ? '#0284c7' : '#334155', color: '#f8fafc', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => {
+                  if (!watcherActive) {
+                    setShowWatcherModal(true);
+                  } else {
+                    handleStopWatcher();
+                  }
+                }}
+                style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Clock size={16} /> {watcherActive ? "Watcher Active" : "Set Watcher"}
+                <Clock size={14} /> {watcherActive ? "Watcher Active (Stop)" : "Watcher"}
               </button>
+
               <button
                 onClick={handleClearFullDB}
-                style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <AlertOctagon size={16} /> Clear Full DB
+                <AlertOctagon size={14} /> Clear Full DB
               </button>
               <button
                 onClick={handleExportDatabasePDF}
-                style={{ border: 'none', background: '#38bdf8', color: '#0f172a', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ border: 'none', background: '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <FileText size={16} /> Export PDF
+                <FileText size={14} /> Export PDF
               </button>
-              <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#f8fafc', padding: '8px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>
+              <button onClick={handleLogout} style={{ border: 'none', background: '#334155', color: '#f8fafc', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}>
                 Logout
               </button>
             </div>
@@ -1026,33 +1037,33 @@ export default function App() {
           <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 340px', flex: 1, overflow: 'hidden' }}>
             
             {/* COLUMN 1: Users List with Permanent Delete */}
-            <div style={{ borderRight: '1px solid #334155', padding: '18px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #334155', paddingBottom: '10px', flexShrink: 0 }}>
-                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Users Directory</h2>
-                <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '3px 8px', borderRadius: '6px' }}>
+            <div style={{ borderRight: '1px solid #334155', padding: '16px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #334155', paddingBottom: '8px', flexShrink: 0 }}>
+                <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>Users Directory</h2>
+                <span style={{ fontSize: '10px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '2px 6px', borderRadius: '6px' }}>
                   {allUsersList.length} Total
                 </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', flex: 1 }}>
                 {allUsersList.map((u) => (
-                  <div key={u._id} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#334155', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', flexShrink: 0 }}>
-                        <User size={18} />
+                  <div key={u._id} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#334155', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', flexShrink: 0 }}>
+                        <User size={16} />
                       </div>
                       <div style={{ overflow: 'hidden' }}>
-                        <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.fullName || u.email}</p>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{u.role} | {u.phone || 'No phone'}</p>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.fullName || u.email}</p>
+                        <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>{u.role} | {u.phone || 'No phone'}</p>
                       </div>
                     </div>
 
                     <button
                       onClick={() => handlePermanentDeleteUser(u._id, u.fullName || u.email)}
                       title="Permanently Delete User"
-                      style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '8px', borderRadius: '10px', cursor: 'pointer', flexShrink: 0 }}
+                      style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '6px', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 ))}
@@ -1060,39 +1071,39 @@ export default function App() {
             </div>
 
             {/* COLUMN 2: Metrics, Notice Publisher & Manager */}
-            <div style={{ padding: '18px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden' }}>
-              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '8px', flexShrink: 0 }}>
-                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Metrics & Notice Manager</h2>
+            <div style={{ padding: '16px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
+              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '6px', flexShrink: 0 }}>
+                <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>Metrics & Notice Manager</h2>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', flexShrink: 0 }}>
-                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '10px', borderRadius: '12px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Active Rides</span>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#38bdf8' }}>{rides.length}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', flexShrink: 0 }}>
+                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '8px', borderRadius: '10px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Active Rides</span>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '900', color: '#38bdf8' }}>{rides.length}</p>
                 </div>
-                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '10px', borderRadius: '12px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Matched</span>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#38bdf8' }}>{rides.filter(r => r.status === 'accepted').length}</p>
+                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '8px', borderRadius: '10px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Matched</span>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '900', color: '#38bdf8' }}>{rides.filter(r => r.status === 'accepted').length}</p>
                 </div>
-                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '10px', borderRadius: '12px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Issues</span>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#f87171' }}>{inactiveUsers.length}</p>
+                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', padding: '8px', borderRadius: '10px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Issues</span>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '18px', fontWeight: '900', color: '#f87171' }}>{inactiveUsers.length}</p>
                 </div>
               </div>
 
               {/* Local File / Text Notice Form */}
-              <form onSubmit={handleAddNotice} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+              <form onSubmit={handleAddNotice} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>Add Notice / Media (Local Upload)</label>
+                  <label style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Add Notice / Media (Local File)</label>
                   <select
                     value={mediaTypeInput}
                     onChange={(e) => { setMediaTypeInput(e.target.value); setMediaTextInput(''); setMediaFileInput(null); }}
-                    style={{ backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: '800', outline: 'none' }}
+                    style={{ backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: '800', outline: 'none' }}
                   >
                     <option value="text">Text</option>
-                    <option value="image">Image File</option>
-                    <option value="audio">Audio File</option>
-                    <option value="video">Video File</option>
+                    <option value="image">Image (Local File)</option>
+                    <option value="audio">Audio (Local File)</option>
+                    <option value="video">Video (Local File)</option>
                   </select>
                 </div>
 
@@ -1102,39 +1113,39 @@ export default function App() {
                     placeholder="Type notice message..."
                     value={mediaTextInput}
                     onChange={(e) => setMediaTextInput(e.target.value)}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
                   />
                 ) : (
                   <input
                     type="file"
                     accept={mediaTypeInput === 'image' ? 'image/*' : mediaTypeInput === 'audio' ? 'audio/*' : 'video/*'}
                     onChange={(e) => setMediaFileInput(e.target.files[0])}
-                    style={{ width: '100%', fontSize: '11px', color: '#f8fafc' }}
+                    style={{ width: '100%', fontSize: '10px', color: '#f8fafc' }}
                   />
                 )}
 
                 <button
                   type="submit"
-                  style={{ background: '#38bdf8', border: 'none', padding: '9px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px' }}
+                  style={{ background: '#38bdf8', border: 'none', padding: '7px 10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '11px' }}
                 >
-                  <PlusCircle size={15} /> Publish to Panel
+                  <PlusCircle size={13} /> Publish to Panel
                 </button>
               </form>
 
               {/* Edit/Delete Notice Manager List */}
-              <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexShrink: 0 }}>
-                  <Edit3 size={15} color="#38bdf8" />
-                  <h3 style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>Manage Active Notices</h3>
+              <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexShrink: 0 }}>
+                  <Edit3 size={14} color="#38bdf8" />
+                  <h3 style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>Manage Active Notices</h3>
                 </div>
 
-                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   {noticesList.map((n, idx) => (
-                    <div key={idx} style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                    <div key={idx} style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
                         [{n.type.toUpperCase()}] {n.type === 'text' ? n.content : 'Media File Attached'}
                       </span>
-                      <button onClick={() => handleDeleteNotice(idx)} style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '10px', fontWeight: '800', flexShrink: 0 }}>
+                      <button onClick={() => handleDeleteNotice(idx)} style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '4px 6px', borderRadius: '6px', cursor: 'pointer', fontSize: '9px', fontWeight: '800', flexShrink: 0 }}>
                         Delete
                       </button>
                     </div>
@@ -1142,37 +1153,37 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '16px', padding: '12px', flexShrink: 0 }}>
+              <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '10px', flexShrink: 0 }}>
                 <button
                   onClick={handleClearAllRides}
-                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <Trash2 size={15} /> Flush All Active Requests
+                  <Trash2 size={13} /> Flush All Active Requests
                 </button>
               </div>
             </div>
 
             {/* COLUMN 3: Live Stream */}
-            <div style={{ borderLeft: '1px solid #334155', padding: '18px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #334155', paddingBottom: '10px', flexShrink: 0 }}>
-                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Live Commute Stream</h2>
-                <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '3px 8px', borderRadius: '6px' }}>
+            <div style={{ borderLeft: '1px solid #334155', padding: '16px', backgroundColor: '#1e293b', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #334155', paddingBottom: '8px', flexShrink: 0 }}>
+                <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>Live Commute Stream</h2>
+                <span style={{ fontSize: '10px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '2px 6px', borderRadius: '6px' }}>
                   {rides.length} Active
                 </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', flex: 1 }}>
                 {rides.map((r) => (
-                  <div key={r._id} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div key={r._id} style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{r.creatorName}</span>
-                      <button onClick={() => handleDeleteRide(r._id)} style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}>
-                        <Trash2 size={13} />
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>{r.creatorName}</span>
+                      <button onClick={() => handleDeleteRide(r._id)} style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '4px', borderRadius: '6px', cursor: 'pointer' }}>
+                        <Trash2 size={12} />
                       </button>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>{r.fromLocation}</span>
-                      <ArrowRight size={12} color="#38bdf8" />
+                      <ArrowRight size={10} color="#38bdf8" />
                       <span>{r.toLocation}</span>
                     </div>
                   </div>
@@ -1183,53 +1194,51 @@ export default function App() {
           </div>
         </div>
 
-        {/* Watcher Modal for Admin */}
+        {/* Watcher Modal Setup */}
         {showWatcherModal && (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-            <div style={{ backgroundColor: '#1e293b', borderRadius: '28px', padding: '28px', width: '100%', maxWidth: '380px', position: 'relative', textAlign: 'center', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
-              <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={16} />
+            <div style={{ backgroundColor: '#1e293b', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', boxSizing: 'border-box' }}>
+              <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#334155', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={15} />
               </button>
-              
-              <div style={{ width: '52px', height: '52px', borderRadius: '16px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto' }}>
-                <Clock size={26} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={20} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Setup Task Watcher</h3>
               </div>
 
-              <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 6px 0', color: '#f8fafc' }}>Task Watcher Setup</h2>
-              <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '20px' }}>
-                Set a reminder task and interval to receive periodic notifications.
-              </p>
-
-              <form onSubmit={handleToggleWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+              <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Task Description</label>
+                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>What task to remember?</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Check active ride pool"
-                    value={watcherTaskText}
-                    onChange={(e) => setWatcherTaskText(e.target.value)}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                    placeholder="e.g., Check pending ride approvals"
+                    value={watcherTask}
+                    onChange={(e) => setWatcherTask(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Interval (Minutes)</label>
+                  <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Remind every (minutes)</label>
                   <input
                     type="number"
                     min="1"
                     required
                     value={watcherIntervalMin}
                     onChange={(e) => setWatcherIntervalMin(e.target.value)}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <button
                   type="submit"
-                  style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
                 >
-                  {watcherActive ? "Disable Watcher" : "Start Watcher Timer"}
+                  Start Watcher
                 </button>
               </form>
             </div>
@@ -1254,7 +1263,7 @@ export default function App() {
           }
         }
       }}
-      style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', paddingBottom: '70px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+      style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', paddingBottom: '60px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >
       
       {bouncingBanner && isBiker && !riderAcceptedRide && (
@@ -1264,40 +1273,39 @@ export default function App() {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 9999,
-          width: '92%',
-          maxWidth: '420px',
+          width: '90%',
+          maxWidth: '400px',
           backgroundColor: '#1e293b',
           border: '1px solid #38bdf8',
-          borderRadius: '18px',
-          padding: '16px 20px',
+          borderRadius: '16px',
+          padding: '14px 18px',
           boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
-          color: '#f8fafc',
-          boxSizing: 'border-box'
+          color: '#f8fafc'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span style={{ fontSize: '10px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span style={{ fontSize: '9px', fontWeight: '800', backgroundColor: '#38bdf8', color: '#0f172a', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
               High Priority Ride Request
             </span>
             <button onClick={() => setBouncingBanner(null)} style={{ background: 'none', border: 'none', color: '#f8fafc', cursor: 'pointer' }}>
-              <X size={16} />
+              <X size={14} />
             </button>
           </div>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '800', color: '#38bdf8' }}>
+          <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '800', color: '#38bdf8' }}>
             {bouncingBanner.fromLocation} to {bouncingBanner.toLocation}
           </h4>
-          <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#94a3b8' }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#94a3b8' }}>
             Passenger: {bouncingBanner.creatorName}
           </p>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={() => handleAcceptRide(bouncingBanner)}
-              style={{ flex: 1, padding: '10px', backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '8px', backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '8px', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
             >
               Accept Ride Now
             </button>
             <button
               onClick={() => setBouncingBanner(null)}
-              style={{ padding: '10px 14px', backgroundColor: '#334155', color: '#f8fafc', border: 'none', borderRadius: '10px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}
+              style={{ padding: '8px 12px', backgroundColor: '#334155', color: '#f8fafc', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}
             >
               Dismiss
             </button>
@@ -1305,20 +1313,20 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ flex: 1, maxWidth: '1080px', width: '100%', margin: '10px auto 0 auto', backgroundColor: '#1e293b', borderRadius: '24px', boxShadow: '0 20px 45px rgba(0,0,0,0.3)', border: '1px solid #334155', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, maxWidth: '1080px', width: '100%', margin: '8px auto 0 auto', backgroundColor: '#1e293b', borderRadius: '20px', boxShadow: '0 20px 45px rgba(0,0,0,0.3)', border: '1px solid #334155', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        <header style={{ padding: '16px 22px', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e293b', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <header style={{ padding: '12px 18px', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e293b', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {currentUser?.avatar ? (
-              <img src={currentUser.avatar} alt="Avatar" style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover' }} />
+              <img src={currentUser.avatar} alt="Avatar" style={{ width: '34px', height: '34px', borderRadius: '10px', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '14px' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px' }}>
                 {(currentUser?.name || currentUser?.fullName || currentUser?.email)?.charAt(0) || 'U'}
               </div>
             )}
             <div>
-              <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>{currentUser?.name || currentUser?.fullName || 'User'}</h2>
-              <span style={{ fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', backgroundColor: '#38bdf8', padding: '2px 8px', borderRadius: '4px' }}>
+              <h2 style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>{currentUser?.name || currentUser?.fullName || 'User'}</h2>
+              <span style={{ fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', backgroundColor: '#38bdf8', padding: '2px 6px', borderRadius: '4px' }}>
                 {isBiker ? 'Rider Pilot' : 'Passenger'}
               </span>
             </div>
@@ -1327,32 +1335,32 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowHistoryModal(true)}
-              style={{ padding: '8px 14px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
-              <History size={14} /> History ({completedTripsHistory.length})
+              <History size={13} /> History ({completedTripsHistory.length})
             </button>
             
-            <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#334155', padding: '8px', borderRadius: '10px', cursor: 'pointer', color: '#f8fafc' }}>
-              <LogOut size={16} />
+            <button onClick={handleLogout} title="Sign Out" style={{ border: 'none', background: '#334155', padding: '7px', borderRadius: '8px', cursor: 'pointer', color: '#f8fafc' }}>
+              <LogOut size={15} />
             </button>
           </div>
         </header>
 
-        <main style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', boxSizing: 'border-box', transition: 'all 0.3s ease-in-out' }}>
+        <main style={{ padding: '18px', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', boxSizing: 'border-box', transition: 'all 0.3s ease-in-out' }}>
           
           {/* TAB 1: RIDE */}
           {bottomNavTab === 'ride' && (
             <div>
               {!isBiker ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '22px', padding: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '20px', padding: '18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Navigation size={18} />
+                      <div style={{ width: '34px', height: '34px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Navigation size={17} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Request Commute</h3>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Connect with departing pilots instantly</p>
+                        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Request Commute</h3>
+                        <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>Connect with departing pilots instantly</p>
                       </div>
                     </div>
 
@@ -1370,9 +1378,9 @@ export default function App() {
                               setFromLoc(e.target.value);
                               setShowFromDropdown(true);
                             }}
-                            style={{ width: '100%', padding: '11px 36px 11px 12px', borderRadius: '10px', border: '1px solid #334155', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#1e293b', fontWeight: '700', color: '#f8fafc' }}
+                            style={{ width: '100%', padding: '11px 34px 11px 12px', borderRadius: '10px', border: '1px solid #334155', fontSize: '12px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#1e293b', fontWeight: '700', color: '#f8fafc' }}
                           />
-                          <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                          <ChevronDown size={16} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                         </div>
 
                         {showFromDropdown && (
@@ -1385,9 +1393,9 @@ export default function App() {
                                   setFromLoc(loc);
                                   setShowFromDropdown(false);
                                 }}
-                                style={{ padding: '9px 12px', fontSize: '12px', fontWeight: '700', color: '#f8fafc', cursor: 'pointer', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', color: '#f8fafc', cursor: 'pointer', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '6px' }}
                               >
-                                <MapPin size={13} color="#38bdf8" />
+                                <MapPin size={12} color="#38bdf8" />
                                 <span>{loc}</span>
                               </div>
                             ))}
@@ -1408,9 +1416,9 @@ export default function App() {
                               setToLoc(e.target.value);
                               setShowToDropdown(true);
                             }}
-                            style={{ width: '100%', padding: '11px 36px 11px 12px', borderRadius: '10px', border: '1px solid #334155', fontSize: '13px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#1e293b', fontWeight: '700', color: '#f8fafc' }}
+                            style={{ width: '100%', padding: '11px 34px 11px 12px', borderRadius: '10px', border: '1px solid #334155', fontSize: '12px', outline: 'none', boxSizing: 'border-box', backgroundColor: '#1e293b', fontWeight: '700', color: '#f8fafc' }}
                           />
-                          <ChevronDown size={18} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                          <ChevronDown size={16} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                         </div>
 
                         {showToDropdown && (
@@ -1423,9 +1431,9 @@ export default function App() {
                                   setToLoc(loc);
                                   setShowToDropdown(false);
                                 }}
-                                style={{ padding: '9px 12px', fontSize: '12px', fontWeight: '700', color: '#f8fafc', cursor: 'pointer', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', color: '#f8fafc', cursor: 'pointer', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '6px' }}
                               >
-                                <MapPin size={13} color="#38bdf8" />
+                                <MapPin size={12} color="#38bdf8" />
                                 <span>{loc}</span>
                               </div>
                             ))}
@@ -1435,26 +1443,26 @@ export default function App() {
 
                       <button 
                         type="submit"
-                        style={{ padding: '13px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                        style={{ padding: '13px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       >
                         <span>Post Ride Request</span>
-                        <ArrowRight size={16} />
+                        <ArrowRight size={15} />
                       </button>
                     </form>
                   </div>
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Active Trip Requests</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>Active Trip Requests</span>
                       <span style={{ fontSize: '10px', fontWeight: '800', padding: '3px 8px', backgroundColor: '#38bdf8', color: '#0f172a', borderRadius: '9999px' }}>
                         {rides.length} Active
                       </span>
                     </div>
 
                     {rides.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '28px', backgroundColor: '#0f172a', borderRadius: '18px', border: '1px solid #334155' }}>
-                        <p style={{ margin: '0 0 3px 0', fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>No requests in the pool</p>
-                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Post your route above to notify departing pilots.</p>
+                      <div style={{ textAlign: 'center', padding: '24px', backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #334155' }}>
+                        <p style={{ margin: '0 0 3px 0', fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>No requests in the pool</p>
+                        <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>Post your route above to notify departing pilots.</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1462,8 +1470,8 @@ export default function App() {
                           <div 
                             key={ride._id} 
                             style={{
-                              padding: '14px 18px',
-                              borderRadius: '16px',
+                              padding: '12px 16px',
+                              borderRadius: '14px',
                               backgroundColor: '#0f172a',
                               border: '1px solid #334155',
                               display: 'flex',
@@ -1472,12 +1480,12 @@ export default function App() {
                             }}
                           >
                             <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: '#f8fafc', marginBottom: '3px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '800', color: '#f8fafc', marginBottom: '3px' }}>
                                 <span>{ride.fromLocation}</span>
-                                <ArrowRight size={13} color="#38bdf8" />
+                                <ArrowRight size={12} color="#38bdf8" />
                                 <span>{ride.toLocation}</span>
                               </div>
-                              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '10px', color: '#94a3b8' }}>
                                 <span>Passenger: {ride.creatorName}</span>
                               </div>
                             </div>
@@ -1496,9 +1504,9 @@ export default function App() {
                                       alert("Alert ping dispatched to all active riders.");
                                     }
                                   }}
-                                  style={{ padding: '6px 10px', backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '8px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  style={{ padding: '6px 10px', backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '7px', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                 >
-                                  <Bell size={12} /> Ring Pilot
+                                  <Bell size={11} /> Ring Pilot
                                 </button>
                               )}
 
@@ -1521,8 +1529,8 @@ export default function App() {
               ) : (
                 <div>
                   {riderAcceptedRide ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                      <div style={{ backgroundColor: '#0f172a', border: '1px solid #38bdf8', borderRadius: '22px', padding: '22px', boxShadow: '0 14px 30px rgba(0,0,0,0.4)', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ backgroundColor: '#0f172a', border: '1px solid #38bdf8', borderRadius: '20px', padding: '20px', boxShadow: '0 14px 30px rgba(0,0,0,0.4)', width: '100%', boxSizing: 'border-box' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                           <span style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', backgroundColor: '#38bdf8', color: '#0f172a', padding: '3px 10px', borderRadius: '9999px' }}>
                             Active Trip Assigned
@@ -1530,41 +1538,41 @@ export default function App() {
                           <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>In Progress</span>
                         </div>
 
-                        <h3 style={{ margin: '0 0 4px 0', fontSize: '17px', fontWeight: '800', color: '#f8fafc', wordBreak: 'break-word' }}>
+                        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#f8fafc', wordBreak: 'break-word' }}>
                           {riderAcceptedRide.fromLocation} to {riderAcceptedRide.toLocation}
                         </h3>
-                        <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#94a3b8' }}>
+                        <p style={{ margin: '0 0 14px 0', fontSize: '11px', color: '#94a3b8' }}>
                           Passenger: <strong style={{ color: '#f8fafc' }}>{riderAcceptedRide.creatorName}</strong>
                         </p>
 
-                        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '14px', padding: '14px', marginBottom: '16px' }}>
-                          <span style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Passenger Mobile</span>
-                          <p style={{ margin: '4px 0 0 0', fontSize: '16px', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace' }}>
+                        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '14px', marginBottom: '14px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Passenger Mobile</span>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace' }}>
                             {riderAcceptedRide.creatorPhone}
                           </p>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <a
                             href={`tel:${riderAcceptedRide.creatorPhone}`}
-                            style={{ padding: '11px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            style={{ padding: '10px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                           >
-                            <Phone size={15} /> Call Passenger
+                            <Phone size={14} /> Call Passenger
                           </a>
 
                           <a
                             href={`https://wa.me/91${riderAcceptedRide.creatorPhone}`}
                             target="_blank"
                             rel="noreferrer"
-                            style={{ padding: '11px', borderRadius: '10px', backgroundColor: '#334155', color: '#f8fafc', fontWeight: '800', fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            style={{ padding: '10px', borderRadius: '10px', backgroundColor: '#334155', color: '#f8fafc', fontWeight: '800', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                           >
-                            <MessageCircle size={15} /> WhatsApp
+                            <MessageCircle size={14} /> WhatsApp
                           </a>
                         </div>
 
                         <button
                           onClick={() => handleDeleteRide(riderAcceptedRide._id, riderAcceptedRide)}
-                          style={{ marginTop: '12px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '800', fontSize: '12px', cursor: 'pointer' }}
+                          style={{ marginTop: '12px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
                         >
                           Complete & Finish Trip
                         </button>
@@ -1572,12 +1580,12 @@ export default function App() {
                     </div>
                   ) : (
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '16px 20px', backgroundColor: '#0f172a', borderRadius: '18px', border: '1px solid #334155' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', padding: '14px 18px', backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid #334155' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#38bdf8', display: 'inline-block' }} />
                           <div>
                             <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Live Rider Stream</h3>
-                            <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>Accept passenger requests from the queue</p>
+                            <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>Accept passenger requests from the queue</p>
                           </div>
                         </div>
                         <span style={{ fontSize: '11px', fontWeight: '800', padding: '3px 8px', backgroundColor: '#38bdf8', color: '#0f172a', borderRadius: '9999px' }}>
@@ -1586,10 +1594,10 @@ export default function App() {
                       </div>
 
                       {unacceptedRidesForBikers.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '40px 18px', backgroundColor: '#0f172a', borderRadius: '22px', border: '1px solid #334155' }}>
+                        <div style={{ textAlign: 'center', padding: '40px 16px', backgroundColor: '#0f172a', borderRadius: '20px', border: '1px solid #334155' }}>
                           <Bike size={32} color="#38bdf8" style={{ marginBottom: '8px' }} />
                           <p style={{ margin: '0 0 3px 0', fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Stream is quiet</p>
-                          <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>No passenger requests in the pool currently.</p>
+                          <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>No passenger requests in the pool currently.</p>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1612,7 +1620,7 @@ export default function App() {
                                   <ArrowRight size={12} color="#38bdf8" />
                                   <span>{ride.toLocation}</span>
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                <div style={{ fontSize: '10px', color: '#94a3b8' }}>
                                   <span>Passenger: {ride.creatorName}</span>
                                 </div>
                               </div>
@@ -1620,7 +1628,7 @@ export default function App() {
                               <button 
                                 onClick={() => handleAcceptRide(ride)}
                                 title="Accept Request"
-                                style={{ width: '40px', height: '40px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                style={{ width: '38px', height: '38px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               >
                                 <Check size={18} strokeWidth={3} />
                               </button>
@@ -1647,10 +1655,10 @@ export default function App() {
                   position: absolute;
                   top: 50%;
                   left: 50%;
-                  width: 260px;
-                  height: 260px;
-                  margin-top: -130px;
-                  margin-left: -130px;
+                  width: 240px;
+                  height: 240px;
+                  margin-top: -120px;
+                  margin-left: -120px;
                   background: conic-gradient(from 0deg at 50% 50%, rgba(56, 189, 248, 0.4) 0deg, rgba(56, 189, 248, 0.0) 65deg, transparent 360deg);
                   border-radius: 50%;
                   animation: radarSweep 3.2s linear infinite;
@@ -1671,9 +1679,9 @@ export default function App() {
                 </button>
               </div>
 
-              <div style={{ width: '100%', height: '340px', backgroundColor: '#0f172a', borderRadius: '20px', border: '1px solid #334155', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ position: 'absolute', width: '260px', height: '260px', borderRadius: '50%', border: '1px dashed rgba(56,189,248,0.3)' }} />
-                <div style={{ position: 'absolute', width: '150px', height: '150px', borderRadius: '50%', border: '1px dashed rgba(56,189,248,0.4)' }} />
+              <div style={{ width: '100%', height: '320px', backgroundColor: '#0f172a', borderRadius: '18px', border: '1px solid #334155', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ position: 'absolute', width: '240px', height: '240px', borderRadius: '50%', border: '1px dashed rgba(56,189,248,0.3)' }} />
+                <div style={{ position: 'absolute', width: '140px', height: '140px', borderRadius: '50%', border: '1px dashed rgba(56,189,248,0.4)' }} />
                 <div className="fighter-sweep-beam" />
 
                 <div style={{ width: '14px', height: '14px', backgroundColor: '#f8fafc', borderRadius: '50%', boxShadow: '0 0 12px #38bdf8', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1687,7 +1695,7 @@ export default function App() {
                 ) : (
                   bikersWithin2Km.map((biker, idx) => {
                     const angle = (idx * 90) * (Math.PI / 180);
-                    const radius = 80 + (idx * 22);
+                    const radius = 75 + (idx * 22);
                     const x = Math.cos(angle) * radius;
                     const y = Math.sin(angle) * radius;
 
@@ -1697,9 +1705,9 @@ export default function App() {
                         style={{ position: 'absolute', transform: `translate(${x}px, ${y}px)`, zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
                       >
                         <div style={{ backgroundColor: '#38bdf8', padding: '4px', borderRadius: '50%', border: '1px solid #0f172a' }}>
-                          <Bike size={14} color="#0f172a" />
+                          <Bike size={15} color="#0f172a" />
                         </div>
-                        <span style={{ fontSize: '9px', fontWeight: '800', backgroundColor: '#1e293b', color: '#f8fafc', padding: '2px 4px', borderRadius: '4px', marginTop: '2px', border: '1px solid #334155' }}>{biker.distance} KM</span>
+                        <span style={{ fontSize: '9px', fontWeight: '800', backgroundColor: '#1e293b', color: '#f8fafc', padding: '2px 5px', borderRadius: '4px', marginTop: '2px', border: '1px solid #334155' }}>{biker.distance} KM</span>
                       </div>
                     );
                   })
@@ -1734,7 +1742,7 @@ export default function App() {
                   display: flex;
                   flex-direction: column;
                   gap: 12px;
-                  animation: scrollNoticesUp 12s linear infinite;
+                  animation: scrollNoticesUp 14s linear infinite;
                 }
                 .notice-ticker-track:hover {
                   animation-play-state: paused;
@@ -1862,47 +1870,47 @@ export default function App() {
       </div>
 
       {matchedRide && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#1e293b', borderRadius: '24px', padding: '22px', width: '100%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', border: '1px solid #334155', maxHeight: '90vh', overflowY: 'auto', color: '#f8fafc', boxSizing: 'border-box' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
-              <Check size={26} />
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#1e293b', borderRadius: '22px', padding: '18px', width: '100%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', border: '1px solid #334155', maxHeight: '90vh', overflowY: 'auto', color: '#f8fafc' }}>
+            <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto' }}>
+              <Check size={24} />
             </div>
 
             <span style={{ fontSize: '10px', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', backgroundColor: '#38bdf8', padding: '3px 10px', borderRadius: '9999px' }}>
               Commute Matched
             </span>
-            <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#f8fafc', margin: '6px 0 3px 0' }}>Ride Confirmed</h2>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 14px 0' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', margin: '6px 0 2px 0' }}>Ride Confirmed</h2>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 12px 0' }}>
               {matchedRide.fromLocation} to {matchedRide.toLocation}
             </p>
 
-            <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '12px', textAlign: 'left', marginBottom: '14px', boxSizing: 'border-box' }}>
+            <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '10px', textAlign: 'left', marginBottom: '12px' }}>
               <p style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Partner Details</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>
+                <span style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>
                   {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.name : matchedRide.creatorName}
                 </span>
                 <span style={{ fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', padding: '2px 6px', backgroundColor: '#38bdf8', borderRadius: '4px', color: '#0f172a' }}>
                   {matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.role : matchedRide.creatorRole}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#38bdf8', fontWeight: '800' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#38bdf8', fontWeight: '800' }}>
                 <Phone size={13} color="#38bdf8" />
                 <span>{matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}</span>
               </div>
             </div>
 
-            <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '12px', textAlign: 'left', marginBottom: '14px', boxSizing: 'border-box' }}>
+            <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '14px', padding: '10px', textAlign: 'left', marginBottom: '12px' }}>
               <p style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', margin: '0 0 6px 0' }}>
                 In-App Quick Messages
               </p>
 
               <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '8px', height: '80px', overflowY: 'auto', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {chatMessages.filter(m => m.rideId === matchedRide._id).length === 0 ? (
-                  <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', margin: 'auto' }}>No messages yet. Send a preset below.</p>
+                  <p style={{ fontSize: '10px', color: '#94a3b8', textAlign: 'center', margin: 'auto' }}>No messages yet. Send a preset below.</p>
                 ) : (
                   chatMessages.filter(m => m.rideId === matchedRide._id).map((m, idx) => (
-                    <div key={idx} style={{ fontSize: '10px', backgroundColor: m.senderName === (currentUser.name || currentUser.fullName) ? '#0369a1' : '#334155', color: '#f8fafc', padding: '4px 8px', borderRadius: '6px', alignSelf: m.senderName === (currentUser.name || currentUser.fullName) ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                    <div key={idx} style={{ fontSize: '10px', backgroundColor: m.senderName === (currentUser.name || currentUser.fullName) ? '#0369a1' : '#334155', color: '#f8fafc', padding: '4px 6px', borderRadius: '6px', alignSelf: m.senderName === (currentUser.name || currentUser.fullName) ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                       <strong>{m.senderName}:</strong> {m.text} <span style={{ fontSize: '8px', opacity: 0.8 }}>({m.time})</span>
                     </div>
                   ))
@@ -1929,11 +1937,11 @@ export default function App() {
                   value={customChatMessage}
                   onChange={(e) => setCustomChatMessage(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSendChatMessage(customChatMessage); }}
-                  style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '7px 9px', borderRadius: '7px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '10px', outline: 'none' }}
                 />
                 <button
                   onClick={() => handleSendChatMessage(customChatMessage)}
-                  style={{ background: '#38bdf8', border: 'none', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '800', color: '#0f172a' }}
+                  style={{ background: '#38bdf8', border: 'none', padding: '7px 10px', borderRadius: '7px', cursor: 'pointer', fontWeight: '800', color: '#0f172a' }}
                 >
                   <Send size={13} />
                 </button>
@@ -1943,7 +1951,7 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
               <a 
                 href={`tel:${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
-                style={{ padding: '10px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                style={{ padding: '9px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
                 <Phone size={13} /> Call Partner
               </a>
@@ -1952,7 +1960,7 @@ export default function App() {
                 href={`https://wa.me/91${matchedRide.creatorId === currentUser._id ? matchedRide.acceptedBy?.phone : matchedRide.creatorPhone}`}
                 target="_blank"
                 rel="noreferrer"
-                style={{ padding: '10px', borderRadius: '10px', backgroundColor: '#334155', color: '#f8fafc', fontWeight: '800', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                style={{ padding: '9px', borderRadius: '10px', backgroundColor: '#334155', color: '#f8fafc', fontWeight: '800', fontSize: '11px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
                 <MessageCircle size={13} /> WhatsApp
               </a>
@@ -1960,7 +1968,7 @@ export default function App() {
 
             <button
               onClick={() => handleDeleteRide(matchedRide._id, matchedRide)}
-              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #7f1d1d', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '9px', borderRadius: '10px', border: '1px solid #7f1d1d', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
             >
               Finish & Save History
             </button>
@@ -1969,8 +1977,8 @@ export default function App() {
       )}
 
       {showHistoryModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#1e293b', borderRadius: '24px', padding: '22px', width: '100%', maxWidth: '380px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', border: '1px solid #334155', maxHeight: '85vh', display: 'flex', flexDirection: 'column', color: '#f8fafc', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#1e293b', borderRadius: '22px', padding: '18px', width: '100%', maxWidth: '380px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', border: '1px solid #334155', maxHeight: '85vh', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #334155', paddingBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2002,7 +2010,7 @@ export default function App() {
 
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px' }}>
               {completedTripsHistory.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '30px 16px', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '30px 14px', color: '#94a3b8' }}>
                   <History size={28} color="#94a3b8" style={{ margin: '0 auto 6px auto' }} />
                   <p style={{ margin: 0, fontSize: '11px', fontWeight: '700' }}>No completed trips recorded</p>
                 </div>
