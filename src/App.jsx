@@ -200,6 +200,32 @@ export default function App() {
     } catch (e) {}
   }, []);
 
+  const playWatcherReminderSound = useCallback(() => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      const ctx = new AudioContextClass();
+      [523.25, 659.25, 783.99].forEach((frequency, index) => {
+        const startTime = ctx.currentTime + index * 0.18;
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.16, startTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.24);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.25);
+      });
+
+      window.setTimeout(() => ctx.close().catch(() => {}), 800);
+    } catch (e) {}
+  }, []);
+
   const triggerBouncingBanner = useCallback((rideObj) => {
     playPingSound();
     setBouncingBanner(rideObj);
@@ -734,7 +760,7 @@ export default function App() {
 
     const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
     watcherIntervalRef.current = setInterval(() => {
-      playPingSound();
+      playWatcherReminderSound();
       if (Notification.permission === 'granted') {
         new Notification("SPCT Watcher Reminder", {
           body: `Reminder: ${watcherTask}`,
