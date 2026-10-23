@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
+import './App.css';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, MessageCircle, X, 
@@ -92,12 +93,6 @@ export default function App() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [bottomNavTab, setBottomNavTab] = useState('ride');
 
-  const [notificationGranted, setNotificationGranted] = useState(
-    () => typeof Notification !== 'undefined' && Notification.permission === 'granted'
-  );
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [locationMessage, setLocationMessage] = useState('');
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
@@ -163,7 +158,6 @@ export default function App() {
   const googleBtnRef = useRef(null);
   const fromContainerRef = useRef(null);
   const toContainerRef = useRef(null);
-  const swRegistrationRef = useRef(null);
   const touchStartX = useRef(0);
 
   const isAdmin = currentUser?.email === ADMIN_EMAIL;
@@ -226,53 +220,6 @@ export default function App() {
 
       window.setTimeout(() => ctx.close().catch(() => {}), 800);
     } catch (e) {}
-  }, []);
-
-  const showDesktopNotification = useCallback(async (title, body, tag) => {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false;
-
-    const options = {
-      body,
-      icon: '/logo.png',
-      badge: '/logo.png',
-      tag,
-      renotify: true,
-      requireInteraction: true
-    };
-
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = swRegistrationRef.current
-          || await navigator.serviceWorker.getRegistration()
-          || await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        swRegistrationRef.current = registration;
-        if (registration.showNotification) {
-          await registration.showNotification(title, options);
-          return true;
-        }
-      } catch (error) {
-        console.error('Service-worker notification failed; trying a browser notification.', error);
-      }
-    }
-
-    try {
-      await new Promise((resolve, reject) => {
-        const notification = new Notification(title, options);
-        const timeout = window.setTimeout(() => reject(new Error('The browser did not confirm that the notification was shown.')), 3000);
-        notification.onshow = () => {
-          window.clearTimeout(timeout);
-          resolve();
-        };
-        notification.onerror = (event) => {
-          window.clearTimeout(timeout);
-          reject(event);
-        };
-      });
-      return true;
-    } catch (error) {
-      console.error('Could not show the desktop reminder notification.', error);
-      return false;
-    }
   }, []);
 
   const triggerBouncingBanner = useCallback((rideObj) => {
@@ -351,18 +298,13 @@ export default function App() {
 
       dueReminders.forEach(reminder => {
         playWatcherReminderSound();
-        showDesktopNotification(
-          'SPCT Watcher Reminder',
-          reminder.task,
-          `spct-watcher-${reminder.id}-${today}`
-        );
       });
     };
 
     checkForDueReminders();
     const interval = window.setInterval(checkForDueReminders, 10000);
     return () => window.clearInterval(interval);
-  }, [playWatcherReminderSound, showDesktopNotification]);
+  }, [playWatcherReminderSound]);
 
   const reportPermissionStatus = async (granted, gpsActive) => {
     if (!currentUser) return;
@@ -376,75 +318,18 @@ export default function App() {
     } catch (e) {}
   };
 
-  const enableDesktopNotifications = async (sendTest = false) => {
-    if (typeof Notification === 'undefined') {
-      setNotificationGranted(false);
-      setNotificationMessage('This browser does not support desktop notifications.');
-      return false;
-    }
-    if (!window.isSecureContext) {
-      const message = 'Desktop notifications require a secure HTTPS connection.';
-      setNotificationMessage(message);
-      alert(message);
-      return false;
-    }
-
-    try {
-      const permission = Notification.permission === 'default'
-        ? await Notification.requestPermission()
-        : Notification.permission;
-      setNotificationGranted(permission === 'granted');
-
-      if (permission !== 'granted') {
-        const message = permission === 'denied'
-          ? 'Notifications are blocked for this site. Allow them in Chrome Site settings, then reload.'
-          : 'Notification permission was not granted.';
-        setNotificationMessage(message);
-        alert(message);
-        return false;
-      }
-
-      setShowPermissionModal(false);
-      setNotificationMessage('Desktop notifications are enabled.');
-
-      if (sendTest) {
-        const shown = await showDesktopNotification(
-          'SPCT Watcher Test',
-          'Desktop notifications are working. Scheduled reminders will appear here.',
-          `spct-watcher-test-${Date.now()}`
-        );
-        if (!shown) {
-          const message = 'Chrome could not show the test notification. Check Chrome and Windows notification settings.';
-          setNotificationMessage(message);
-          alert(message);
-          return false;
-        }
-        setNotificationMessage('Test notification shown. Check your Windows notification area.');
-      }
-      reportPermissionStatus(true, true);
-      return true;
-    } catch (error) {
-      console.error('Could not enable desktop notifications.', error);
-      setNotificationMessage('Could not enable notifications. Check this site’s Chrome permissions.');
-      alert('Could not enable desktop notifications. Check this site’s Chrome permissions and try again.');
-      return false;
-    }
-  };
-
   useEffect(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      setNotificationGranted(true);
-      setShowPermissionModal(false);
       reportPermissionStatus(true, true);
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/firebase-messaging-sw.js').then(async registration => {
           await navigator.serviceWorker.ready;
           const readyRegistration = await navigator.serviceWorker.getRegistration();
-          swRegistrationRef.current = readyRegistration || registration;
-          if ('PushManager' in window && swRegistrationRef.current.pushManager) {
-            let subscription = await swRegistrationRef.current.pushManager.getSubscription();
+          const activeRegistration = readyRegistration || registration;
+          if ('PushManager' in window && activeRegistration.pushManager) {
+            let subscription = await activeRegistration.pushManager.getSubscription();
             if (!subscription) {
-              subscription = await swRegistrationRef.current.pushManager.subscribe({
+              subscription = await activeRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
               });
@@ -502,28 +387,6 @@ export default function App() {
       );
     }
   }, [isBiker, currentUser]);
-
-  const requestLocationAccess = () => {
-    if (!navigator.geolocation) {
-      setLocationMessage('Location is not supported by this browser.');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setLocationMessage('Location access is enabled.');
-      },
-      error => {
-        const message = error.code === error.PERMISSION_DENIED
-          ? 'Location is blocked. Allow it in Chrome Site settings.'
-          : 'Could not get your location. Check device location settings and try again.';
-        setLocationMessage(message);
-        alert(message);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
 
   useEffect(() => {
     fetchLiveGPS();
@@ -1035,31 +898,43 @@ export default function App() {
 
   const totalKmSavedSum = completedTripsHistory.reduce((acc, curr) => acc + parseFloat(curr.kmSaved || 0), 0).toFixed(1);
 
-  if (showPermissionModal && !notificationGranted) {
-    return (
-      <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', color: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
-        <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '24px', padding: '28px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '16px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
-            <Bell size={28} />
+  const watcherReminderPopup = activeWatcherReminders.length > 0 && (
+    <div
+      className="watcher-alert-backdrop"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="watcher-alert-title"
+    >
+      <section className="watcher-alert-card">
+        <div className="watcher-alert-heading">
+          <div className="watcher-alert-bell"><Bell size={30} /></div>
+          <div>
+            <p className="watcher-alert-eyebrow">REMINDER ALERT</p>
+            <h2 id="watcher-alert-title">It’s time!</h2>
+            <p className="watcher-alert-subtitle">You scheduled this reminder for now.</p>
           </div>
-          <h2 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 8px 0', color: '#f8fafc' }}>Instant Ride Alerts</h2>
-          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.4', marginBottom: '22px' }}>
-            Please allow notifications and location access to receive real-time ride requests and updates in the background.
-          </p>
-          <button
-            onClick={() => enableDesktopNotifications()}
-            style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
-          >
-            Allow Notifications & GPS
-          </button>
         </div>
-      </div>
-    );
-  }
+        <div className="watcher-alert-list">
+          {activeWatcherReminders.map(reminder => (
+            <article className="watcher-alert-item" key={reminder.id}>
+              <p>{reminder.task}</p>
+              <button
+                type="button"
+                onClick={() => setActiveWatcherReminders(current => current.filter(active => active.id !== reminder.id))}
+              >
+                Dismiss
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 
   if (!currentUser) {
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
+        {watcherReminderPopup}
         <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center', boxSizing: 'border-box' }}>
           
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
@@ -1191,40 +1066,7 @@ export default function App() {
 
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', padding: '12px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {activeWatcherReminders.length > 0 && (
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="watcher-alert-title"
-            style={{ position: 'fixed', inset: 0, zIndex: 10000, backgroundColor: 'rgba(2,6,23,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}
-          >
-            <div style={{ width: '100%', maxWidth: '420px', padding: '24px', borderRadius: '20px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', boxShadow: '0 24px 60px rgba(0,0,0,0.65)', color: '#f8fafc', boxSizing: 'border-box' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Bell size={22} />
-                </div>
-                <div>
-                  <h2 id="watcher-alert-title" style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>Reminder time</h2>
-                  <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: '12px' }}>Your scheduled reminder is due.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {activeWatcherReminders.map(reminder => (
-                  <div key={reminder.id} style={{ padding: '12px', borderRadius: '12px', backgroundColor: '#0f172a', border: '1px solid #334155' }}>
-                    <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '700', overflowWrap: 'anywhere' }}>{reminder.task}</p>
-                    <button
-                      type="button"
-                      onClick={() => setActiveWatcherReminders(current => current.filter(active => active.id !== reminder.id))}
-                      style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '9px', backgroundColor: '#38bdf8', color: '#0f172a', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {watcherReminderPopup}
         <div style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', backgroundColor: '#1e293b', borderRadius: '24px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
           
           <header style={{ padding: '14px 20px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -1239,23 +1081,6 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => enableDesktopNotifications(true)}
-                title={notificationMessage || (notificationGranted ? 'Send a desktop notification test' : 'Allow desktop notifications')}
-                style={{ border: 'none', background: notificationGranted ? '#059669' : '#38bdf8', color: '#0f172a', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <Bell size={13} /> {notificationGranted ? 'Test Notification' : 'Enable Notifications'}
-              </button>
-              <button
-                type="button"
-                onClick={requestLocationAccess}
-                title={locationMessage || 'Allow or refresh location access'}
-                style={{ border: '1px solid #334155', background: '#1e293b', color: '#f8fafc', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <MapPin size={13} /> Location
-              </button>
-              {notificationMessage && <span role="status" style={{ color: notificationGranted ? '#86efac' : '#fecaca', fontSize: '10px' }}>{notificationMessage}</span>}
               <button
                 onClick={handleInstallPwa}
                 disabled={isPwaInstalled}
@@ -1468,15 +1293,8 @@ export default function App() {
               </div>
 
               <p style={{ margin: '0 0 14px', fontSize: '11px', lineHeight: 1.5, color: '#94a3b8' }}>
-                Allow Chrome notifications to see reminders while using other tabs or apps. Keep Chrome running; reminders cannot fire after the browser is fully closed.
+                Reminders appear as a large on-screen alert while this app is open. Keep the app open for scheduled reminders.
               </p>
-              <button
-                type="button"
-                onClick={() => enableDesktopNotifications(true)}
-                style={{ width: '100%', marginBottom: '14px', padding: '10px', borderRadius: '10px', border: '1px solid #38bdf8', backgroundColor: '#0f172a', color: '#38bdf8', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
-              >
-                Enable & Test Desktop Notifications
-              </button>
 
               <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
                 <div>
@@ -1578,6 +1396,7 @@ export default function App() {
       }}
       style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', paddingBottom: '60px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >
+      {watcherReminderPopup}
       
       {bouncingBanner && isBiker && !riderAcceptedRide && (
         <div style={{
@@ -1646,23 +1465,6 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => enableDesktopNotifications(true)}
-              title={notificationMessage || (notificationGranted ? 'Send a desktop notification test' : 'Allow desktop notifications')}
-              style={{ padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: notificationGranted ? '#059669' : '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <Bell size={13} /> {notificationGranted ? 'Test Notification' : 'Enable Notifications'}
-            </button>
-            <button
-              type="button"
-              onClick={requestLocationAccess}
-              title={locationMessage || 'Allow or refresh location access'}
-              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <MapPin size={13} /> Location
-            </button>
-            {notificationMessage && <span role="status" style={{ color: notificationGranted ? '#86efac' : '#fecaca', fontSize: '10px' }}>{notificationMessage}</span>}
             <button
               onClick={() => setShowHistoryModal(true)}
               style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
