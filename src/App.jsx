@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken } from 'firebase/messaging';
 import { 
   Bike, UserCheck, Check, Phone, ArrowRight, 
   MapPin, LogOut, MessageCircle, X, 
@@ -15,20 +13,6 @@ const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
 const PUBLIC_VAPID_KEY = 'BNp5iirw54SBOS_8VOAKw7gpSzvkktgKWNzq_mDeAztqClikXufNCdCHk_vvB7cSD-djbSQXosHRzEtMERwEQhQ';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa",
-  authDomain: "spct-avengers-65de1.firebaseapp.com",
-  projectId: "spct-avengers-65de1",
-  storageBucket: "spct-avengers-65de1.appspot.com",
-  messagingSenderId: "1085189203233",
-  appId: "1:1085189203233:web:c568f971709a4c7846ca60",
-  measurementId: "G-WJ3P8YTDZD"
-};
-
-const appFb = initializeApp(firebaseConfig);
-const messaging = typeof window !== 'undefined' ? getMessaging(appFb) : null;
-
 const DEFAULT_CENTER = { lat: 23.0880, lng: 72.5350 };
 
 const PRESET_LOCATIONS = [
@@ -108,8 +92,12 @@ export default function App() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [bottomNavTab, setBottomNavTab] = useState('ride');
 
-  const [notificationGranted, setNotificationGranted] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(true);
+  const [notificationGranted, setNotificationGranted] = useState(
+    () => typeof Notification !== 'undefined' && Notification.permission === 'granted'
+  );
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [locationMessage, setLocationMessage] = useState('');
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
@@ -253,14 +241,24 @@ export default function App() {
       silent: true
     };
 
-    try {
-      const registration = swRegistrationRef.current
-        || (('serviceWorker' in navigator) ? await navigator.serviceWorker.getRegistration() : null);
-      if (registration?.showNotification) {
-        await registration.showNotification(title, options);
-      } else {
-        new Notification(title, options);
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = swRegistrationRef.current
+          || await navigator.serviceWorker.getRegistration();
+        if (registration?.active && registration.showNotification) {
+          await registration.showNotification(title, options);
+          return true;
+        }
+      } catch (error) {
+        console.error('Service-worker notification failed; trying a browser notification.', error);
       }
+    }
+
+    try {
+      const notification = new Notification(title, options);
+      notification.onerror = (event) => {
+        console.error('The browser reported a desktop notification error.', event);
+      };
       return true;
     } catch (error) {
       console.error('Could not show the desktop reminder notification.', error);
@@ -369,44 +367,74 @@ export default function App() {
     } catch (e) {}
   };
 
-  const requestNotificationPermissionAndSubscribe = async () => {
+  const enableDesktopNotifications = async (sendTest = false) => {
+    if (typeof Notification === 'undefined') {
+      setNotificationGranted(false);
+      setNotificationMessage('This browser does not support desktop notifications.');
+      return false;
+    }
+
     try {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setNotificationGranted(true);
-        setShowPermissionModal(false);
-        reportPermissionStatus(true, true);
-        return;
+      const permission = Notification.permission === 'default'
+        ? await Notification.requestPermission()
+        : Notification.permission;
+      setNotificationGranted(permission === 'granted');
+
+      if (permission !== 'granted') {
+        const message = permission === 'denied'
+          ? 'Notifications are blocked for this site. Allow them in Chrome Site settings, then reload.'
+          : 'Notification permission was not granted.';
+        setNotificationMessage(message);
+        alert(message);
+        return false;
       }
 
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        setNotificationGranted(true);
-        setShowPermissionModal(false);
-        reportPermissionStatus(true, true);
+      setShowPermissionModal(false);
+      setNotificationMessage('Desktop notifications are enabled.');
 
-        const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        swRegistrationRef.current = reg;
-        
-        let subscription = await reg.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-          });
+      if (sendTest) {
+        const shown = await showDesktopNotification(
+          'SPCT Watcher Test',
+          'Desktop notifications are working. Scheduled reminders will appear here.',
+          `spct-watcher-test-${Date.now()}`
+        );
+        if (!shown) {
+          const message = 'Chrome could not show the test notification. Check Chrome and Windows notification settings.';
+          setNotificationMessage(message);
+          alert(message);
+          return false;
         }
-        await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
-
-        if (messaging) {
-          try {
-            await getToken(messaging, { serviceWorkerRegistration: reg, vapidKey: PUBLIC_VAPID_KEY });
-          } catch (err) {}
-        }
-      } else {
-        reportPermissionStatus(false, true);
-        alert("Permission denied. Please enable notifications in your browser settings.");
+        setNotificationMessage('Test notification sent. Check your Windows notification area.');
       }
-    } catch (e) {
-      reportPermissionStatus(false, false);
+      reportPermissionStatus(true, true);
+
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          await navigator.serviceWorker.ready;
+          const readyRegistration = await navigator.serviceWorker.getRegistration();
+          swRegistrationRef.current = readyRegistration || registration;
+
+          if ('PushManager' in window && swRegistrationRef.current.pushManager) {
+            let subscription = await swRegistrationRef.current.pushManager.getSubscription();
+            if (!subscription) {
+              subscription = await swRegistrationRef.current.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+              });
+            }
+            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
+          }
+        } catch (error) {
+          console.error('Desktop notifications are enabled, but push subscription setup failed.', error);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Could not enable desktop notifications.', error);
+      setNotificationMessage('Could not enable notifications. Check this site’s Chrome permissions.');
+      alert('Could not enable desktop notifications. Check this site’s Chrome permissions and try again.');
+      return false;
     }
   };
 
@@ -416,17 +444,23 @@ export default function App() {
       setShowPermissionModal(false);
       reportPermissionStatus(true, true);
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/firebase-messaging-sw.js').then(async (reg) => {
-          swRegistrationRef.current = reg;
-          let subscription = await reg.pushManager.getSubscription();
-          if (!subscription) {
-            subscription = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-            });
+        navigator.serviceWorker.register('/firebase-messaging-sw.js').then(async registration => {
+          await navigator.serviceWorker.ready;
+          const readyRegistration = await navigator.serviceWorker.getRegistration();
+          swRegistrationRef.current = readyRegistration || registration;
+          if ('PushManager' in window && swRegistrationRef.current.pushManager) {
+            let subscription = await swRegistrationRef.current.pushManager.getSubscription();
+            if (!subscription) {
+              subscription = await swRegistrationRef.current.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+              });
+            }
+            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
           }
-          await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
-        }).catch(() => {});
+        }).catch(error => {
+          console.error('Could not restore the browser push subscription.', error);
+        });
       }
     } else {
       reportPermissionStatus(false, true);
@@ -475,6 +509,28 @@ export default function App() {
       );
     }
   }, [isBiker, currentUser]);
+
+  const requestLocationAccess = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage('Location is not supported by this browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocationMessage('Location access is enabled.');
+      },
+      error => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? 'Location is blocked. Allow it in Chrome Site settings.'
+          : 'Could not get your location. Check device location settings and try again.';
+        setLocationMessage(message);
+        alert(message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   useEffect(() => {
     fetchLiveGPS();
@@ -862,39 +918,11 @@ export default function App() {
   };
 
   // Watcher Reminder Functions
-  const handleTestWatcherNotification = async () => {
-    if (typeof Notification === 'undefined') {
-      alert('Desktop notifications are not supported by this browser.');
-      return;
-    }
-
-    const permission = Notification.permission === 'default'
-      ? await Notification.requestPermission()
-      : Notification.permission;
-    if (permission !== 'granted') {
-      alert('Desktop notification permission is blocked. Allow notifications for this site in Chrome site settings, then try again.');
-      return;
-    }
-
-    const shown = await showDesktopNotification(
-      'SPCT Watcher Test',
-      'Desktop notifications are working. Scheduled reminders will appear here.',
-      `spct-watcher-test-${Date.now()}`
-    );
-    if (!shown) {
-      alert('Chrome could not show the desktop notification. Check your system notification settings.');
-    }
-  };
-
   const handleSetupWatcher = async (e) => {
     e.preventDefault();
     if (!watcherTask.trim() || !watcherTime) {
       alert("Please enter a task and reminder time.");
       return;
-    }
-
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
     }
 
     if (!watcherEditingId && watcherReminders.length >= 10) {
@@ -1026,7 +1054,7 @@ export default function App() {
             Please allow notifications and location access to receive real-time ride requests and updates in the background.
           </p>
           <button
-            onClick={requestNotificationPermissionAndSubscribe}
+            onClick={() => enableDesktopNotifications()}
             style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '14px', cursor: 'pointer' }}
           >
             Allow Notifications & GPS
@@ -1218,6 +1246,23 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => enableDesktopNotifications(true)}
+                title={notificationMessage || (notificationGranted ? 'Send a desktop notification test' : 'Allow desktop notifications')}
+                style={{ border: 'none', background: notificationGranted ? '#059669' : '#38bdf8', color: '#0f172a', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Bell size={13} /> {notificationGranted ? 'Test Notification' : 'Enable Notifications'}
+              </button>
+              <button
+                type="button"
+                onClick={requestLocationAccess}
+                title={locationMessage || 'Allow or refresh location access'}
+                style={{ border: '1px solid #334155', background: '#1e293b', color: '#f8fafc', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <MapPin size={13} /> Location
+              </button>
+              {notificationMessage && <span role="status" style={{ color: notificationGranted ? '#86efac' : '#fecaca', fontSize: '10px' }}>{notificationMessage}</span>}
               <button
                 onClick={handleInstallPwa}
                 disabled={isPwaInstalled}
@@ -1433,10 +1478,10 @@ export default function App() {
               </p>
               <button
                 type="button"
-                onClick={handleTestWatcherNotification}
+                onClick={() => enableDesktopNotifications(true)}
                 style={{ width: '100%', marginBottom: '14px', padding: '10px', borderRadius: '10px', border: '1px solid #38bdf8', backgroundColor: '#0f172a', color: '#38bdf8', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
               >
-                Send Test Desktop Notification
+                Enable & Test Desktop Notifications
               </button>
 
               <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
@@ -1607,6 +1652,23 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => enableDesktopNotifications(true)}
+              title={notificationMessage || (notificationGranted ? 'Send a desktop notification test' : 'Allow desktop notifications')}
+              style={{ padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: notificationGranted ? '#059669' : '#38bdf8', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <Bell size={13} /> {notificationGranted ? 'Test Notification' : 'Enable Notifications'}
+            </button>
+            <button
+              type="button"
+              onClick={requestLocationAccess}
+              title={locationMessage || 'Allow or refresh location access'}
+              style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <MapPin size={13} /> Location
+            </button>
+            {notificationMessage && <span role="status" style={{ color: notificationGranted ? '#86efac' : '#fecaca', fontSize: '10px' }}>{notificationMessage}</span>}
             <button
               onClick={() => setShowHistoryModal(true)}
               style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontWeight: '800', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
