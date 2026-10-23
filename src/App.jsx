@@ -240,6 +240,34 @@ export default function App() {
     } catch (e) {}
   }, []);
 
+  const showDesktopNotification = useCallback(async (title, body, tag) => {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false;
+
+    const options = {
+      body,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      tag,
+      renotify: true,
+      requireInteraction: true,
+      silent: true
+    };
+
+    try {
+      const registration = swRegistrationRef.current
+        || (('serviceWorker' in navigator) ? await navigator.serviceWorker.getRegistration() : null);
+      if (registration?.showNotification) {
+        await registration.showNotification(title, options);
+      } else {
+        new Notification(title, options);
+      }
+      return true;
+    } catch (error) {
+      console.error('Could not show the desktop reminder notification.', error);
+      return false;
+    }
+  }, []);
+
   const triggerBouncingBanner = useCallback((rideObj) => {
     playPingSound();
     setBouncingBanner(rideObj);
@@ -316,20 +344,18 @@ export default function App() {
 
       dueReminders.forEach(reminder => {
         playWatcherReminderSound();
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification('SPCT Watcher Reminder', {
-            body: reminder.task,
-            icon: '/logo.png',
-            tag: `spct-watcher-${reminder.id}-${today}`
-          });
-        }
+        showDesktopNotification(
+          'SPCT Watcher Reminder',
+          reminder.task,
+          `spct-watcher-${reminder.id}-${today}`
+        );
       });
     };
 
     checkForDueReminders();
     const interval = window.setInterval(checkForDueReminders, 10000);
     return () => window.clearInterval(interval);
-  }, [playWatcherReminderSound]);
+  }, [playWatcherReminderSound, showDesktopNotification]);
 
   const reportPermissionStatus = async (granted, gpsActive) => {
     if (!currentUser) return;
@@ -836,6 +862,30 @@ export default function App() {
   };
 
   // Watcher Reminder Functions
+  const handleTestWatcherNotification = async () => {
+    if (typeof Notification === 'undefined') {
+      alert('Desktop notifications are not supported by this browser.');
+      return;
+    }
+
+    const permission = Notification.permission === 'default'
+      ? await Notification.requestPermission()
+      : Notification.permission;
+    if (permission !== 'granted') {
+      alert('Desktop notification permission is blocked. Allow notifications for this site in Chrome site settings, then try again.');
+      return;
+    }
+
+    const shown = await showDesktopNotification(
+      'SPCT Watcher Test',
+      'Desktop notifications are working. Scheduled reminders will appear here.',
+      `spct-watcher-test-${Date.now()}`
+    );
+    if (!shown) {
+      alert('Chrome could not show the desktop notification. Check your system notification settings.');
+    }
+  };
+
   const handleSetupWatcher = async (e) => {
     e.preventDefault();
     if (!watcherTask.trim() || !watcherTime) {
@@ -1379,8 +1429,15 @@ export default function App() {
               </div>
 
               <p style={{ margin: '0 0 14px', fontSize: '11px', lineHeight: 1.5, color: '#94a3b8' }}>
-                Saved in this browser. Keep the app open to show reminders at their scheduled time.
+                Allow Chrome notifications to see reminders while using other tabs or apps. Keep Chrome running; reminders cannot fire after the browser is fully closed.
               </p>
+              <button
+                type="button"
+                onClick={handleTestWatcherNotification}
+                style={{ width: '100%', marginBottom: '14px', padding: '10px', borderRadius: '10px', border: '1px solid #38bdf8', backgroundColor: '#0f172a', color: '#38bdf8', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
+              >
+                Send Test Desktop Notification
+              </button>
 
               <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
                 <div>
