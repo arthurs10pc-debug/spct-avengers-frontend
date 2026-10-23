@@ -237,15 +237,16 @@ export default function App() {
       badge: '/logo.png',
       tag,
       renotify: true,
-      requireInteraction: true,
-      silent: true
+      requireInteraction: true
     };
 
     if ('serviceWorker' in navigator) {
       try {
         const registration = swRegistrationRef.current
-          || await navigator.serviceWorker.getRegistration();
-        if (registration?.active && registration.showNotification) {
+          || await navigator.serviceWorker.getRegistration()
+          || await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        swRegistrationRef.current = registration;
+        if (registration.showNotification) {
           await registration.showNotification(title, options);
           return true;
         }
@@ -255,10 +256,18 @@ export default function App() {
     }
 
     try {
-      const notification = new Notification(title, options);
-      notification.onerror = (event) => {
-        console.error('The browser reported a desktop notification error.', event);
-      };
+      await new Promise((resolve, reject) => {
+        const notification = new Notification(title, options);
+        const timeout = window.setTimeout(() => reject(new Error('The browser did not confirm that the notification was shown.')), 3000);
+        notification.onshow = () => {
+          window.clearTimeout(timeout);
+          resolve();
+        };
+        notification.onerror = (event) => {
+          window.clearTimeout(timeout);
+          reject(event);
+        };
+      });
       return true;
     } catch (error) {
       console.error('Could not show the desktop reminder notification.', error);
@@ -373,6 +382,12 @@ export default function App() {
       setNotificationMessage('This browser does not support desktop notifications.');
       return false;
     }
+    if (!window.isSecureContext) {
+      const message = 'Desktop notifications require a secure HTTPS connection.';
+      setNotificationMessage(message);
+      alert(message);
+      return false;
+    }
 
     try {
       const permission = Notification.permission === 'default'
@@ -404,31 +419,9 @@ export default function App() {
           alert(message);
           return false;
         }
-        setNotificationMessage('Test notification sent. Check your Windows notification area.');
+        setNotificationMessage('Test notification shown. Check your Windows notification area.');
       }
       reportPermissionStatus(true, true);
-
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          await navigator.serviceWorker.ready;
-          const readyRegistration = await navigator.serviceWorker.getRegistration();
-          swRegistrationRef.current = readyRegistration || registration;
-
-          if ('PushManager' in window && swRegistrationRef.current.pushManager) {
-            let subscription = await swRegistrationRef.current.pushManager.getSubscription();
-            if (!subscription) {
-              subscription = await swRegistrationRef.current.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-              });
-            }
-            await axios.post(`${BACKEND_URL}/api/save-subscription`, subscription);
-          }
-        } catch (error) {
-          console.error('Desktop notifications are enabled, but push subscription setup failed.', error);
-        }
-      }
       return true;
     } catch (error) {
       console.error('Could not enable desktop notifications.', error);
@@ -1266,10 +1259,11 @@ export default function App() {
               <button
                 onClick={handleInstallPwa}
                 disabled={isPwaInstalled}
-                style={{ border: 'none', background: isPwaInstalled ? '#334155' : '#38bdf8', color: isPwaInstalled ? '#94a3b8' : '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: isPwaInstalled ? 'default' : 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title={isPwaInstalled ? 'App installed' : 'Install app'}
+                aria-label={isPwaInstalled ? 'App installed' : 'Install app'}
+                style={{ width: '30px', height: '30px', border: '1px solid #334155', background: 'transparent', color: isPwaInstalled ? '#86efac' : '#94a3b8', padding: '0', borderRadius: '8px', cursor: isPwaInstalled ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 {isPwaInstalled ? <CheckCircle2 size={14} /> : <Download size={14} />}
-                {isPwaInstalled ? 'Installed' : 'Install App'}
               </button>
 
               {/* Watcher Button with Clock Icon */}
