@@ -134,6 +134,8 @@ export default function App() {
   });
   const watcherRemindersRef = useRef(watcherReminders);
   const lastReminderCheckRef = useRef(null);
+  const reminderAudioContextRef = useRef(null);
+  const reminderSoundIntervalRef = useRef(null);
   const [activeWatcherReminders, setActiveWatcherReminders] = useState([]);
 
   const [matchedRide, setMatchedRide] = useState(null);
@@ -196,31 +198,87 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  const playWatcherReminderSound = useCallback(() => {
+  const unlockReminderAudio = useCallback(async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return false;
+
     try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return;
-
-      const ctx = new AudioContextClass();
-      [523.25, 659.25, 783.99].forEach((frequency, index) => {
-        const startTime = ctx.currentTime + index * 0.18;
-        const oscillator = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        oscillator.type = 'sine';
-        oscillator.frequency.value = frequency;
-        gain.gain.setValueAtTime(0.0001, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.16, startTime + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.24);
-        oscillator.connect(gain);
-        gain.connect(ctx.destination);
-        oscillator.start(startTime);
-        oscillator.stop(startTime + 0.25);
-      });
-
-      window.setTimeout(() => ctx.close().catch(() => {}), 800);
-    } catch (e) {}
+      if (!reminderAudioContextRef.current || reminderAudioContextRef.current.state === 'closed') {
+        reminderAudioContextRef.current = new AudioContextClass();
+      }
+      if (reminderAudioContextRef.current.state === 'suspended') {
+        await reminderAudioContextRef.current.resume();
+      }
+      return reminderAudioContextRef.current.state === 'running';
+    } catch (error) {
+      console.error('Could not activate reminder audio.', error);
+      return false;
+    }
   }, []);
+
+  const playWatcherReminderSound = useCallback(() => {
+    const ctx = reminderAudioContextRef.current;
+    if (!ctx || ctx.state !== 'running') return;
+
+    [880, 659].forEach((frequency, index) => {
+      const startTime = ctx.currentTime + index * 0.22;
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, startTime + 0.025);
+      gain.gain.setValueAtTime(0.18, startTime + 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.2);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.21);
+    });
+  }, []);
+
+  useEffect(() => {
+    const unlockOnInteraction = () => {
+      unlockReminderAudio();
+    };
+    window.addEventListener('pointerdown', unlockOnInteraction);
+    window.addEventListener('keydown', unlockOnInteraction);
+    return () => {
+      window.removeEventListener('pointerdown', unlockOnInteraction);
+      window.removeEventListener('keydown', unlockOnInteraction);
+    };
+  }, [unlockReminderAudio]);
+
+  useEffect(() => {
+    if (activeWatcherReminders.length === 0) {
+      window.clearInterval(reminderSoundIntervalRef.current);
+      reminderSoundIntervalRef.current = null;
+      return undefined;
+    }
+
+    playWatcherReminderSound();
+    reminderSoundIntervalRef.current = window.setInterval(playWatcherReminderSound, 1800);
+    return () => {
+      window.clearInterval(reminderSoundIntervalRef.current);
+      reminderSoundIntervalRef.current = null;
+    };
+  }, [activeWatcherReminders.length, playWatcherReminderSound]);
+
+  useEffect(() => {
+    if (activeWatcherReminders.length === 0) return undefined;
+
+    const originalTitle = document.title;
+    let isAlertTitle = false;
+    const titleInterval = window.setInterval(() => {
+      isAlertTitle = !isAlertTitle;
+      document.title = isAlertTitle ? '🔔 REMINDER - SPCT Avengers' : originalTitle;
+    }, 900);
+
+    return () => {
+      window.clearInterval(titleInterval);
+      document.title = originalTitle;
+    };
+  }, [activeWatcherReminders.length]);
 
   const triggerBouncingBanner = useCallback((rideObj) => {
     playPingSound();
@@ -295,16 +353,12 @@ export default function App() {
         ...current,
         ...dueReminders.filter(reminder => !current.some(active => active.id === reminder.id))
       ]);
-
-      dueReminders.forEach(reminder => {
-        playWatcherReminderSound();
-      });
     };
 
     checkForDueReminders();
     const interval = window.setInterval(checkForDueReminders, 10000);
     return () => window.clearInterval(interval);
-  }, [playWatcherReminderSound]);
+  }, []);
 
   const reportPermissionStatus = async (granted, gpsActive) => {
     if (!currentUser) return;
@@ -776,6 +830,7 @@ export default function App() {
   // Watcher Reminder Functions
   const handleSetupWatcher = async (e) => {
     e.preventDefault();
+    await unlockReminderAudio();
     if (!watcherTask.trim() || !watcherTime) {
       alert("Please enter a task and reminder time.");
       return;
@@ -1093,7 +1148,7 @@ export default function App() {
 
               {/* Watcher Button with Clock Icon */}
               <button
-                onClick={() => setShowWatcherModal(true)}
+                onClick={() => { unlockReminderAudio(); setShowWatcherModal(true); }}
                 style={{ border: 'none', background: watcherReminders.length > 0 ? '#059669' : '#38bdf8', color: '#0f172a', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Clock size={14} /> Watcher ({watcherReminders.length}/10)
@@ -1293,7 +1348,7 @@ export default function App() {
               </div>
 
               <p style={{ margin: '0 0 14px', fontSize: '11px', lineHeight: 1.5, color: '#94a3b8' }}>
-                Reminders appear as a large on-screen alert while this app is open. Keep the app open for scheduled reminders.
+                Reminders show a moving popup and repeat a sound until dismissed. Keep this app open and device sound on.
               </p>
 
               <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
