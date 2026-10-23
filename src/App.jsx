@@ -150,6 +150,8 @@ export default function App() {
     }
   });
   const watcherRemindersRef = useRef(watcherReminders);
+  const lastReminderCheckRef = useRef(null);
+  const [activeWatcherReminders, setActiveWatcherReminders] = useState([]);
 
   const [matchedRide, setMatchedRide] = useState(null);
   const [completedTripsHistory, setCompletedTripsHistory] = useState(() => {
@@ -278,9 +280,25 @@ export default function App() {
     const checkForDueReminders = () => {
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const previousCheck = lastReminderCheckRef.current;
+      lastReminderCheckRef.current = now;
       const dueReminders = watcherRemindersRef.current.filter(
-        reminder => reminder.time === currentTime && reminder.lastTriggeredDate !== today
+        reminder => {
+          if (reminder.lastTriggeredDate === today) return false;
+
+          const [hours, minutes] = reminder.time.split(':').map(Number);
+          const scheduledTime = new Date(now);
+          scheduledTime.setHours(hours, minutes, 0, 0);
+          const isInCurrentMinute = now >= scheduledTime && now < scheduledTime.getTime() + 60000;
+          const crossedScheduledTime = previousCheck
+            && previousCheck.getFullYear() === now.getFullYear()
+            && previousCheck.getMonth() === now.getMonth()
+            && previousCheck.getDate() === now.getDate()
+            && previousCheck < scheduledTime
+            && now >= scheduledTime;
+
+          return isInCurrentMinute || crossedScheduledTime;
+        }
       );
 
       if (dueReminders.length === 0) return;
@@ -291,10 +309,14 @@ export default function App() {
       );
       watcherRemindersRef.current = updatedReminders;
       setWatcherReminders(updatedReminders);
+      setActiveWatcherReminders(current => [
+        ...current,
+        ...dueReminders.filter(reminder => !current.some(active => active.id === reminder.id))
+      ]);
 
       dueReminders.forEach(reminder => {
         playWatcherReminderSound();
-        if ('Notification' in window && Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification('SPCT Watcher Reminder', {
             body: reminder.task,
             icon: '/logo.png',
@@ -363,7 +385,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (Notification.permission === 'granted') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       setNotificationGranted(true);
       setShowPermissionModal(false);
       reportPermissionStatus(true, true);
@@ -1098,6 +1120,40 @@ export default function App() {
 
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#0f172a', padding: '12px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#f8fafc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {activeWatcherReminders.length > 0 && (
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="watcher-alert-title"
+            style={{ position: 'fixed', inset: 0, zIndex: 10000, backgroundColor: 'rgba(2,6,23,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}
+          >
+            <div style={{ width: '100%', maxWidth: '420px', padding: '24px', borderRadius: '20px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', boxShadow: '0 24px 60px rgba(0,0,0,0.65)', color: '#f8fafc', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Bell size={22} />
+                </div>
+                <div>
+                  <h2 id="watcher-alert-title" style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>Reminder time</h2>
+                  <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: '12px' }}>Your scheduled reminder is due.</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {activeWatcherReminders.map(reminder => (
+                  <div key={reminder.id} style={{ padding: '12px', borderRadius: '12px', backgroundColor: '#0f172a', border: '1px solid #334155' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '700', overflowWrap: 'anywhere' }}>{reminder.task}</p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveWatcherReminders(current => current.filter(active => active.id !== reminder.id))}
+                      style={{ width: '100%', padding: '10px', border: 'none', borderRadius: '9px', backgroundColor: '#38bdf8', color: '#0f172a', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         <div style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', backgroundColor: '#1e293b', borderRadius: '24px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
           
           <header style={{ padding: '14px 20px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -1323,7 +1379,7 @@ export default function App() {
               </div>
 
               <p style={{ margin: '0 0 14px', fontSize: '11px', lineHeight: 1.5, color: '#94a3b8' }}>
-                Saved in this browser. Notifications run while the app is open.
+                Saved in this browser. Keep the app open to show reminders at their scheduled time.
               </p>
 
               <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
