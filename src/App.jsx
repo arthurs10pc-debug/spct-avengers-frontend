@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { 
   Shield, Mic, MicOff, Volume2, VolumeX, Clock, 
-  Settings, Power, Terminal, X, Bell, Crown, Check, Trash2, Cpu
+  Power, Send, X, Terminal, Radio, Cpu
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -21,7 +21,7 @@ export default function App() {
 
   const [adminEmailInput, setAdminEmailInput] = useState('');
   const [chatLogs, setChatLogs] = useState([
-    { sender: 'wolf', text: 'Lone Wolf online. Awaiting your command, Commander.' }
+    { sender: 'wolf', text: 'Lone Wolf online. Awaiting your command, Commander. (Try asking: "Traffic kevu chhe?")' }
   ]);
   const [userInput, setUserInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -44,12 +44,19 @@ export default function App() {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.0;
     utterance.pitch = 0.9;
+    
+    // Auto detect Gujarati or English keywords for accent approximation
+    if (text.includes('traffic') || text.includes('raste')) {
+      utterance.lang = 'gu-IN';
+    } else {
+      utterance.lang = 'en-US';
+    }
+
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
-    socketRef.current.on('connect', () => {});
     return () => { if (socketRef.current) socketRef.current.disconnect(); };
   }, []);
 
@@ -80,31 +87,33 @@ export default function App() {
     setUserInput('');
     setChatLogs(prev => [...prev, { sender: 'user', text: query }]);
 
-    let reply = "Processing tactical directive...";
+    let reply = "Command acknowledged, Commander. Processing telemetry...";
     const lowerQ = query.toLowerCase();
 
-    if (lowerQ.includes('traffic') || lowerQ.includes('office')) {
-      reply = "Analyzing route telemetry... Traffic is currently clear on the primary sector. Estimated transit time: 14 minutes.";
+    if (lowerQ.includes('traffic') || lowerQ.includes('kevu chhe') || lowerQ.includes('raste')) {
+      reply = "Raste par aage traffic normal chhe. Office pahochva mate lagbhag 14 minutes lagse. Safe drive rakhjo!";
     } else if (lowerQ.includes('status') || lowerQ.includes('system')) {
-      reply = "All subsystems operational. Lone Wolf security protocols active.";
+      reply = "All subsystems operational. Lone Wolf security protocols fully armed.";
+    } else if (lowerQ.includes('hello') || lowerQ.includes('kem cho')) {
+      reply = "Kem cho Commander! Lone Wolf is ready for your instructions.";
     } else {
-      reply = `Command acknowledged: "${query}". Executing parameters.`;
+      reply = `Directive received: "${query}". Executing protocols now.`;
     }
 
     setTimeout(() => {
       setChatLogs(prev => [...prev, { sender: 'wolf', text: reply }]);
       speakText(reply);
-    }, 600);
+    }, 500);
   };
 
   const toggleListening = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Speech recognition not supported in this browser.");
+      alert("Speech recognition is not supported in this browser. Please type your command.");
       return;
     }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    recognition.lang = 'gu-IN'; // Supports Gujarati & English speech input
 
     if (!isListening) {
       setIsListening(true);
@@ -157,7 +166,7 @@ export default function App() {
   if (!currentUser) {
     return (
       <div style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '16px', boxSizing: 'border-box' }}>
-        <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '24px', padding: '32px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
+        <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '24px', padding: '32px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', boxSizing: 'border-box' }}>
           <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#38bdf8', color: '#090d16', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
             <Shield size={32} />
           </div>
@@ -189,7 +198,7 @@ export default function App() {
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
       {/* Header */}
-      <header style={{ padding: '14px 20px', backgroundColor: '#111827', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <header style={{ padding: '14px 20px', backgroundColor: '#111827', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#090d16', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Shield size={20} />
@@ -233,7 +242,7 @@ export default function App() {
       </main>
 
       {/* Command Input Bar */}
-      <footer style={{ padding: '14px 16px', backgroundColor: '#111827', borderTop: '1px solid #1f2937', flexShrink: 0 }}>
+      <footer style={{ padding: '14px 16px', backgroundColor: '#111827', borderTop: '1px solid #1f2937', flexShrink: 0, boxSizing: 'border-box' }}>
         <form onSubmit={handleSendCommand} style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', gap: '10px', boxSizing: 'border-box' }}>
           <button
             type="button"
@@ -245,7 +254,7 @@ export default function App() {
 
           <input 
             type="text"
-            placeholder="Issue directive or ask Lone Wolf..."
+            placeholder="Ask Lone Wolf (e.g. Traffic kevu chhe?)..."
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             style={{ flex: 1, padding: '12px 16px', borderRadius: '12px', border: '1px solid #1f2937', backgroundColor: '#090d16', color: '#f8fafc', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
