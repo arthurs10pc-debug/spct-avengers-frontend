@@ -3,50 +3,34 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { 
   Shield, Mic, MicOff, Volume2, VolumeX, Clock, 
-  Power, Send, X, Terminal, Radio, Cpu
+  Power, X, Radio, Cpu, Activity
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
-const ADMIN_EMAIL = "arthurs10pc@gmail.com";
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lonewolf_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [adminEmailInput, setAdminEmailInput] = useState('');
-  const [chatLogs, setChatLogs] = useState([
-    { sender: 'wolf', text: 'Lone Wolf online. Awaiting your command, Commander. (Try asking: "Traffic kevu chhe?")' }
-  ]);
-  const [userInput, setUserInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [statusText, setStatusText] = useState("Jarvis Core Active. Listening for commands...");
+  const [jarvisActive, setJarvisActive] = useState(false);
 
-  // Watcher State for Admin
+  // Watcher State (Up to 10 manual reminders + Every X minutes)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
-  const [watcherTask, setWatcherTask] = useState('');
+  const [reminders, setReminders] = useState(['', '', '', '', '', '', '', '', '', '']);
   const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
   const [watcherActive, setWatcherActive] = useState(false);
   const watcherIntervalRef = useRef(null);
 
   const socketRef = useRef(null);
-  const chatScrollRef = useRef(null);
-  const isAdmin = currentUser?.email === ADMIN_EMAIL;
 
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.0;
-    utterance.pitch = 0.9;
+    utterance.pitch = 0.85;
     
-    // Auto detect Gujarati or English keywords for accent approximation
-    if (text.includes('traffic') || text.includes('raste')) {
+    if (text.includes('traffic') || text.includes('raste') || text.includes('kem cho')) {
       utterance.lang = 'gu-IN';
     } else {
       utterance.lang = 'en-US';
@@ -55,72 +39,55 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
+  // Initial Greeting on mount
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
-    return () => { if (socketRef.current) socketRef.current.disconnect(); };
-  }, []);
+    
+    const timer = setTimeout(() => {
+      const morningGreeting = "Good morning, Commander. All systems are online. How can I assist you on your route today?";
+      setStatusText(morningGreeting);
+      speakText(morningGreeting);
+      setJarvisActive(true);
+    }, 1000);
 
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [chatLogs]);
+    return () => {
+      clearTimeout(timer);
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, [speakText]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!adminEmailInput.trim()) return;
-    const userObj = { email: adminEmailInput.trim(), name: adminEmailInput.split('@')[0] };
-    setCurrentUser(userObj);
-    localStorage.setItem('lonewolf_user', JSON.stringify(userObj));
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('lonewolf_user');
-    setCurrentUser(null);
-  };
-
-  const handleSendCommand = async (e) => {
-    e.preventDefault();
-    if (!userInput.trim()) return;
-
-    const query = userInput.trim();
-    setUserInput('');
-    setChatLogs(prev => [...prev, { sender: 'user', text: query }]);
-
-    let reply = "Command acknowledged, Commander. Processing telemetry...";
+  const handleVoiceCommand = async (query) => {
     const lowerQ = query.toLowerCase();
+    let reply = "Processing live telemetry, Commander.";
 
-    if (lowerQ.includes('traffic') || lowerQ.includes('kevu chhe') || lowerQ.includes('raste')) {
-      reply = "Raste par aage traffic normal chhe. Office pahochva mate lagbhag 14 minutes lagse. Safe drive rakhjo!";
-    } else if (lowerQ.includes('status') || lowerQ.includes('system')) {
-      reply = "All subsystems operational. Lone Wolf security protocols fully armed.";
-    } else if (lowerQ.includes('hello') || lowerQ.includes('kem cho')) {
-      reply = "Kem cho Commander! Lone Wolf is ready for your instructions.";
+    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('kevu chhe')) {
+      reply = "Live traffic update: Aapke raste par SP Ring Road aur Vaishnodevi circle ke beech halka congestion hai. Alternate route lene ki salah di jati hai.";
+    } else if (lowerQ.includes('status') || lowerQ.includes('jarvis')) {
+      reply = "Arc reactor core at 100 percent capacity. All operational parameters are nominal.";
     } else {
-      reply = `Directive received: "${query}". Executing protocols now.`;
+      reply = `Command executed successfully for query: ${query}`;
     }
 
-    setTimeout(() => {
-      setChatLogs(prev => [...prev, { sender: 'wolf', text: reply }]);
-      speakText(reply);
-    }, 500);
+    setStatusText(reply);
+    speakText(reply);
   };
 
   const toggleListening = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Speech recognition is not supported in this browser. Please type your command.");
+      alert("Speech recognition is not supported in this browser.");
       return;
     }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'gu-IN'; // Supports Gujarati & English speech input
+    recognition.lang = 'gu-IN';
 
     if (!isListening) {
       setIsListening(true);
+      setStatusText("Listening to your voice command...");
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        setUserInput(transcript);
         setIsListening(false);
+        handleVoiceCommand(transcript);
       };
       recognition.onerror = () => setIsListening(false);
       recognition.onend = () => setIsListening(false);
@@ -133,7 +100,11 @@ export default function App() {
 
   const handleSetupWatcher = (e) => {
     e.preventDefault();
-    if (!watcherTask.trim()) return;
+    const activeReminders = reminders.filter(r => r.trim() !== '');
+    if (activeReminders.length === 0) {
+      alert("Kam se kam ek reminder task toh likhiye.");
+      return;
+    }
 
     if (Notification.permission !== 'granted') {
       Notification.requestPermission();
@@ -143,15 +114,16 @@ export default function App() {
 
     const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
     watcherIntervalRef.current = setInterval(() => {
-      speakText(`Reminder: ${watcherTask}`);
+      const randomTask = activeReminders[Math.floor(Math.random() * activeReminders.length)];
+      speakText(`Reminder alert: ${randomTask}`);
       if (Notification.permission === 'granted') {
-        new Notification("Lone Wolf Watcher", { body: watcherTask, icon: "/logo.png" });
+        new Notification("Jarvis Watcher", { body: randomTask, icon: "/logo.png" });
       }
     }, intervalMs);
 
     setWatcherActive(true);
     setShowWatcherModal(false);
-    alert(`Lone Wolf Watcher armed! Reminding every ${watcherIntervalMin} minutes.`);
+    alert(`Watcher armed with ${activeReminders.length} tasks, triggering every ${watcherIntervalMin} minutes.`);
   };
 
   const handleStopWatcher = () => {
@@ -163,157 +135,142 @@ export default function App() {
     alert("Watcher disarmed.");
   };
 
-  if (!currentUser) {
-    return (
-      <div style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', padding: '16px', boxSizing: 'border-box' }}>
-        <div style={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '24px', padding: '32px', maxWidth: '380px', width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.7)', boxSizing: 'border-box' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#38bdf8', color: '#090d16', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
-            <Shield size={32} />
-          </div>
-          <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#f8fafc', margin: '0 0 4px 0' }}>LONE WOLF</h1>
-          <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '24px' }}>AI Personal Assistant Interface</p>
-
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input 
-              type="email"
-              required
-              placeholder="Enter Commander Email..."
-              value={adminEmailInput}
-              onChange={(e) => setAdminEmailInput(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid #374151', backgroundColor: '#090d16', color: '#f8fafc', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-            />
-            <button
-              type="submit"
-              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#090d16', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
-            >
-              Initialize System
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Header */}
-      <header style={{ padding: '14px 20px', backgroundColor: '#111827', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxSizing: 'border-box' }}>
+      {/* Top Header */}
+      <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#090d16', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Shield size={20} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px' }}>LONE WOLF AI</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Commander: {currentUser.email}</span>
+            <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant Core</span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {isAdmin && (
-            <button
-              onClick={() => { if (!watcherActive) setShowWatcherModal(true); else handleStopWatcher(); }}
-              style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#090d16', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <Clock size={14} /> {watcherActive ? "Watcher Active" : "Watcher"}
-            </button>
-          )}
-
-          <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Unmute Voice" : "Mute Voice"} style={{ border: 'none', background: '#1f2937', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          <button
+            onClick={() => { if (!watcherActive) setShowWatcherModal(true); else handleStopWatcher(); }}
+            style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#030712', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <Clock size={14} /> {watcherActive ? "Watcher Active" : "Watcher"}
           </button>
 
-          <button onClick={handleLogout} title="Disconnect" style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-            <Power size={16} />
+          <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Unmute" : "Mute"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
         </div>
       </header>
 
-      {/* Main Terminal Chat Area */}
-      <main ref={chatScrollRef} style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box', maxWidth: '900px', width: '100%', margin: '0 auto' }}>
-        {chatLogs.map((log, idx) => (
-          <div key={idx} style={{ alignSelf: log.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%', backgroundColor: log.sender === 'user' ? '#0369a1' : '#111827', border: '1px solid #1f2937', borderRadius: '14px', padding: '12px 16px', fontSize: '13px', lineHeight: '1.5', boxSizing: 'border-box' }}>
-            <div style={{ fontSize: '9px', color: '#94a3b8', marginBottom: '2px', textTransform: 'uppercase', fontWeight: '800' }}>
-              {log.sender === 'user' ? 'Commander' : 'Lone Wolf'}
-            </div>
-            {log.text}
+      {/* Main Jarvis Heart / Arc Reactor UI Center */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
+        
+        <style>{`
+          @keyframes pulseCore {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 20px rgba(56, 189, 248, 0.4); }
+            50% { transform: scale(1.06); box-shadow: 0 0 50px rgba(56, 189, 248, 0.8), inset 0 0 40px rgba(56, 189, 248, 0.8); }
+            100% { transform: scale(1); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 20px rgba(56, 189, 248, 0.4); }
+          }
+          .jarvis-heart {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 3px solid #38bdf8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(56,189,248,0.2) 0%, rgba(3,7,18,0.9) 70%);
+            animation: pulseCore 3s infinite ease-in-out;
+            cursor: pointer;
+            position: relative;
+          }
+        `}</style>
+
+        {/* Jarvis Heart Widget */}
+        <div className="jarvis-heart" onClick={toggleListening} title="Tap to speak">
+          <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Activity size={48} color="#38bdf8" />
           </div>
-        ))}
+        </div>
+
+        <p style={{ marginTop: '24px', fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
+          {isListening ? "Listening..." : "Tap the core or mic to command"}
+        </p>
+
+        <div style={{ marginTop: '16px', maxWidth: '500px', width: '100%', backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', padding: '16px', boxSizing: 'border-box' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: '#f8fafc', lineHeight: '1.5', fontWeight: '600' }}>
+            "{statusText}"
+          </p>
+        </div>
+
       </main>
 
-      {/* Command Input Bar */}
-      <footer style={{ padding: '14px 16px', backgroundColor: '#111827', borderTop: '1px solid #1f2937', flexShrink: 0, boxSizing: 'border-box' }}>
-        <form onSubmit={handleSendCommand} style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', gap: '10px', boxSizing: 'border-box' }}>
-          <button
-            type="button"
-            onClick={toggleListening}
-            style={{ border: 'none', background: isListening ? '#dc2626' : '#1f2937', color: isListening ? '#ffffff' : '#38bdf8', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-          </button>
-
-          <input 
-            type="text"
-            placeholder="Ask Lone Wolf (e.g. Traffic kevu chhe?)..."
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            style={{ flex: 1, padding: '12px 16px', borderRadius: '12px', border: '1px solid #1f2937', backgroundColor: '#090d16', color: '#f8fafc', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-          />
-
-          <button
-            type="submit"
-            style={{ border: 'none', background: '#38bdf8', color: '#090d16', padding: '0 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Send size={16} />
-          </button>
-        </form>
+      {/* Bottom Mic Control Bar */}
+      <footer style={{ padding: '16px', backgroundColor: '#0b0f19', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
+        <button
+          onClick={toggleListening}
+          style={{ border: 'none', background: isListening ? '#dc2626' : '#38bdf8', color: '#030712', padding: '14px 28px', borderRadius: '9999px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(56, 189, 248, 0.4)' }}
+        >
+          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          <span>{isListening ? "Listening Active..." : "Speak to Jarvis"}</span>
+        </button>
       </footer>
 
-      {/* Watcher Setup Modal */}
+      {/* Watcher Modal (Up to 10 Reminders + Every-time interval) */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(9,13,22,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#111827', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1f2937', color: '#f8fafc', boxSizing: 'border-box' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1f2937', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={15} />
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#090d16', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={20} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Setup Task Watcher</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Setup Watcher Reminders</h3>
             </div>
 
-            <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+            <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Task to Remember</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Check office departure schedule"
-                  value={watcherTask}
-                  onChange={(e) => setWatcherTask(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1f2937', backgroundColor: '#090d16', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                />
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Enter up to 10 Reminder Tasks:</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {reminders.map((rem, idx) => (
+                    <input
+                      key={idx}
+                      type="text"
+                      placeholder={`Task ${idx + 1}...`}
+                      value={rem}
+                      onChange={(e) => {
+                        const newR = [...reminders];
+                        newR[idx] = e.target.value;
+                        setReminders(newR);
+                      }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  ))}
+                </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Remind every (minutes)</label>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Repeat Every (Minutes)</label>
                 <input
                   type="number"
                   min="1"
                   required
                   value={watcherIntervalMin}
                   onChange={(e) => setWatcherIntervalMin(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1f2937', backgroundColor: '#090d16', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
 
               <button
                 type="submit"
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#090d16', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}
               >
-                Arm Watcher
+                Arm Watcher System
               </button>
             </form>
           </div>
