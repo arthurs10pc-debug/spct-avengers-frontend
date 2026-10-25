@@ -11,15 +11,16 @@ const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [statusText, setStatusText] = useState("Jarvis Core Active. Listening for commands...");
-  const [jarvisActive, setJarvisActive] = useState(false);
+  const [statusText, setStatusText] = useState("Jarvis Core Active. Hamesha aapki aawaz sun raha hu...");
+  const [continuousMode, setContinuousMode] = useState(true);
 
-  // Watcher State (Up to 10 manual reminders + Every X minutes)
+  // Watcher State (10 Manual Reminders + Every X Minutes)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [reminders, setReminders] = useState(['', '', '', '', '', '', '', '', '', '']);
   const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
   const [watcherActive, setWatcherActive] = useState(false);
   const watcherIntervalRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const socketRef = useRef(null);
 
@@ -29,72 +30,91 @@ export default function App() {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.0;
     utterance.pitch = 0.85;
-    
-    if (text.includes('traffic') || text.includes('raste') || text.includes('kem cho')) {
-      utterance.lang = 'gu-IN';
-    } else {
-      utterance.lang = 'en-US';
-    }
+    utterance.lang = 'hi-IN'; // Pure Hindi Voice Output
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Initial Greeting on mount
-  useEffect(() => {
-    socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
-    
-    const timer = setTimeout(() => {
-      const morningGreeting = "Good morning, Commander. All systems are online. How can I assist you on your route today?";
-      setStatusText(morningGreeting);
-      speakText(morningGreeting);
-      setJarvisActive(true);
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-      if (socketRef.current) socketRef.current.disconnect();
-    };
-  }, [speakText]);
-
-  const handleVoiceCommand = async (query) => {
+  const handleVoiceCommand = useCallback((query) => {
     const lowerQ = query.toLowerCase();
-    let reply = "Processing live telemetry, Commander.";
+    let reply = "Samajh nahi aaya Commander, kripya dobara bolein.";
 
-    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('kevu chhe')) {
-      reply = "Live traffic update: Aapke raste par SP Ring Road aur Vaishnodevi circle ke beech halka congestion hai. Alternate route lene ki salah di jati hai.";
-    } else if (lowerQ.includes('status') || lowerQ.includes('jarvis')) {
-      reply = "Arc reactor core at 100 percent capacity. All operational parameters are nominal.";
+    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage')) {
+      reply = "Live traffic update: Aapke raste par SP Ring Road aur Vaishnodevi circle ke paas thoda traffic hai. Aapko alternative route lene ki salah di jati hai.";
+    } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
+      reply = "Arc reactor core 100 percent capacity par chal raha hai. Sabhi systems bilkul surakshit aur active hain.";
+    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
+      reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya madad karu?";
     } else {
-      reply = `Command executed successfully for query: ${query}`;
+      reply = `Aapka adesh mil gaya hai: "${query}". Us par kaam shuru kar diya gaya hai.`;
     }
 
     setStatusText(reply);
     speakText(reply);
-  };
+  }, [speakText]);
 
-  const toggleListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Speech recognition is not supported in this browser.");
-      return;
-    }
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'gu-IN';
+  // Continuous Speech Recognition Setup (Har waqt sunta rahega)
+  useEffect(() => {
+    socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+    
+    // Initial Morning Greeting in Hindi
+    const timer = setTimeout(() => {
+      const greeting = "Suprabhat Commander. Main Jarvis hu. Aap bataiye, aaj raste mein traffic kaisa hai ya koi aur madad chahiye?";
+      setStatusText(greeting);
+      speakText(greeting);
+    }, 1000);
 
-    if (!isListening) {
-      setIsListening(true);
-      setStatusText("Listening to your voice command...");
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'hi-IN'; // Hindi Speech Input
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setIsListening(false);
+        const transcript = event.results[event.results.length - 1][0].transcript;
         handleVoiceCommand(transcript);
       };
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
-      recognition.start();
-    } else {
+
+      recognition.onerror = () => {
+        if (continuousMode) {
+          try { recognition.start(); } catch (e) {}
+        }
+      };
+
+      recognition.onend = () => {
+        if (continuousMode) {
+          try { recognition.start(); } catch (e) {}
+        }
+      };
+
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+        setIsListening(true);
+      } catch (e) {}
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (recognitionRef.current) recognitionRef.current.stop();
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, [continuousMode, handleVoiceCommand, speakText]);
+
+  const toggleContinuousListening = () => {
+    if (continuousMode) {
+      setContinuousMode(false);
+      if (recognitionRef.current) recognitionRef.current.stop();
       setIsListening(false);
-      recognition.stop();
+      setStatusText("Continuous listening band kar di gayi hai.");
+    } else {
+      setContinuousMode(true);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch (e) {}
+      }
+      setIsListening(true);
+      setStatusText("Continuous listening shuru ho gayi hai. Main sun raha hu...");
     }
   };
 
@@ -102,7 +122,7 @@ export default function App() {
     e.preventDefault();
     const activeReminders = reminders.filter(r => r.trim() !== '');
     if (activeReminders.length === 0) {
-      alert("Kam se kam ek reminder task toh likhiye.");
+      alert("Kripya kam se kam ek reminder task zaroor likhein.");
       return;
     }
 
@@ -123,7 +143,7 @@ export default function App() {
 
     setWatcherActive(true);
     setShowWatcherModal(false);
-    alert(`Watcher armed with ${activeReminders.length} tasks, triggering every ${watcherIntervalMin} minutes.`);
+    alert(`Watcher system arm ho gaya hai! Har ${watcherIntervalMin} minute mein yaad dilata rahega.`);
   };
 
   const handleStopWatcher = () => {
@@ -132,7 +152,7 @@ export default function App() {
       watcherIntervalRef.current = null;
     }
     setWatcherActive(false);
-    alert("Watcher disarmed.");
+    alert("Watcher system band kar diya gaya hai.");
   };
 
   return (
@@ -146,7 +166,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant Core</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant (Hindi Mode)</span>
           </div>
         </div>
 
@@ -158,7 +178,7 @@ export default function App() {
             <Clock size={14} /> {watcherActive ? "Watcher Active" : "Watcher"}
           </button>
 
-          <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Unmute" : "Mute"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+          <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
             {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
         </div>
@@ -169,52 +189,52 @@ export default function App() {
         
         <style>{`
           @keyframes pulseCore {
-            0% { transform: scale(1); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 20px rgba(56, 189, 248, 0.4); }
-            50% { transform: scale(1.06); box-shadow: 0 0 50px rgba(56, 189, 248, 0.8), inset 0 0 40px rgba(56, 189, 248, 0.8); }
-            100% { transform: scale(1); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), inset 0 0 20px rgba(56, 189, 248, 0.4); }
+            0% { transform: scale(1); box-shadow: 0 0 25px rgba(56, 189, 248, 0.4), inset 0 0 25px rgba(56, 189, 248, 0.4); }
+            50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(56, 189, 248, 0.9), inset 0 0 50px rgba(56, 189, 248, 0.9); }
+            100% { transform: scale(1); box-shadow: 0 0 25px rgba(56, 189, 248, 0.4), inset 0 0 25px rgba(56, 189, 248, 0.4); }
           }
           .jarvis-heart {
-            width: 180px;
-            height: 180px;
+            width: 200px;
+            height: 200px;
             border-radius: 50%;
             border: 3px solid #38bdf8;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle, rgba(56,189,248,0.2) 0%, rgba(3,7,18,0.9) 70%);
-            animation: pulseCore 3s infinite ease-in-out;
+            background: radial-gradient(circle, rgba(56,189,248,0.25) 0%, rgba(3,7,18,0.95) 70%);
+            animation: pulseCore 2.5s infinite ease-in-out;
             cursor: pointer;
             position: relative;
           }
         `}</style>
 
         {/* Jarvis Heart Widget */}
-        <div className="jarvis-heart" onClick={toggleListening} title="Tap to speak">
-          <div style={{ width: '100px', height: '100px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Activity size={48} color="#38bdf8" />
+        <div className="jarvis-heart" onClick={toggleContinuousListening} title="Click to toggle listening">
+          <div style={{ width: '110px', height: '110px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Activity size={54} color="#38bdf8" />
           </div>
         </div>
 
         <p style={{ marginTop: '24px', fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-          {isListening ? "Listening..." : "Tap the core or mic to command"}
+          {isListening ? "Jarvis lagataar aapki aawaz sun raha hai..." : "Listening paused"}
         </p>
 
-        <div style={{ marginTop: '16px', maxWidth: '500px', width: '100%', backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', padding: '16px', boxSizing: 'border-box' }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#f8fafc', lineHeight: '1.5', fontWeight: '600' }}>
+        <div style={{ marginTop: '16px', maxWidth: '520px', width: '100%', backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', padding: '18px', boxSizing: 'border-box' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: '#f8fafc', lineHeight: '1.5', fontWeight: '700' }}>
             "{statusText}"
           </p>
         </div>
 
       </main>
 
-      {/* Bottom Mic Control Bar */}
+      {/* Bottom Control Bar */}
       <footer style={{ padding: '16px', backgroundColor: '#0b0f19', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
         <button
-          onClick={toggleListening}
-          style={{ border: 'none', background: isListening ? '#dc2626' : '#38bdf8', color: '#030712', padding: '14px 28px', borderRadius: '9999px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(56, 189, 248, 0.4)' }}
+          onClick={toggleContinuousListening}
+          style={{ border: 'none', background: continuousMode ? '#059669' : '#dc2626', color: '#ffffff', padding: '14px 28px', borderRadius: '9999px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(56, 189, 248, 0.4)' }}
         >
-          {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-          <span>{isListening ? "Listening Active..." : "Speak to Jarvis"}</span>
+          {continuousMode ? <Mic size={18} /> : <MicOff size={18} />}
+          <span>{continuousMode ? "Continuous Voice On" : "Continuous Voice Off"}</span>
         </button>
       </footer>
 
@@ -230,12 +250,12 @@ export default function App() {
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={20} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Setup Watcher Reminders</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Watcher Reminders (10 Tasks)</h3>
             </div>
 
             <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Enter up to 10 Reminder Tasks:</label>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Apne Tasks Darj Karein:</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
                   {reminders.map((rem, idx) => (
                     <input
@@ -255,7 +275,7 @@ export default function App() {
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Repeat Every (Minutes)</label>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Kitne minute mein yaad dilaye?</label>
                 <input
                   type="number"
                   min="1"
@@ -270,7 +290,7 @@ export default function App() {
                 type="submit"
                 style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}
               >
-                Arm Watcher System
+                Watcher Start Karein
               </button>
             </form>
           </div>
