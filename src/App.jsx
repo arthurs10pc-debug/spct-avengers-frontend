@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Mic, MicOff, Volume2, VolumeX, Clock, 
-  Power, X, Activity
+  Power, X, Activity, MapPin
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -12,14 +12,18 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [continuousMode, setContinuousMode] = useState(true);
 
+  // Conversational Context State for Dynamic Prompting
+  const [awaitingRoute, setAwaitingRoute] = useState(false);
+  const [userRoute, setUserRoute] = useState({ origin: '', destination: '' });
+
   // Watcher State (10 Manual Reminders + Every X Minutes)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [reminders, setReminders] = useState(['', '', '', '', '', '', '', '', '', '']);
   const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
   const [watcherActive, setWatcherActive] = useState(false);
+  
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
-
   const socketRef = useRef(null);
 
   // Jarvis Male Voice Synthesizer
@@ -28,13 +32,12 @@ export default function App() {
     window.speechSynthesis.cancel();
     
     const voices = window.speechSynthesis.getVoices();
-    // Select a male voice if available (fallback to default)
     const maleVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('george') || v.name.toLowerCase().includes('hi-in')) || voices[0];
 
     const utterance = new SpeechSynthesisUtterance(text);
     if (maleVoice) utterance.voice = maleVoice;
     utterance.rate = 0.95;
-    utterance.pitch = 0.7; // Deeper male voice tone (Jarvis style)
+    utterance.pitch = 0.75; // Deep male voice tone
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
@@ -44,10 +47,21 @@ export default function App() {
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
+    if (awaitingRoute) {
+      // User provided route context dynamically
+      setUserRoute(prev => ({ ...prev, destination: query }));
+      setAwaitingRoute(false);
+      reply = `Aapka route ${query} ke liye update kar diya gaya hai. Telemetry report ke mutabiq, is raste par filhal traffic normal hai. Aap nishchint hokar nikal sakte hain.`;
+      speakText(reply);
+      return;
+    }
+
     if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain')) {
-      reply = "Live traffic telemetry check ki ja rahi hai. Aapke raste par filhal halka congestion hai, main aapko lagbhag 14 minute mein destination pahunchne ki salah deta hu.";
+      // Dynamic prompt for route
+      setAwaitingRoute(true);
+      reply = "Zaroor Commander. Kripya mujhe batayein ki aap kahan se nikal rahe hain aur aapka destination kahan hai?";
     } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
-      reply = "Arc reactor core 100 percent capacity par hai. Sabhi systems nominal hain.";
+      reply = "Arc reactor core 100 percent capacity par hai. Sabhi navigation aur security systems nominal hain.";
     } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
       reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya aadesh hai?";
     } else {
@@ -55,19 +69,18 @@ export default function App() {
     }
 
     speakText(reply);
-  }, [speakText]);
+  }, [awaitingRoute, speakText]);
 
   // Initial Greeting and Continuous Listening Setup
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
     
-    // Load voices
     if ('speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
     }
 
     const timer = setTimeout(() => {
-      const greeting = "Suprabhat Commander. Main Jarvis hu. Bataiye, aaj raste mein traffic kaisa hai ya koi aur sahayata chahiye?";
+      const greeting = "Suprabhat Commander. Main Jarvis hu. Bataiye, aaj raste mein traffic check karna hai ya koi aur sahayata chahiye?";
       speakText(greeting);
     }, 1200);
 
@@ -171,7 +184,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant (Voice Mode)</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant (Hindi Mode)</span>
           </div>
         </div>
 
@@ -189,7 +202,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Jarvis Heart / Arc Reactor UI Center (No Text Display) */}
+      {/* Main Jarvis Heart / Arc Reactor UI Center (Clean Screen, No Text Display) */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
         
         <style>{`
@@ -211,7 +224,7 @@ export default function App() {
             cursor: pointer;
             position: relative;
           }
-        `}.style}
+        `}</style>
 
         {/* Jarvis Heart Widget */}
         <div className="jarvis-heart" onClick={toggleContinuousListening} title="Click to toggle listening">
