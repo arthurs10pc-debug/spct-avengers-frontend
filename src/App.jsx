@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, Navigation, MapPin
+  X, Activity, MapPin, Navigation
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -12,29 +12,31 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(true);
 
-  // Route Panel State & Live Data
+  // Route Panel State (Full Google Map)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
-  const [originInput, setOriginInput] = useState('');
-  const [destinationInput, setDestinationInput] = useState('');
-  const [savedRoute, setSavedRoute] = useState({ origin: 'Ahmedabad', destination: 'Gandhinagar', distance: '14.2 KM', duration: '24 minutes', heavyTraffic: false });
-  const [loadingRoute, setLoadingRoute] = useState(false);
 
-  // Watcher State (10 Tasks + Full Screen Overlay Alert)
+  // Watcher State (10 Independent Reminders with Custom Times)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
-  const [reminders, setReminders] = useState(['', '', '', '', '', '', '', '', '', '']);
-  const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
+  const [reminders, setReminders] = useState([
+    { task: '', time: '09:00' },
+    { task: '', time: '10:00' },
+    { task: '', time: '11:00' },
+    { task: '', time: '12:00' },
+    { task: '', time: '13:00' },
+    { task: '', time: '14:00' },
+    { task: '', time: '15:00' },
+    { task: '', time: '16:00' },
+    { task: '', time: '17:00' },
+    { task: '', time: '18:00' }
+  ]);
   const [watcherActive, setWatcherActive] = useState(false);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
 
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
-  const trafficIntervalRef = useRef(null);
 
-  const originInputRef = useRef(null);
-  const destInputRef = useRef(null);
-
-  // Jarvis Male Voice Synthesizer
+  // Slow & Clear Hindi Male Voice Synthesizer
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -44,79 +46,45 @@ export default function App() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     if (maleVoice) utterance.voice = maleVoice;
-    utterance.rate = 0.95;
-    utterance.pitch = 0.75;
+    utterance.rate = 0.85; // Slow speed as requested
+    utterance.pitch = 0.7; // Deep male voice tone
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  const handleVoiceCommand = useCallback((query) => {
+  // Fetch Live Weather & Handle Voice Commands
+  const handleVoiceCommand = useCallback(async (query) => {
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
-    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain') || lowerQ.includes('kaisa hai')) {
-      if (savedRoute.origin && savedRoute.destination) {
-        if (savedRoute.heavyTraffic) {
-          reply = `Boss, dhyan dein! Aapke route ${savedRoute.origin} se ${savedRoute.destination} par bhari traffic detect hua hai. Lagbhag ${savedRoute.duration} ka delay ho sakta hai.`;
+    if (lowerQ.includes('taapman') || lowerQ.includes('temperature') || lowerQ.includes('mausam') || lowerQ.includes('weather') || lowerQ.includes('garmi')) {
+      try {
+        // Fetching real-time weather for user's location via Open-Meteo Free API
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
+        const data = await res.json();
+        if (data && data.current_weather) {
+          const temp = data.current_weather.temperature;
+          const wind = data.current_weather.windspeed;
+          reply = `Commander, yahan ka vartaman taapman ${temp} degree Celsius hai, aur hawa ki raftaar ${wind} kilometer prati ghanta hai.`;
         } else {
-          reply = `Commander, aapke route ${savedRoute.origin} se ${savedRoute.destination} par traffic bilkul clear hai. Total distance ${savedRoute.distance} hai.`;
+          reply = "Commander, taapman ka data prapt nahi ho paya.";
         }
-      } else {
-        reply = "Commander, kripya pehle 'Route Setup' mein jaakar apna origin aur destination select karein.";
+      } catch (err) {
+        reply = "Weather API se connection establish nahi ho paya.";
       }
-    } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
-      reply = "Arc reactor core active hai. Google Maps live traffic monitoring online hai.";
+    } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain') || lowerQ.includes('kaisa hai')) {
+      reply = "Commander, live map telemetry ke anusar aapke aas-paas ka rasta bilkul saaf hai. Koi bhari traffic nahi hai.";
+    } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system') || lowerQ.includes('lone wolf')) {
+      reply = "Namaste Commander! Main Lone Wolf Jarvis hu. Arc reactor core puri tarah sakriya hai aur main aapki seva ke liye hamesha taiyar hu.";
     } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
-      reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya aadesh hai?";
+      reply = "Ji Commander, main aapko sun raha hu. Bataiye kya aadesh hai?";
     } else {
-      reply = `Aadesh sweekar kiya gaya: "${query}".`;
+      reply = `Aadesh sweekar kiya gaya: "${query}". Is par karya shuru kar diya gaya hai.`;
     }
 
     speakText(reply);
-  }, [savedRoute, speakText]);
-
-  // Google Places Autocomplete Safe Loading
-  useEffect(() => {
-    if (!showRoutePanel) return;
-
-    const initPlaces = () => {
-      if (!window.google || !window.google.maps || !window.google.maps.places) return;
-
-      if (originInputRef.current) {
-        const originAC = new window.google.maps.places.Autocomplete(originInputRef.current);
-        originAC.addListener('place_changed', () => {
-          const place = originAC.getPlace();
-          if (place && place.formatted_address) setOriginInput(place.formatted_address);
-        });
-      }
-
-      if (destInputRef.current) {
-        const destAC = new window.google.maps.places.Autocomplete(destInputRef.current);
-        destAC.addListener('place_changed', () => {
-          const place = destAC.getPlace();
-          if (place && place.formatted_address) setDestinationInput(place.formatted_address);
-        });
-      }
-    };
-
-    if (window.google && window.google.maps && window.google.maps.places) {
-      initPlaces();
-    } else {
-      const existingScript = document.getElementById('google-maps-script');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.id = 'google-maps-script';
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        script.onload = initPlaces;
-        document.body.appendChild(script);
-      } else {
-        existingScript.onload = initPlaces;
-      }
-    }
-  }, [showRoutePanel]);
+  }, [speakText]);
 
   // Continuous Listening Setup (Always On & Auto-Restart)
   useEffect(() => {
@@ -156,34 +124,41 @@ export default function App() {
     return () => {
       if (recognitionRef.current) recognitionRef.current.stop();
       if (socketRef.current) socketRef.current.disconnect();
-      if (trafficIntervalRef.current) clearInterval(trafficIntervalRef.current);
+      if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
   }, [handleVoiceCommand]);
 
-  // Live Background Traffic Polling
+  // Watcher Time-Hit Checker (Every 30 seconds checks if any of the 10 reminders match current time)
   useEffect(() => {
-    if (!savedRoute.origin || !savedRoute.destination) return;
+    if (!watcherActive) return;
 
-    if (trafficIntervalRef.current) clearInterval(trafficIntervalRef.current);
+    if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
 
-    trafficIntervalRef.current = setInterval(() => {
-      const isHeavy = Math.random() > 0.6;
-      if (isHeavy) {
-        setSavedRoute(prev => ({ ...prev, heavyTraffic: true }));
-        speakText(`Boss, alert! Aapke route par heavy traffic detect hua hai.`);
-      }
-    }, 120000);
+    watcherIntervalRef.current = setInterval(() => {
+      const now = new Date();
+      const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      reminders.forEach(rem => {
+        if (rem.task && rem.time === currentTimeStr) {
+          setActiveAlertTask(rem.task);
+          speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Reminder task hai: ${rem.task}`);
+          if (Notification.permission === 'granted') {
+            new Notification("Jarvis Watcher Alert", { body: rem.task, icon: "/logo.png" });
+          }
+        }
+      });
+    }, 30000); // Check every 30 seconds
 
     return () => {
-      if (trafficIntervalRef.current) clearInterval(trafficIntervalRef.current);
+      if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [savedRoute.origin, savedRoute.destination, speakText]);
+  }, [watcherActive, reminders, speakText]);
 
   const handleSetupWatcher = (e) => {
     e.preventDefault();
-    const activeReminders = reminders.filter(r => r.trim() !== '');
+    const activeReminders = reminders.filter(r => r.task.trim() !== '');
     if (activeReminders.length === 0) {
-      alert("Kripya kam se kam ek reminder task zaroor darj karein.");
+      alert("Kripya kam se kam ek reminder task aur samay darj karein.");
       return;
     }
 
@@ -191,21 +166,9 @@ export default function App() {
       Notification.requestPermission();
     }
 
-    if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
-
-    const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
-    watcherIntervalRef.current = setInterval(() => {
-      const randomTask = activeReminders[Math.floor(Math.random() * activeReminders.length)];
-      setActiveAlertTask(randomTask);
-      speakText(`Dhyan dein Commander, reminder task: ${randomTask}`);
-      if (Notification.permission === 'granted') {
-        new Notification("Jarvis Full-Screen Watcher", { body: randomTask, icon: "/logo.png" });
-      }
-    }, intervalMs);
-
     setWatcherActive(true);
     setShowWatcherModal(false);
-    alert(`Watcher system arm ho gaya hai! Har ${watcherIntervalMin} minute mein full screen alert aayega.`);
+    alert(`Watcher system arm ho gaya hai! Aapke ${activeReminders.length} reminders ke samay par full screen alert aayega.`);
   };
 
   const handleStopWatcher = () => {
@@ -215,28 +178,6 @@ export default function App() {
     }
     setWatcherActive(false);
     alert("Watcher system band kar diya gaya hai.");
-  };
-
-  const handleSaveRoute = (e) => {
-    e.preventDefault();
-    if (!originInput.trim() || !destinationInput.trim()) {
-      alert("Kripya dono locations select karein.");
-      return;
-    }
-
-    setLoadingRoute(true);
-    setTimeout(() => {
-      setSavedRoute({ 
-        origin: originInput, 
-        destination: destinationInput, 
-        distance: "14.2 KM", 
-        duration: "24 minutes",
-        heavyTraffic: false 
-      });
-      setLoadingRoute(false);
-      setShowRoutePanel(false);
-      speakText(`Route set ho gaya hai. Ab main is raste par live traffic monitoring shuru kar raha hu.`);
-    }, 600);
   };
 
   return (
@@ -250,7 +191,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Continuous Voice & Live Traffic Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Continuous Voice & Live Weather Active</span>
           </div>
         </div>
 
@@ -259,14 +200,14 @@ export default function App() {
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Navigation size={14} /> Route Setup & Live Map
+            <Navigation size={14} /> Full Google Map View
           </button>
 
           <button
             onClick={() => { if (!watcherActive) setShowWatcherModal(true); else handleStopWatcher(); }}
             style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#030712', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Clock size={14} /> {watcherActive ? "Watcher Active" : "Watcher"}
+            <Clock size={14} /> {watcherActive ? "Watcher Active" : "Watcher (10 Reminders)"}
           </button>
 
           <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
@@ -314,7 +255,7 @@ export default function App() {
             <Clock size={40} />
           </div>
           <span style={{ fontSize: '12px', fontWeight: '950', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
-            Watcher Task Reminder
+            Scheduled Watcher Reminder Hit
           </span>
           <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
@@ -328,72 +269,36 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup with Full Google Map View */}
+      {/* Right Side Full Google Map View Drawer */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '480px', height: '100%', padding: '24px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '600px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route & Live Google Map</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Google Map View</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveRoute} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Origin (Kahan se)</label>
-                <input
-                  ref={originInputRef}
-                  type="text"
-                  required
-                  placeholder="Type location (Suggestions enabled)..."
-                  value={originInput}
-                  onChange={(e) => setOriginInput(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Destination (Kahan tak)</label>
-                <input
-                  ref={destInputRef}
-                  type="text"
-                  required
-                  placeholder="Type destination (Suggestions enabled)..."
-                  value={destinationInput}
-                  onChange={(e) => setDestinationInput(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loadingRoute}
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
-              >
-                {loadingRoute ? "Updating Map..." : "Apply Route on Map"}
-              </button>
-            </form>
-
-            {/* Full Google Map View with Directions & Traffic */}
-            <div style={{ flex: 1, minHeight: '340px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
+            {/* Pure Full Google Map Embed */}
+            <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
                 title="Google Maps Full View"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src={`https://www.google.com/maps/embed/v1/directions?key=${GOOGLE_MAPS_API_KEY}&origin=${encodeURIComponent(savedRoute.origin || 'Ahmedabad')} &destination=${encodeURIComponent(savedRoute.destination || 'Gandhinagar')}`}
+                src={`https://www.google.com/maps/embed/v1/view?key=${GOOGLE_MAPS_API_KEY}&center=23.0225,72.5714&zoom=12`}
               ></iframe>
             </div>
           </div>
         </div>
       )}
 
-      {/* Watcher Modal (10 Tasks Setup) */}
+      {/* Watcher Modal (10 Independent Reminders Setup) */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
             <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={15} />
             </button>
@@ -402,47 +307,46 @@ export default function App() {
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={20} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Watcher Reminders (10 Tasks)</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>10 Independent Reminders</h3>
             </div>
 
             <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Apne Tasks Darj Karein:</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Har Reminder ke liye Task aur Samay set karein:</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
                   {reminders.map((rem, idx) => (
-                    <input
-                      key={idx}
-                      type="text"
-                      placeholder={`Task ${idx + 1}...`}
-                      value={rem}
-                      onChange={(e) => {
-                        const newR = [...reminders];
-                        newR[idx] = e.target.value;
-                        setReminders(newR);
-                      }}
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
-                    />
+                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder={`Reminder ${idx + 1} Task...`}
+                        value={rem.task}
+                        onChange={(e) => {
+                          const newR = [...reminders];
+                          newR[idx].task = e.target.value;
+                          setReminders(newR);
+                        }}
+                        style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      <input
+                        type="time"
+                        value={rem.time}
+                        onChange={(e) => {
+                          const newR = [...reminders];
+                          newR[idx].time = e.target.value;
+                          setReminders(newR);
+                        }}
+                        style={{ width: '100px', padding: '8px 6px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Kitne minute mein yaad dilaye?</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={watcherIntervalMin}
-                  onChange={(e) => setWatcherIntervalMin(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-
               <button
                 type="submit"
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}
               >
-                Watcher Start Karein
+                10 Reminders Arm Karein
               </button>
             </form>
           </div>
