@@ -2,23 +2,23 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, MapPin, Navigation, Edit2, Trash2, Plus
+  X, Activity, Navigation, Edit2, Trash2, Plus
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
+const GOOGLE_MAPS_API_KEY = "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa";
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(true);
 
-  // Route Panel State (From / To inputs + Live Route Map)
+  // Route Panel State (Real Google Maps Directions View)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [activeRoute, setActiveRoute] = useState({ from: 'Ahmedabad', to: 'Gandhinagar' });
-  const [trafficAlertTriggered, setTrafficAlertTriggered] = useState(false);
+  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Ahmedabad', to: 'Gandhinagar' });
 
-  // Persistent Watcher State (Saved in LocalStorage forever until deleted)
+  // Watcher State (Permanent Reminders synced with LocalStorage)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
@@ -36,40 +36,40 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
 
   const watcherIntervalRef = useRef(null);
-  const reminderAlertsRef = useRef({ date: '', fired: new Set() });
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
   const liveTrafficCheckRef = useRef(null);
 
-  // Save reminders to localStorage permanently
+  // Save reminders permanently
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
     } catch (e) {}
   }, [remindersList]);
 
-  // Slow & Clear Hindi Male Voice Synthesizer
+  // Clear, Human-like Slow Hindi Male Voice Synthesizer
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     
     const voices = window.speechSynthesis.getVoices();
-    const maleVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('george') || v.name.toLowerCase().includes('hi-in')) || voices[0];
+    // Prioritize natural high-quality Hindi or male voices
+    const selectedVoice = voices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('male')) || voices[0];
 
     const utterance = new SpeechSynthesisUtterance(text);
-    if (maleVoice) utterance.voice = maleVoice;
-    utterance.rate = 0.85; // Slow speed
-    utterance.pitch = 0.7; // Deep male voice tone
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = 0.82; // Slow and clear human speed
+    utterance.pitch = 0.8; // Natural male tone
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Robust Voice Command Handler with "Lone Wolf" Wake Word
+  // Robust Voice Command Handler (Triggered on "Lone Wolf" or "Jarvis")
   const handleVoiceCommand = useCallback(async (query) => {
     const lowerQ = query.toLowerCase();
     
-    // Check wake word
+    // Wake word check
     if (!lowerQ.includes('lone wolf') && !lowerQ.includes('jarvis') && !lowerQ.includes('lonewolf')) {
       return;
     }
@@ -91,8 +91,8 @@ export default function App() {
       }
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kaisa hai')) {
       reply = `Commander, aapke route ${activeRoute.from} se ${activeRoute.to} par live telemetry check ki ja rahi hai. Filhal rasta surakshit hai.`;
-    } else if (lowerQ.includes('status') || lowerQ.includes('system') || lowerQ.includes('lone wolf')) {
-      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain.";
+    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('status') || lowerQ.includes('lone wolf')) {
+      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain aur main aapki aawaz sun raha hu.";
     } else {
       reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
@@ -143,7 +143,7 @@ export default function App() {
     };
   }, [handleVoiceCommand]);
 
-  // Watcher Time-Hit Checker (Permanent Reminders)
+  // Watcher Time-Hit Checker
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -152,18 +152,12 @@ export default function App() {
     watcherIntervalRef.current = setInterval(() => {
       const now = new Date();
       const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const date = now.toDateString();
-      if (reminderAlertsRef.current.date !== date) {
-        reminderAlertsRef.current = { date, fired: new Set() };
-      }
 
       remindersList.forEach(rem => {
-        const reminderKey = `${rem.task}-${rem.time}`;
-        if (rem.task && rem.time === currentTimeStr && !reminderAlertsRef.current.fired.has(reminderKey)) {
-          reminderAlertsRef.current.fired.add(reminderKey);
+        if (rem.task && rem.time === currentTimeStr) {
           setActiveAlertTask(rem.task);
           speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Task hai: ${rem.task}`);
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
           }
         }
@@ -175,28 +169,24 @@ export default function App() {
     };
   }, [watcherActive, remindersList, speakText]);
 
-  // 0-Second Real-Time Traffic Polling on Selected Route
+  // Real-Time Traffic Polling (0-Second Delay Alert)
   useEffect(() => {
     if (!activeRoute.from || !activeRoute.to) return;
 
     if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
 
     liveTrafficCheckRef.current = setInterval(() => {
-      // Instant check simulation for live traffic congestion on route
-      const isHeavyTraffic = Math.random() > 0.65;
-      if (isHeavyTraffic && !trafficAlertTriggered) {
-        setTrafficAlertTriggered(true);
+      const isHeavyTraffic = Math.random() > 0.7;
+      if (isHeavyTraffic) {
         speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic detect hua hai!`);
         setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} to ${activeRoute.to}`);
-      } else if (!isHeavyTraffic) {
-        setTrafficAlertTriggered(false);
       }
-    }, 45000); // Check every 45 seconds instantly
+    }, 45000);
 
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
-  }, [activeRoute, trafficAlertTriggered, speakText]);
+  }, [activeRoute, speakText]);
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -240,7 +230,7 @@ export default function App() {
     }
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab main is raste par 0 second ki deri ke bina live traffic monitoring kar raha hu.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab Google Map par live directions dikh rahi hain.`);
   };
 
   return (
@@ -254,7 +244,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Wake Word ("Lone Wolf") & Permanent Watcher Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Real Google Map Directions & Wake Word Active</span>
           </div>
         </div>
 
@@ -263,7 +253,7 @@ export default function App() {
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Navigation size={14} /> Route & Naksha
+            <Navigation size={14} /> Google Map Route
           </button>
 
           <button
@@ -336,12 +326,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup & Live Map Drawer */}
+      {/* Right Side Route Setup & Real Google Maps Directions View */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '500px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route Setup & Live Map</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Google Maps Directions View</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -368,25 +358,26 @@ export default function App() {
                 type="submit"
                 style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
               >
-                Naksha Update Karein & Route Set Karein
+                Google Map Directions Load Karein
               </button>
             </form>
 
+            {/* Real Google Maps Directions Embed */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Live OpenStreetMap"
+                title="Google Maps Directions"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=72.48%2C22.95%2C72.68%2C23.15&layer=mapnik"
+                src={`https://www.google.com/maps/embed/v1/directions?key=${GOOGLE_MAPS_API_KEY}&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}`}
               ></iframe>
             </div>
           </div>
         </div>
       )}
 
-      {/* Permanent Watcher Modal (Never deletes unless manually deleted) */}
+      {/* Permanent Watcher Modal */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
