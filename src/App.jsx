@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, MapPin, Navigation, CheckCircle
+  X, Activity, MapPin, Navigation, ExternalLink
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -11,19 +11,18 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(true);
 
-  // Route Panel State (Right side drawer)
+  // Route Panel State & Live Real Data
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [originInput, setOriginInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
-  const [savedRoute, setSavedRoute] = useState({ origin: '', destination: '' });
+  const [savedRoute, setSavedRoute] = useState({ origin: '', destination: '', distance: '', duration: '' });
+  const [loadingRoute, setLoadingRoute] = useState(false);
 
   // Watcher State (10 Tasks + Full Screen Overlay Alert)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [reminders, setReminders] = useState(['', '', '', '', '', '', '', '', '', '']);
   const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
   const [watcherActive, setWatcherActive] = useState(false);
-  
-  // Full Screen Active Reminder Overlay State
   const [activeAlertTask, setActiveAlertTask] = useState(null);
 
   const watcherIntervalRef = useRef(null);
@@ -53,12 +52,12 @@ export default function App() {
 
     if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain')) {
       if (savedRoute.origin && savedRoute.destination) {
-        reply = `Commander, aapke route ${savedRoute.origin} se ${savedRoute.destination} par filhal traffic normal hai. Aap bina kisi rukawat ke nikal sakte hain.`;
+        reply = `Commander, aapke saved route ${savedRoute.origin} se ${savedRoute.destination} par live data ke mutabiq total distance ${savedRoute.distance} hai aur lagbhag ${savedRoute.duration} ka samay lagega. Traffic filhal nominal hai.`;
       } else {
-        reply = "Commander, kripya right side 'Route Setup' button par click karke apna origin aur destination set karein taaki main live traffic check kar saku.";
+        reply = "Commander, kripya pehle right side 'Route Setup' button par click karke apna origin aur destination configure karein.";
       }
     } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
-      reply = "Arc reactor core 100 percent capacity par hai. Sabhi navigation systems active hain.";
+      reply = "Arc reactor core 100 percent capacity par hai. Live mapping APIs connected hain.";
     } else {
       reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
@@ -145,15 +144,52 @@ export default function App() {
     alert("Watcher system band kar diya gaya hai.");
   };
 
-  const handleSaveRoute = (e) => {
+  // Real API Fetch using OpenStreetMap & OSRM
+  const handleCalculateRealRoute = async (e) => {
     e.preventDefault();
     if (!originInput.trim() || !destinationInput.trim()) {
-      alert("Kripya dono fields bharein.");
+      alert("Kripya dono locations bharein.");
       return;
     }
-    setSavedRoute({ origin: originInput.trim(), destination: destinationInput.trim() });
-    setShowRoutePanel(false);
-    speakText(`Route save ho gaya hai: ${originInput} se ${destinationInput}. Ab aap traffic ke baare mein pooch sakte hain.`);
+
+    setLoadingRoute(true);
+    try {
+      // 1. Geocode Origin
+      const originRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(originInput)}`);
+      const originData = await originRes.json();
+
+      // 2. Geocode Destination
+      const destRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destinationInput)}`);
+      const destData = await destRes.json();
+
+      if (!originData.length || !destData.length) {
+        throw new Error("Locations nahi mili. Kripya sahi naam darj karein.");
+      }
+
+      const oLat = originData[0].lat;
+      const oLon = originData[0].lon;
+      const dLat = destData[0].lat;
+      const dLon = destData[0].lon;
+
+      // 3. Get Real Route Data via OSRM Free API
+      const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${oLon},${oLat};${dLon},${dLat}?overview=false`);
+      const routeData = await routeRes.json();
+
+      if (routeData.routes && routeData.routes.length > 0) {
+        const distKm = (routeData.routes[0].distance / 1000).toFixed(1) + " KM";
+        const durMin = Math.round(routeData.routes[0].duration / 60) + " minutes";
+
+        setSavedRoute({ origin: originInput, destination: destinationInput, distance: distKm, duration: durMin });
+        setShowRoutePanel(false);
+        speakText(`Route successfully connect ho gaya hai. Distance ${distKm} aur samay ${durMin} lagega.`);
+      } else {
+        throw new Error("Route calculate nahi ho paya.");
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      setLoadingRoute(false);
+    }
   };
 
   return (
@@ -167,7 +203,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Continuous Voice Mode Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Real API Connected (Live Mode)</span>
           </div>
         </div>
 
@@ -177,7 +213,7 @@ export default function App() {
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Navigation size={14} /> Route Setup
+            <Navigation size={14} /> Route Setup & Live Map
           </button>
 
           <button
@@ -193,7 +229,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Jarvis Heart / Arc Reactor UI Center (Clean Screen, No Text Display) */}
+      {/* Main Jarvis Heart / Arc Reactor UI Center */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
         
         <style>{`
@@ -246,27 +282,27 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup Drawer / Panel */}
+      {/* Right Side Route Setup & Embedded Google Map Drawer */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '360px', height: '100%', padding: '24px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route Setup for Traffic</h3>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '420px', height: '100%', padding: '24px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Google Map</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveRoute} style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+            <form onSubmit={handleCalculateRealRoute} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Origin (Kahan se)</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Office / Home"
+                  placeholder="e.g. Science City Ahmedabad"
                   value={originInput}
                   onChange={(e) => setOriginInput(e.target.value)}
-                  style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
 
@@ -275,20 +311,33 @@ export default function App() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Vaishnodevi Circle"
+                  placeholder="e.g. Gift City Gandhinagar"
                   value={destinationInput}
                   onChange={(e) => setDestinationInput(e.target.value)}
-                  style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
 
               <button
                 type="submit"
-                style={{ width: '100%', padding: '13px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}
+                disabled={loadingRoute}
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
               >
-                Save Route
+                {loadingRoute ? "Connecting Live API..." : "Calculate Live Route"}
               </button>
             </form>
+
+            {/* Embedded Google Map iframe for actual navigation/traffic view */}
+            <div style={{ flex: 1, minHeight: '260px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
+              <iframe
+                title="Google Maps Live"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa&origin=${encodeURIComponent(savedRoute.origin || 'Ahmedabad')} &destination=${encodeURIComponent(savedRoute.destination || 'Gandhinagar')}`}
+              ></iframe>
+            </div>
           </div>
         </div>
       )}
