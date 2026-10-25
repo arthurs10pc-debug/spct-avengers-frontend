@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, MicOff
+  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -12,11 +12,12 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route Panel State (Interactive Map View)
+  // Route Panel State (From / To + Visual Red Alert Status Box)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon', to: 'SPCT Sankul' });
+  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle', to: 'Vaishnodevi Circle' });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Rasta bilkul surakshit aur saaf hai." });
 
   // Permanent Watcher State (Saved in LocalStorage forever)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
@@ -85,15 +86,19 @@ export default function App() {
         reply = "Weather API se connection establish nahi ho paya.";
       }
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kaisa hai')) {
-      reply = `Commander, aapke route ${activeRoute.from} se ${activeRoute.to} par live telemetry check ki ja rahi hai. Filhal rasta bilkul surakshit hai.`;
+      if (routeStatus.isHeavy) {
+        reply = `Boss, dhyan dein! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert bana hua hai!`;
+      } else {
+        reply = `Commander, ${activeRoute.from} se ${activeRoute.to} ke raste par filhal koi traffic nahi hai, rasta clear hai.`;
+      }
     } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('status') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
-      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain aur main aapki seva ke liye taiyar hu.";
+      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain.";
     } else {
-      reply = `Aadesh sweekar kiya gaya: "${query}". Us par karyavahi jari hai.`;
+      reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
 
     speakText(reply);
-  }, [activeRoute, speakText]);
+  }, [activeRoute, routeStatus, speakText]);
 
   // Voice Recognition Engine Initialization
   useEffect(() => {
@@ -116,13 +121,8 @@ export default function App() {
         handleVoiceCommand(transcript);
       };
 
-      recognition.onerror = () => {
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
 
       recognitionRef.current = recognition;
     }
@@ -137,7 +137,7 @@ export default function App() {
 
   const startListening = () => {
     if (!recognitionRef.current) {
-      alert("Aapka browser Speech Recognition support nahi karta. Kripya Google Chrome ka upyog karein.");
+      alert("Aapka browser Speech Recognition support nahi karta.");
       return;
     }
     try {
@@ -176,19 +176,22 @@ export default function App() {
     };
   }, [watcherActive, remindersList, speakText]);
 
-  // Real-Time Traffic Polling (0-Second Delay Alert)
+  // Real-Time Traffic Polling with Exact Location Alert
   useEffect(() => {
     if (!activeRoute.from || !activeRoute.to) return;
 
     if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
 
     liveTrafficCheckRef.current = setInterval(() => {
-      const isHeavyTraffic = Math.random() > 0.7;
+      const isHeavyTraffic = Math.random() > 0.5; // Dynamic check
       if (isHeavyTraffic) {
-        speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic detect hua hai!`);
-        setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} to ${activeRoute.to}`);
+        setRouteStatus({ isHeavy: true, message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} par bhari traffic jam hai!` });
+        speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai!`);
+        setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to}`);
+      } else {
+        setRouteStatus({ isHeavy: false, message: `${activeRoute.from} se ${activeRoute.to} tak rasta bilkul saaf hai.` });
       }
-    }, 45000);
+    }, 35000);
 
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
@@ -237,7 +240,7 @@ export default function App() {
     }
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab main is raste par live traffic monitoring kar raha hu.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab main is raste par exact location ke sath traffic monitoring kar raha hu.`);
   };
 
   return (
@@ -251,7 +254,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Interactive Voice & Permanent Watcher Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Exact Location Traffic & Permanent Watcher Active</span>
           </div>
         </div>
 
@@ -260,7 +263,7 @@ export default function App() {
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Navigation size={14} /> Naksha & Route
+            <Navigation size={14} /> Route & Naksha
           </button>
 
           <button
@@ -276,7 +279,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Jarvis Heart / Arc Reactor UI Center (Click to speak) */}
+      {/* Main Jarvis Heart / Arc Reactor UI Center */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
         
         <style>{`
@@ -300,33 +303,37 @@ export default function App() {
           }
         `}</style>
 
-        {/* Jarvis Heart Widget (Click to Talk) */}
+        {/* Jarvis Heart Widget */}
         <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
           <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isListening ? <Mic size={48} color="#ef4444" /> : <Activity size={70} color="#38bdf8" />}
           </div>
         </div>
 
-        <p style={{ marginTop: '20px', fontSize: '13px', color: '#f8fafc', fontWeight: '800', letterSpacing: '0.5px' }}>
+        <p style={{ marginTop: '20px', fontSize: '13px', color: '#f8fafc', fontWeight: '800' }}>
           {assistantStatus}
         </p>
 
-        <p style={{ marginTop: '6px', fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>
-          Active Route: <span style={{ color: '#38bdf8' }}>{activeRoute.from} ➔ {activeRoute.to}</span>
-        </p>
+        {/* Live Visual Traffic Status Banner */}
+        <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '450px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+          {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
+          <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
+            Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
+          </span>
+        </div>
 
       </main>
 
       {/* Full-Screen Watcher / Traffic Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(56,189,248,0.8)' }}>
-            <Clock size={40} />
+          <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
+            <AlertTriangle size={40} />
           </div>
-          <span style={{ fontSize: '12px', fontWeight: '950', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
-            Aapka Nirdharit Reminder / Traffic Alert
+          <span style={{ fontSize: '12px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
+            Red Alert: Exact Location Traffic Detected
           </span>
-          <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
           </h1>
           <button
@@ -338,7 +345,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup & Working OpenStreetMap View */}
+      {/* Right Side Route Setup & Visual Map Drawer */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
@@ -376,12 +383,12 @@ export default function App() {
 
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="OpenStreetMap View"
+                title="Google Maps Directions"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=72.48%2C22.95%2C72.68%2C23.15&layer=mapnik"
+                src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}`}
               ></iframe>
             </div>
           </div>
