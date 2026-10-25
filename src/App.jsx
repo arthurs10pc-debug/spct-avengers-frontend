@@ -2,23 +2,23 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, Navigation, Edit2, Trash2, Plus
+  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, MicOff
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
-const GOOGLE_MAPS_API_KEY = "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa";
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
-  const [isListening, setIsListening] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route Panel State (Real Google Maps Directions View)
+  // Route Panel State (Interactive Map View)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Ahmedabad', to: 'Gandhinagar' });
+  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon', to: 'SPCT Sankul' });
 
-  // Watcher State (Permanent Reminders synced with LocalStorage)
+  // Permanent Watcher State (Saved in LocalStorage forever)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
@@ -53,28 +53,23 @@ export default function App() {
     window.speechSynthesis.cancel();
     
     const voices = window.speechSynthesis.getVoices();
-    // Prioritize natural high-quality Hindi or male voices
     const selectedVoice = voices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('male')) || voices[0];
 
     const utterance = new SpeechSynthesisUtterance(text);
     if (selectedVoice) utterance.voice = selectedVoice;
-    utterance.rate = 0.82; // Slow and clear human speed
-    utterance.pitch = 0.8; // Natural male tone
+    utterance.rate = 0.82; // Slow human speed
+    utterance.pitch = 0.75; // Natural deep male tone
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Robust Voice Command Handler (Triggered on "Lone Wolf" or "Jarvis")
+  // Advanced Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
     const lowerQ = query.toLowerCase();
-    
-    // Wake word check
-    if (!lowerQ.includes('lone wolf') && !lowerQ.includes('jarvis') && !lowerQ.includes('lonewolf')) {
-      return;
-    }
-
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
+
+    setAssistantStatus(`Aadesh mila: "${query}"`);
 
     if (lowerQ.includes('taapman') || lowerQ.includes('temperature') || lowerQ.includes('mausam') || lowerQ.includes('weather')) {
       try {
@@ -90,17 +85,17 @@ export default function App() {
         reply = "Weather API se connection establish nahi ho paya.";
       }
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kaisa hai')) {
-      reply = `Commander, aapke route ${activeRoute.from} se ${activeRoute.to} par live telemetry check ki ja rahi hai. Filhal rasta surakshit hai.`;
-    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('status') || lowerQ.includes('lone wolf')) {
-      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain aur main aapki aawaz sun raha hu.";
+      reply = `Commander, aapke route ${activeRoute.from} se ${activeRoute.to} par live telemetry check ki ja rahi hai. Filhal rasta bilkul surakshit hai.`;
+    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('status') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
+      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain aur main aapki seva ke liye taiyar hu.";
     } else {
-      reply = `Aadesh sweekar kiya gaya: "${query}".`;
+      reply = `Aadesh sweekar kiya gaya: "${query}". Us par karyavahi jari hai.`;
     }
 
     speakText(reply);
   }, [activeRoute, speakText]);
 
-  // Continuous Listening Setup (Always On & Auto-Restart)
+  // Voice Recognition Engine Initialization
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
     
@@ -112,27 +107,24 @@ export default function App() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.lang = 'hi-IN';
-      recognition.continuous = true;
+      recognition.continuous = false;
       recognition.interimResults = false;
 
       recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript;
+        const transcript = event.results[0][0].transcript;
+        setIsListening(false);
         handleVoiceCommand(transcript);
       };
 
       recognition.onerror = () => {
-        try { recognition.start(); } catch (e) {}
+        setIsListening(false);
       };
 
       recognition.onend = () => {
-        try { recognition.start(); } catch (e) {}
+        setIsListening(false);
       };
 
       recognitionRef.current = recognition;
-      try {
-        recognition.start();
-        setIsListening(true);
-      } catch (e) {}
     }
 
     return () => {
@@ -142,6 +134,21 @@ export default function App() {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
   }, [handleVoiceCommand]);
+
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      alert("Aapka browser Speech Recognition support nahi karta. Kripya Google Chrome ka upyog karein.");
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      recognitionRef.current.start();
+      setIsListening(true);
+      setAssistantStatus("Sun raha hu... Kripya bolein.");
+    } catch (e) {
+      setIsListening(false);
+    }
+  };
 
   // Watcher Time-Hit Checker
   useEffect(() => {
@@ -162,7 +169,7 @@ export default function App() {
           }
         }
       });
-    }, 20000);
+    }, 30000);
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
@@ -230,7 +237,7 @@ export default function App() {
     }
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab Google Map par live directions dikh rahi hain.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab main is raste par live traffic monitoring kar raha hu.`);
   };
 
   return (
@@ -244,7 +251,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Real Google Map Directions & Wake Word Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Interactive Voice & Permanent Watcher Active</span>
           </div>
         </div>
 
@@ -253,7 +260,7 @@ export default function App() {
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Navigation size={14} /> Google Map Route
+            <Navigation size={14} /> Naksha & Route
           </button>
 
           <button
@@ -269,7 +276,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Jarvis Heart / Arc Reactor UI Center */}
+      {/* Main Jarvis Heart / Arc Reactor UI Center (Click to speak) */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
         
         <style>{`
@@ -288,18 +295,23 @@ export default function App() {
             justify-content: center;
             background: radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(3,7,18,0.95) 70%);
             animation: pulseCore 2s infinite ease-in-out;
+            cursor: pointer;
             position: relative;
           }
         `}</style>
 
-        {/* Jarvis Heart Widget */}
-        <div className="jarvis-heart">
+        {/* Jarvis Heart Widget (Click to Talk) */}
+        <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
           <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Activity size={70} color="#38bdf8" />
+            {isListening ? <Mic size={48} color="#ef4444" /> : <Activity size={70} color="#38bdf8" />}
           </div>
         </div>
 
-        <p style={{ marginTop: '20px', fontSize: '11px', color: '#94a3b8', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
+        <p style={{ marginTop: '20px', fontSize: '13px', color: '#f8fafc', fontWeight: '800', letterSpacing: '0.5px' }}>
+          {assistantStatus}
+        </p>
+
+        <p style={{ marginTop: '6px', fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>
           Active Route: <span style={{ color: '#38bdf8' }}>{activeRoute.from} ➔ {activeRoute.to}</span>
         </p>
 
@@ -326,12 +338,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup & Real Google Maps Directions View */}
+      {/* Right Side Route Setup & Working OpenStreetMap View */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Google Maps Directions View</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route Setup & Live Map</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -358,19 +370,18 @@ export default function App() {
                 type="submit"
                 style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
               >
-                Google Map Directions Load Karein
+                Route Set Karein & Monitor Karein
               </button>
             </form>
 
-            {/* Real Google Maps Directions Embed */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Google Maps Directions"
+                title="OpenStreetMap View"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src={`https://www.google.com/maps/embed/v1/directions?key=${GOOGLE_MAPS_API_KEY}&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}`}
+                src="https://www.openstreetmap.org/export/embed.html?bbox=72.48%2C22.95%2C72.68%2C23.15&layer=mapnik"
               ></iframe>
             </div>
           </div>
