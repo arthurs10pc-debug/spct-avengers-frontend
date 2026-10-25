@@ -16,7 +16,7 @@ export default function App() {
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [originInput, setOriginInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
-  const [savedRoute, setSavedRoute] = useState({ origin: '', destination: '', distance: '', duration: '', heavyTraffic: false });
+  const [savedRoute, setSavedRoute] = useState({ origin: 'Ahmedabad', destination: 'Gandhinagar', distance: '14.2 KM', duration: '24 minutes', heavyTraffic: false });
   const [loadingRoute, setLoadingRoute] = useState(false);
 
   // Watcher State (10 Tasks + Full Screen Overlay Alert)
@@ -55,7 +55,7 @@ export default function App() {
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
-    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain')) {
+    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain') || lowerQ.includes('kaisa hai')) {
       if (savedRoute.origin && savedRoute.destination) {
         if (savedRoute.heavyTraffic) {
           reply = `Boss, dhyan dein! Aapke route ${savedRoute.origin} se ${savedRoute.destination} par bhari traffic detect hua hai. Lagbhag ${savedRoute.duration} ka delay ho sakta hai.`;
@@ -67,6 +67,8 @@ export default function App() {
       }
     } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
       reply = "Arc reactor core active hai. Google Maps live traffic monitoring online hai.";
+    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
+      reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya aadesh hai?";
     } else {
       reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
@@ -116,7 +118,7 @@ export default function App() {
     }
   }, [showRoutePanel]);
 
-  // Continuous Listening Setup (Always On)
+  // Continuous Listening Setup (Always On & Auto-Restart)
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
     
@@ -248,7 +250,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Google Places & Live Traffic Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Continuous Voice & Live Traffic Active</span>
           </div>
         </div>
 
@@ -326,12 +328,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup with Google Places Autocomplete & Live Map */}
+      {/* Right Side Route Setup with Full Google Map View */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '420px', height: '100%', padding: '24px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '480px', height: '100%', padding: '24px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Google Places & Live Map</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route & Live Google Map</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -369,13 +371,14 @@ export default function App() {
                 disabled={loadingRoute}
                 style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer' }}
               >
-                {loadingRoute ? "Connecting Google API..." : "Save Route & Monitor Traffic"}
+                {loadingRoute ? "Updating Map..." : "Apply Route on Map"}
               </button>
             </form>
 
-            <div style={{ flex: 1, minHeight: '260px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
+            {/* Full Google Map View with Directions & Traffic */}
+            <div style={{ flex: 1, minHeight: '340px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Google Maps Traffic"
+                title="Google Maps Full View"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
