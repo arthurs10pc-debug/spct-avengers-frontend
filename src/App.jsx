@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
-import axios from 'axios';
 import { 
   Shield, Mic, MicOff, Volume2, VolumeX, Clock, 
-  Power, X, Radio, Cpu, Activity
+  Power, X, Activity
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -11,7 +10,6 @@ const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [statusText, setStatusText] = useState("Jarvis Core Active. Hamesha aapki aawaz sun raha hu...");
   const [continuousMode, setContinuousMode] = useState(true);
 
   // Watcher State (10 Manual Reminders + Every X Minutes)
@@ -24,50 +22,59 @@ export default function App() {
 
   const socketRef = useRef(null);
 
+  // Jarvis Male Voice Synthesizer
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
+    
+    const voices = window.speechSynthesis.getVoices();
+    // Select a male voice if available (fallback to default)
+    const maleVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('george') || v.name.toLowerCase().includes('hi-in')) || voices[0];
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 0.85;
-    utterance.lang = 'hi-IN'; // Pure Hindi Voice Output
+    if (maleVoice) utterance.voice = maleVoice;
+    utterance.rate = 0.95;
+    utterance.pitch = 0.7; // Deeper male voice tone (Jarvis style)
+    utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
   const handleVoiceCommand = useCallback((query) => {
     const lowerQ = query.toLowerCase();
-    let reply = "Samajh nahi aaya Commander, kripya dobara bolein.";
+    let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
-    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage')) {
-      reply = "Live traffic update: Aapke raste par SP Ring Road aur Vaishnodevi circle ke paas thoda traffic hai. Aapko alternative route lene ki salah di jati hai.";
+    if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain')) {
+      reply = "Live traffic telemetry check ki ja rahi hai. Aapke raste par filhal halka congestion hai, main aapko lagbhag 14 minute mein destination pahunchne ki salah deta hu.";
     } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
-      reply = "Arc reactor core 100 percent capacity par chal raha hai. Sabhi systems bilkul surakshit aur active hain.";
+      reply = "Arc reactor core 100 percent capacity par hai. Sabhi systems nominal hain.";
     } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
-      reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya madad karu?";
+      reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya aadesh hai?";
     } else {
-      reply = `Aapka adesh mil gaya hai: "${query}". Us par kaam shuru kar diya gaya hai.`;
+      reply = `Aadesh sweekar kiya gaya: "${query}". Us par karyavahi shuru hai.`;
     }
 
-    setStatusText(reply);
     speakText(reply);
   }, [speakText]);
 
-  // Continuous Speech Recognition Setup (Har waqt sunta rahega)
+  // Initial Greeting and Continuous Listening Setup
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
     
-    // Initial Morning Greeting in Hindi
+    // Load voices
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+    }
+
     const timer = setTimeout(() => {
-      const greeting = "Suprabhat Commander. Main Jarvis hu. Aap bataiye, aaj raste mein traffic kaisa hai ya koi aur madad chahiye?";
-      setStatusText(greeting);
+      const greeting = "Suprabhat Commander. Main Jarvis hu. Bataiye, aaj raste mein traffic kaisa hai ya koi aur sahayata chahiye?";
       speakText(greeting);
-    }, 1000);
+    }, 1200);
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'hi-IN'; // Hindi Speech Input
+      recognition.lang = 'hi-IN';
       recognition.continuous = true;
       recognition.interimResults = false;
 
@@ -107,14 +114,12 @@ export default function App() {
       setContinuousMode(false);
       if (recognitionRef.current) recognitionRef.current.stop();
       setIsListening(false);
-      setStatusText("Continuous listening band kar di gayi hai.");
     } else {
       setContinuousMode(true);
       if (recognitionRef.current) {
         try { recognitionRef.current.start(); } catch (e) {}
       }
       setIsListening(true);
-      setStatusText("Continuous listening shuru ho gayi hai. Main sun raha hu...");
     }
   };
 
@@ -166,7 +171,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant (Hindi Mode)</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant (Voice Mode)</span>
           </div>
         </div>
 
@@ -184,45 +189,35 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Jarvis Heart / Arc Reactor UI Center */}
+      {/* Main Jarvis Heart / Arc Reactor UI Center (No Text Display) */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
         
         <style>{`
           @keyframes pulseCore {
-            0% { transform: scale(1); box-shadow: 0 0 25px rgba(56, 189, 248, 0.4), inset 0 0 25px rgba(56, 189, 248, 0.4); }
-            50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(56, 189, 248, 0.9), inset 0 0 50px rgba(56, 189, 248, 0.9); }
-            100% { transform: scale(1); box-shadow: 0 0 25px rgba(56, 189, 248, 0.4), inset 0 0 25px rgba(56, 189, 248, 0.4); }
+            0% { transform: scale(1); box-shadow: 0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
+            50% { transform: scale(1.09); box-shadow: 0 0 70px rgba(56, 189, 248, 0.95), inset 0 0 60px rgba(56, 189, 248, 0.95); }
+            100% { transform: scale(1); box-shadow: 0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
           }
           .jarvis-heart {
-            width: 200px;
-            height: 200px;
+            width: 220px;
+            height: 220px;
             border-radius: 50%;
             border: 3px solid #38bdf8;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle, rgba(56,189,248,0.25) 0%, rgba(3,7,18,0.95) 70%);
-            animation: pulseCore 2.5s infinite ease-in-out;
+            background: radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(3,7,18,0.95) 70%);
+            animation: pulseCore 2.2s infinite ease-in-out;
             cursor: pointer;
             position: relative;
           }
-        `}</style>
+        `}.style}
 
         {/* Jarvis Heart Widget */}
         <div className="jarvis-heart" onClick={toggleContinuousListening} title="Click to toggle listening">
-          <div style={{ width: '110px', height: '110px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Activity size={54} color="#38bdf8" />
+          <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Activity size={64} color="#38bdf8" />
           </div>
-        </div>
-
-        <p style={{ marginTop: '24px', fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
-          {isListening ? "Jarvis lagataar aapki aawaz sun raha hai..." : "Listening paused"}
-        </p>
-
-        <div style={{ marginTop: '16px', maxWidth: '520px', width: '100%', backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '16px', padding: '18px', boxSizing: 'border-box' }}>
-          <p style={{ margin: 0, fontSize: '14px', color: '#f8fafc', lineHeight: '1.5', fontWeight: '700' }}>
-            "{statusText}"
-          </p>
         </div>
 
       </main>
@@ -234,7 +229,7 @@ export default function App() {
           style={{ border: 'none', background: continuousMode ? '#059669' : '#dc2626', color: '#ffffff', padding: '14px 28px', borderRadius: '9999px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(56, 189, 248, 0.4)' }}
         >
           {continuousMode ? <Mic size={18} /> : <MicOff size={18} />}
-          <span>{continuousMode ? "Continuous Voice On" : "Continuous Voice Off"}</span>
+          <span>{continuousMode ? "Jarvis Active (Listening...)" : "Jarvis Paused"}</span>
         </button>
       </footer>
 
