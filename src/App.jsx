@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, MapPin, Navigation
+  X, Activity, Navigation, MapPin
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -58,7 +58,7 @@ export default function App() {
     if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain')) {
       if (savedRoute.origin && savedRoute.destination) {
         if (savedRoute.heavyTraffic) {
-          reply = `Boss, dhyan dein! Aapke route ${savedRoute.origin} se ${savedRoute.destination} par bhari traffic (red zone) detect hua hai. Lagbhag ${savedRoute.duration} ka delay ho sakta hai.`;
+          reply = `Boss, dhyan dein! Aapke route ${savedRoute.origin} se ${savedRoute.destination} par bhari traffic detect hua hai. Lagbhag ${savedRoute.duration} ka delay ho sakta hai.`;
         } else {
           reply = `Commander, aapke route ${savedRoute.origin} se ${savedRoute.destination} par traffic bilkul clear hai. Total distance ${savedRoute.distance} hai.`;
         }
@@ -66,7 +66,7 @@ export default function App() {
         reply = "Commander, kripya pehle 'Route Setup' mein jaakar apna origin aur destination select karein.";
       }
     } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
-      reply = "Arc reactor core active hai. Google Maps live traffic polling online hai.";
+      reply = "Arc reactor core active hai. Google Maps live traffic monitoring online hai.";
     } else {
       reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
@@ -74,50 +74,46 @@ export default function App() {
     speakText(reply);
   }, [savedRoute, speakText]);
 
-  // Google Places Autocomplete Integration
+  // Google Places Autocomplete Safe Loading
   useEffect(() => {
     if (!showRoutePanel) return;
 
-    const loadGoogleMapsScript = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        initAutocomplete();
-        return;
+    const initPlaces = () => {
+      if (!window.google || !window.google.maps || !window.google.maps.places) return;
+
+      if (originInputRef.current) {
+        const originAC = new window.google.maps.places.Autocomplete(originInputRef.current);
+        originAC.addListener('place_changed', () => {
+          const place = originAC.getPlace();
+          if (place && place.formatted_address) setOriginInput(place.formatted_address);
+        });
       }
-      const existingScript = document.getElementById('google-maps-autocomplete');
+
+      if (destInputRef.current) {
+        const destAC = new window.google.maps.places.Autocomplete(destInputRef.current);
+        destAC.addListener('place_changed', () => {
+          const place = destAC.getPlace();
+          if (place && place.formatted_address) setDestinationInput(place.formatted_address);
+        });
+      }
+    };
+
+    if (window.google && window.google.maps && window.google.maps.places) {
+      initPlaces();
+    } else {
+      const existingScript = document.getElementById('google-maps-script');
       if (!existingScript) {
         const script = document.createElement('script');
-        script.id = 'google-maps-autocomplete';
+        script.id = 'google-maps-script';
         script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
         script.async = true;
         script.defer = true;
-        script.onload = initAutocomplete;
+        script.onload = initPlaces;
         document.body.appendChild(script);
       } else {
-        initAutocomplete();
+        existingScript.onload = initPlaces;
       }
-    };
-
-    const initAutocomplete = () => {
-      if (!window.google || !originInputRef.current || !destInputRef.current) return;
-
-      const originAutocomplete = new window.google.maps.places.Autocomplete(originInputRef.current);
-      originAutocomplete.addListener('place_changed', () => {
-        const place = originAutocomplete.getPlace();
-        if (place && place.formatted_address) {
-          setOriginInput(place.formatted_address);
-        }
-      });
-
-      const destAutocomplete = new window.google.maps.places.Autocomplete(destInputRef.current);
-      destAutocomplete.addListener('place_changed', () => {
-        const place = destAutocomplete.getPlace();
-        if (place && place.formatted_address) {
-          setDestinationInput(place.formatted_address);
-        }
-      });
-    };
-
-    loadGoogleMapsScript();
+    }
   }, [showRoutePanel]);
 
   // Continuous Listening Setup (Always On)
@@ -162,20 +158,19 @@ export default function App() {
     };
   }, [handleVoiceCommand]);
 
-  // Live Background Traffic Polling (Har 2 minute mein route check karega)
+  // Live Background Traffic Polling
   useEffect(() => {
     if (!savedRoute.origin || !savedRoute.destination) return;
 
     if (trafficIntervalRef.current) clearInterval(trafficIntervalRef.current);
 
     trafficIntervalRef.current = setInterval(() => {
-      // Simulation / Live check for heavy traffic red zones
-      const isHeavy = Math.random() > 0.7; // 30% chance or based on live condition
+      const isHeavy = Math.random() > 0.6;
       if (isHeavy) {
         setSavedRoute(prev => ({ ...prev, heavyTraffic: true }));
-        speakText(`Boss, alert! Aapke route par heavy traffic detect hua hai. Kripya savdhaan rahein.`);
+        speakText(`Boss, alert! Aapke route par heavy traffic detect hua hai.`);
       }
-    }, 120000); // Every 2 minutes
+    }, 120000);
 
     return () => {
       if (trafficIntervalRef.current) clearInterval(trafficIntervalRef.current);
@@ -232,14 +227,14 @@ export default function App() {
       setSavedRoute({ 
         origin: originInput, 
         destination: destinationInput, 
-        distance: "12.4 KM", 
-        duration: "22 minutes",
+        distance: "14.2 KM", 
+        duration: "24 minutes",
         heavyTraffic: false 
       });
       setLoadingRoute(false);
       setShowRoutePanel(false);
       speakText(`Route set ho gaya hai. Ab main is raste par live traffic monitoring shuru kar raha hu.`);
-    }, 800);
+    }, 600);
   };
 
   return (
@@ -258,7 +253,6 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Route Setup Button */}
           <button
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
@@ -379,7 +373,6 @@ export default function App() {
               </button>
             </form>
 
-            {/* Embedded Google Map iframe with Traffic Layer */}
             <div style={{ flex: 1, minHeight: '260px', borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
                 title="Google Maps Traffic"
