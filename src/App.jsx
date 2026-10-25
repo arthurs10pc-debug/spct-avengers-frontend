@@ -46,21 +46,20 @@ export default function App() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     if (maleVoice) utterance.voice = maleVoice;
-    utterance.rate = 0.85; // Slow speed as requested
+    utterance.rate = 0.85; // Slow speed
     utterance.pitch = 0.7; // Deep male voice tone
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Fetch Live Weather & Handle Voice Commands
+  // Fetch Live Weather & Handle Voice Commands in Pure Hindi
   const handleVoiceCommand = useCallback(async (query) => {
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
     if (lowerQ.includes('taapman') || lowerQ.includes('temperature') || lowerQ.includes('mausam') || lowerQ.includes('weather') || lowerQ.includes('garmi')) {
       try {
-        // Fetching real-time weather for user's location via Open-Meteo Free API
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
         const data = await res.json();
         if (data && data.current_weather) {
@@ -128,7 +127,7 @@ export default function App() {
     };
   }, [handleVoiceCommand]);
 
-  // Watcher Time-Hit Checker (Every 30 seconds checks if any of the 10 reminders match current time)
+  // Watcher Time-Hit Checker
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -147,7 +146,7 @@ export default function App() {
           }
         }
       });
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
@@ -191,7 +190,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Continuous Voice & Live Weather Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Sada Sakriya Awaaz aur Mausam Mode</span>
           </div>
         </div>
 
@@ -200,14 +199,14 @@ export default function App() {
             onClick={() => setShowRoutePanel(true)}
             style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Navigation size={14} /> Full Google Map View
+            <Navigation size={14} /> Naksha Dekhein
           </button>
 
           <button
             onClick={() => { if (!watcherActive) setShowWatcherModal(true); else handleStopWatcher(); }}
             style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#030712', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Clock size={14} /> {watcherActive ? "Watcher Active" : "Watcher (10 Reminders)"}
+            <Clock size={14} /> {watcherActive ? "Watcher Chalu Hai" : "Watcher (10 Reminders)"}
           </button>
 
           <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
@@ -255,7 +254,7 @@ export default function App() {
             <Clock size={40} />
           </div>
           <span style={{ fontSize: '12px', fontWeight: '950', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
-            Scheduled Watcher Reminder Hit
+            Nirdharit Samay Ho Chuka Hai
           </span>
           <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
@@ -264,7 +263,7 @@ export default function App() {
             onClick={() => setActiveAlertTask(null)}
             style={{ padding: '16px 36px', borderRadius: '16px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
           >
-            Dismiss Reminder
+            Hataein (Dismiss)
           </button>
         </div>
       )}
@@ -274,13 +273,12 @@ export default function App() {
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '600px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Google Map View</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Google Map Darshan</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            {/* Pure Full Google Map Embed */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
                 title="Google Maps Full View"
@@ -307,7 +305,7 @@ export default function App() {
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={20} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>10 Independent Reminders</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>10 Alag-alag Reminders</h3>
             </div>
 
             <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
@@ -346,7 +344,7 @@ export default function App() {
                 type="submit"
                 style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}
               >
-                10 Reminders Arm Karein
+                10 Reminders Chalu Karein
               </button>
             </form>
           </div>
