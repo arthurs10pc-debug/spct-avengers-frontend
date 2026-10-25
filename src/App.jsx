@@ -1,27 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
-  Shield, Mic, MicOff, Volume2, VolumeX, Clock, 
-  Power, X, Activity, MapPin
+  Shield, Volume2, VolumeX, Clock, 
+  X, Activity, MapPin, Navigation, CheckCircle
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 
 export default function App() {
-  const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [continuousMode, setContinuousMode] = useState(true);
+  const [isListening, setIsListening] = useState(true);
 
-  // Conversational Context State for Dynamic Prompting
-  const [awaitingRoute, setAwaitingRoute] = useState(false);
-  const [userRoute, setUserRoute] = useState({ origin: '', destination: '' });
+  // Route Panel State (Right side drawer)
+  const [showRoutePanel, setShowRoutePanel] = useState(false);
+  const [originInput, setOriginInput] = useState('');
+  const [destinationInput, setDestinationInput] = useState('');
+  const [savedRoute, setSavedRoute] = useState({ origin: '', destination: '' });
 
-  // Watcher State (10 Manual Reminders + Every X Minutes)
+  // Watcher State (10 Tasks + Full Screen Overlay Alert)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [reminders, setReminders] = useState(['', '', '', '', '', '', '', '', '', '']);
   const [watcherIntervalMin, setWatcherIntervalMin] = useState(5);
   const [watcherActive, setWatcherActive] = useState(false);
   
+  // Full Screen Active Reminder Overlay State
+  const [activeAlertTask, setActiveAlertTask] = useState(null);
+
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
@@ -37,7 +41,7 @@ export default function App() {
     const utterance = new SpeechSynthesisUtterance(text);
     if (maleVoice) utterance.voice = maleVoice;
     utterance.rate = 0.95;
-    utterance.pitch = 0.75; // Deep male voice tone
+    utterance.pitch = 0.75;
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
@@ -47,42 +51,28 @@ export default function App() {
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
-    if (awaitingRoute) {
-      // User provided route context dynamically
-      setUserRoute(prev => ({ ...prev, destination: query }));
-      setAwaitingRoute(false);
-      reply = `Aapka route ${query} ke liye update kar diya gaya hai. Telemetry report ke mutabiq, is raste par filhal traffic normal hai. Aap nishchint hokar nikal sakte hain.`;
-      speakText(reply);
-      return;
-    }
-
     if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain')) {
-      // Dynamic prompt for route
-      setAwaitingRoute(true);
-      reply = "Zaroor Commander. Kripya mujhe batayein ki aap kahan se nikal rahe hain aur aapka destination kahan hai?";
+      if (savedRoute.origin && savedRoute.destination) {
+        reply = `Commander, aapke route ${savedRoute.origin} se ${savedRoute.destination} par filhal traffic normal hai. Aap bina kisi rukawat ke nikal sakte hain.`;
+      } else {
+        reply = "Commander, kripya right side 'Route Setup' button par click karke apna origin aur destination set karein taaki main live traffic check kar saku.";
+      }
     } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system')) {
-      reply = "Arc reactor core 100 percent capacity par hai. Sabhi navigation aur security systems nominal hain.";
-    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
-      reply = "Namaste Commander! Main aapki hi aawaz sun raha hu. Bataiye kya aadesh hai?";
+      reply = "Arc reactor core 100 percent capacity par hai. Sabhi navigation systems active hain.";
     } else {
-      reply = `Aadesh sweekar kiya gaya: "${query}". Us par karyavahi shuru hai.`;
+      reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
 
     speakText(reply);
-  }, [awaitingRoute, speakText]);
+  }, [savedRoute, speakText]);
 
-  // Initial Greeting and Continuous Listening Setup
+  // Continuous Listening Setup (Always On)
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
     
     if ('speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
     }
-
-    const timer = setTimeout(() => {
-      const greeting = "Suprabhat Commander. Main Jarvis hu. Bataiye, aaj raste mein traffic check karna hai ya koi aur sahayata chahiye?";
-      speakText(greeting);
-    }, 1200);
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -97,15 +87,11 @@ export default function App() {
       };
 
       recognition.onerror = () => {
-        if (continuousMode) {
-          try { recognition.start(); } catch (e) {}
-        }
+        try { recognition.start(); } catch (e) {}
       };
 
       recognition.onend = () => {
-        if (continuousMode) {
-          try { recognition.start(); } catch (e) {}
-        }
+        try { recognition.start(); } catch (e) {}
       };
 
       recognitionRef.current = recognition;
@@ -116,31 +102,16 @@ export default function App() {
     }
 
     return () => {
-      clearTimeout(timer);
       if (recognitionRef.current) recognitionRef.current.stop();
       if (socketRef.current) socketRef.current.disconnect();
     };
-  }, [continuousMode, handleVoiceCommand, speakText]);
-
-  const toggleContinuousListening = () => {
-    if (continuousMode) {
-      setContinuousMode(false);
-      if (recognitionRef.current) recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      setContinuousMode(true);
-      if (recognitionRef.current) {
-        try { recognitionRef.current.start(); } catch (e) {}
-      }
-      setIsListening(true);
-    }
-  };
+  }, [handleVoiceCommand]);
 
   const handleSetupWatcher = (e) => {
     e.preventDefault();
     const activeReminders = reminders.filter(r => r.trim() !== '');
     if (activeReminders.length === 0) {
-      alert("Kripya kam se kam ek reminder task zaroor likhein.");
+      alert("Kripya kam se kam ek reminder task zaroor darj karein.");
       return;
     }
 
@@ -153,15 +124,16 @@ export default function App() {
     const intervalMs = Math.max(1, parseInt(watcherIntervalMin) || 5) * 60 * 1000;
     watcherIntervalRef.current = setInterval(() => {
       const randomTask = activeReminders[Math.floor(Math.random() * activeReminders.length)];
-      speakText(`Reminder alert: ${randomTask}`);
+      setActiveAlertTask(randomTask);
+      speakText(`Dhyan dein Commander, reminder task: ${randomTask}`);
       if (Notification.permission === 'granted') {
-        new Notification("Jarvis Watcher", { body: randomTask, icon: "/logo.png" });
+        new Notification("Jarvis Full-Screen Watcher", { body: randomTask, icon: "/logo.png" });
       }
     }, intervalMs);
 
     setWatcherActive(true);
     setShowWatcherModal(false);
-    alert(`Watcher system arm ho gaya hai! Har ${watcherIntervalMin} minute mein yaad dilata rahega.`);
+    alert(`Watcher system arm ho gaya hai! Har ${watcherIntervalMin} minute mein full screen alert aayega.`);
   };
 
   const handleStopWatcher = () => {
@@ -171,6 +143,17 @@ export default function App() {
     }
     setWatcherActive(false);
     alert("Watcher system band kar diya gaya hai.");
+  };
+
+  const handleSaveRoute = (e) => {
+    e.preventDefault();
+    if (!originInput.trim() || !destinationInput.trim()) {
+      alert("Kripya dono fields bharein.");
+      return;
+    }
+    setSavedRoute({ origin: originInput.trim(), destination: destinationInput.trim() });
+    setShowRoutePanel(false);
+    speakText(`Route save ho gaya hai: ${originInput} se ${destinationInput}. Ab aap traffic ke baare mein pooch sakte hain.`);
   };
 
   return (
@@ -184,11 +167,19 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>AI Voice Assistant (Hindi Mode)</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Continuous Voice Mode Active</span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Route Setup Button */}
+          <button
+            onClick={() => setShowRoutePanel(true)}
+            style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <Navigation size={14} /> Route Setup
+          </button>
+
           <button
             onClick={() => { if (!watcherActive) setShowWatcherModal(true); else handleStopWatcher(); }}
             style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#030712', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
@@ -207,46 +198,102 @@ export default function App() {
         
         <style>{`
           @keyframes pulseCore {
-            0% { transform: scale(1); box-shadow: 0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
-            50% { transform: scale(1.09); box-shadow: 0 0 70px rgba(56, 189, 248, 0.95), inset 0 0 60px rgba(56, 189, 248, 0.95); }
-            100% { transform: scale(1); box-shadow: 0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
+            0% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
+            50% { transform: scale(1.1); box-shadow: 0 0 80px rgba(56, 189, 248, 0.95), inset 0 0 65px rgba(56, 189, 248, 0.95); }
+            100% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
           }
           .jarvis-heart {
-            width: 220px;
-            height: 220px;
+            width: 240px;
+            height: 240px;
             border-radius: 50%;
             border: 3px solid #38bdf8;
             display: flex;
             align-items: center;
             justify-content: center;
             background: radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(3,7,18,0.95) 70%);
-            animation: pulseCore 2.2s infinite ease-in-out;
-            cursor: pointer;
+            animation: pulseCore 2s infinite ease-in-out;
             position: relative;
           }
         `}</style>
 
         {/* Jarvis Heart Widget */}
-        <div className="jarvis-heart" onClick={toggleContinuousListening} title="Click to toggle listening">
-          <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Activity size={64} color="#38bdf8" />
+        <div className="jarvis-heart">
+          <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Activity size={70} color="#38bdf8" />
           </div>
         </div>
 
       </main>
 
-      {/* Bottom Control Bar */}
-      <footer style={{ padding: '16px', backgroundColor: '#0b0f19', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
-        <button
-          onClick={toggleContinuousListening}
-          style={{ border: 'none', background: continuousMode ? '#059669' : '#dc2626', color: '#ffffff', padding: '14px 28px', borderRadius: '9999px', cursor: 'pointer', fontWeight: '900', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(56, 189, 248, 0.4)' }}
-        >
-          {continuousMode ? <Mic size={18} /> : <MicOff size={18} />}
-          <span>{continuousMode ? "Jarvis Active (Listening...)" : "Jarvis Paused"}</span>
-        </button>
-      </footer>
+      {/* Full-Screen Watcher Reminder Alert Overlay */}
+      {activeAlertTask && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
+          <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(56,189,248,0.8)' }}>
+            <Clock size={40} />
+          </div>
+          <span style={{ fontSize: '12px', fontWeight: '950', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
+            Watcher Task Reminder
+          </span>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
+            "{activeAlertTask}"
+          </h1>
+          <button
+            onClick={() => setActiveAlertTask(null)}
+            style={{ padding: '16px 36px', borderRadius: '16px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
+          >
+            Dismiss Reminder
+          </button>
+        </div>
+      )}
 
-      {/* Watcher Modal (Up to 10 Reminders + Every-time interval) */}
+      {/* Right Side Route Setup Drawer / Panel */}
+      {showRoutePanel && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '360px', height: '100%', padding: '24px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route Setup for Traffic</h3>
+              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRoute} style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Origin (Kahan se)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Office / Home"
+                  value={originInput}
+                  onChange={(e) => setOriginInput(e.target.value)}
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Destination (Kahan tak)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Vaishnodevi Circle"
+                  value={destinationInput}
+                  onChange={(e) => setDestinationInput(e.target.value)}
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{ width: '100%', padding: '13px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}
+              >
+                Save Route
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Watcher Modal (10 Tasks Setup) */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
