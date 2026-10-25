@@ -2,33 +2,25 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, MapPin, Navigation
+  X, Activity, Navigation, Edit2, Trash2, Plus
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
-const GOOGLE_MAPS_API_KEY = "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa";
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(true);
 
-  // Route Panel State (Full Google Map)
+  // Route Panel State (OpenStreetMap Live View - No API key error)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
 
-  // Watcher State (10 Independent Reminders with Custom Times)
+  // Watcher State (Dynamic Add, List, Edit, Delete Reminders)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
-  const [reminders, setReminders] = useState([
-    { task: '', time: '09:00' },
-    { task: '', time: '10:00' },
-    { task: '', time: '11:00' },
-    { task: '', time: '12:00' },
-    { task: '', time: '13:00' },
-    { task: '', time: '14:00' },
-    { task: '', time: '15:00' },
-    { task: '', time: '16:00' },
-    { task: '', time: '17:00' },
-    { task: '', time: '18:00' }
-  ]);
+  const [remindersList, setRemindersList] = useState([]);
+  const [currentTaskInput, setCurrentTaskInput] = useState('');
+  const [currentTimeInput, setCurrentTimeInput] = useState('09:00');
+  const [editingIndex, setEditingIndex] = useState(null);
+
   const [watcherActive, setWatcherActive] = useState(false);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
 
@@ -53,9 +45,15 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Fetch Live Weather & Handle Voice Commands in Pure Hindi
+  // Voice Command Handler with "Lone Wolf" Wake Word support
   const handleVoiceCommand = useCallback(async (query) => {
     const lowerQ = query.toLowerCase();
+    
+    // Check if user addressed Lone Wolf or Jarvis
+    if (!lowerQ.includes('lone wolf') && !lowerQ.includes('jarvis') && !lowerQ.includes('lonewolf')) {
+      return; // Ignore if wake word not mentioned
+    }
+
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
     if (lowerQ.includes('taapman') || lowerQ.includes('temperature') || lowerQ.includes('mausam') || lowerQ.includes('weather') || lowerQ.includes('garmi')) {
@@ -74,10 +72,8 @@ export default function App() {
       }
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kesa hain') || lowerQ.includes('kaisa hai')) {
       reply = "Commander, live map telemetry ke anusar aapke aas-paas ka rasta bilkul saaf hai. Koi bhari traffic nahi hai.";
-    } else if (lowerQ.includes('status') || lowerQ.includes('jarvis') || lowerQ.includes('system') || lowerQ.includes('lone wolf')) {
-      reply = "Namaste Commander! Main Lone Wolf Jarvis hu. Arc reactor core puri tarah sakriya hai aur main aapki seva ke liye hamesha taiyar hu.";
-    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('sun rahe ho')) {
-      reply = "Ji Commander, main aapko sun raha hu. Bataiye kya aadesh hai?";
+    } else if (lowerQ.includes('status') || lowerQ.includes('system')) {
+      reply = "Namaste Commander! Main Lone Wolf hu. Arc reactor core puri tarah sakriya hai aur main aapki seva ke liye hamesha taiyar hu.";
     } else {
       reply = `Aadesh sweekar kiya gaya: "${query}". Is par karya shuru kar diya gaya hai.`;
     }
@@ -137,12 +133,12 @@ export default function App() {
       const now = new Date();
       const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-      reminders.forEach(rem => {
+      remindersList.forEach(rem => {
         if (rem.task && rem.time === currentTimeStr) {
           setActiveAlertTask(rem.task);
           speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Reminder task hai: ${rem.task}`);
           if (Notification.permission === 'granted') {
-            new Notification("Jarvis Watcher Alert", { body: rem.task, icon: "/logo.png" });
+            new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
           }
         }
       });
@@ -151,30 +147,56 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, reminders, speakText]);
+  }, [watcherActive, remindersList, speakText]);
 
-  const handleSetupWatcher = (e) => {
+  const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
-    const activeReminders = reminders.filter(r => r.task.trim() !== '');
-    if (activeReminders.length === 0) {
-      alert("Kripya kam se kam ek reminder task aur samay darj karein.");
+    if (!currentTaskInput.trim()) {
+      alert("Kripya reminder task darj karein.");
       return;
     }
 
+    if (editingIndex !== null) {
+      const updated = [...remindersList];
+      updated[editingIndex] = { task: currentTaskInput.trim(), time: currentTimeInput };
+      setRemindersList(updated);
+      setEditingIndex(null);
+    } else {
+      setRemindersList(prev => [...prev, { task: currentTaskInput.trim(), time: currentTimeInput }]);
+    }
+
+    setCurrentTaskInput('');
+    setCurrentTimeInput('09:00');
+  };
+
+  const handleEditReminder = (index) => {
+    setCurrentTaskInput(remindersList[index].task);
+    setCurrentTimeInput(remindersList[index].time);
+    setEditingIndex(index);
+  };
+
+  const handleDeleteReminder = (index) => {
+    setRemindersList(prev => prev.filter((_, idx) => idx !== index));
+    if (editingIndex === index) {
+      setEditingIndex(null);
+      setCurrentTaskInput('');
+    }
+  };
+
+  const handleArmWatcher = () => {
+    if (remindersList.length === 0) {
+      alert("Kripya kam se kam ek reminder add karein.");
+      return;
+    }
     if (Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
-
     setWatcherActive(true);
     setShowWatcherModal(false);
-    alert(`Watcher system arm ho gaya hai! Aapke ${activeReminders.length} reminders ke samay par full screen alert aayega.`);
+    alert("Watcher system arm ho gaya hai!");
   };
 
   const handleStopWatcher = () => {
-    if (watcherIntervalRef.current) {
-      clearInterval(watcherIntervalRef.current);
-      watcherIntervalRef.current = null;
-    }
     setWatcherActive(false);
     alert("Watcher system band kar diya gaya hai.");
   };
@@ -190,7 +212,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Sada Sakriya Awaaz aur Mausam Mode</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Wake Word ("Lone Wolf") & Dynamic Watcher Active</span>
           </div>
         </div>
 
@@ -206,7 +228,7 @@ export default function App() {
             onClick={() => { if (!watcherActive) setShowWatcherModal(true); else handleStopWatcher(); }}
             style={{ border: 'none', background: watcherActive ? '#059669' : '#38bdf8', color: '#030712', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Clock size={14} /> {watcherActive ? "Watcher Chalu Hai" : "Watcher (10 Reminders)"}
+            <Clock size={14} /> {watcherActive ? "Watcher Chalu Hai" : "Watcher (Reminders)"}
           </button>
 
           <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
@@ -268,12 +290,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Full Google Map View Drawer */}
+      {/* Right Side OpenStreetMap Live View Drawer (Error-Free Free Map) */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '600px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Google Map Darshan</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Map Darshan</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -281,19 +303,19 @@ export default function App() {
 
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Google Maps Full View"
+                title="OpenStreetMap Live View"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src={`https://www.google.com/maps/embed/v1/view?key=${GOOGLE_MAPS_API_KEY}&center=23.0225,72.5714&zoom=12`}
+                src="https://www.openstreetmap.org/export/embed.html?bbox=72.48%2C22.95%2C72.68%2C23.15&layer=mapnik"
               ></iframe>
             </div>
           </div>
         </div>
       )}
 
-      {/* Watcher Modal (10 Independent Reminders Setup) */}
+      {/* Watcher Modal (Dynamic Task + Time Add with Edit/Delete List) */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -305,48 +327,65 @@ export default function App() {
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={20} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>10 Alag-alag Reminders</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Dynamic Watcher Reminders</h3>
             </div>
 
-            <form onSubmit={handleSetupWatcher} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Har Reminder ke liye Task aur Samay set karein:</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {reminders.map((rem, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        placeholder={`Reminder ${idx + 1} Task...`}
-                        value={rem.task}
-                        onChange={(e) => {
-                          const newR = [...reminders];
-                          newR[idx].task = e.target.value;
-                          setReminders(newR);
-                        }}
-                        style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                      <input
-                        type="time"
-                        value={rem.time}
-                        onChange={(e) => {
-                          const newR = [...reminders];
-                          newR[idx].time = e.target.value;
-                          setReminders(newR);
-                        }}
-                        style={{ width: '100px', padding: '8px 6px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                  ))}
-                </div>
+            {/* Add/Edit Form */}
+            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Task likhein (e.g. Dawaai lena)..."
+                  value={currentTaskInput}
+                  onChange={(e) => setCurrentTaskInput(e.target.value)}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="time"
+                  value={currentTimeInput}
+                  onChange={(e) => setCurrentTimeInput(e.target.value)}
+                  style={{ width: '110px', padding: '10px 8px', borderRadius: '10px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
               </div>
 
               <button
                 type="submit"
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '13px', cursor: 'pointer', marginTop: '10px' }}
+                style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                10 Reminders Chalu Karein
+                <Plus size={16} /> {editingIndex !== null ? "Reminder Update Karein" : "Reminder Add Karein"}
               </button>
             </form>
+
+            {/* Reminders List with Edit & Delete */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginBottom: '16px', paddingRight: '4px' }}>
+              {remindersList.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi kiya gaya hai.</p>
+              ) : (
+                remindersList.map((rem, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
+                    <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rem.task}</p>
+                      <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {rem.time}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button onClick={() => handleEditReminder(idx)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => handleDeleteReminder(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={handleArmWatcher}
+              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#059669', color: '#ffffff', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}
+            >
+              Watcher System Arm Karein
+            </button>
           </div>
         </div>
       )}
