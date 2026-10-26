@@ -7,18 +7,19 @@ import {
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
+const GOOGLE_MAPS_API_KEY = "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa";
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & Traffic State
+  // Route & Live Traffic Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle', to: 'Vaishnodevi Circle' });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
+  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle, Ahmedabad', to: 'Vaishnodevi Circle, Ahmedabad' });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live traffic layer active." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State
@@ -86,7 +87,7 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Jailer Flute BGM Alarm Sound using Web Audio API (Synthesized Flute Melodic Notes)
+  // Jailer Flute BGM Alarm Sound
   const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
@@ -100,12 +101,11 @@ export default function App() {
         const ctx = audioCtxRef.current;
         if (ctx.state === 'suspended') ctx.resume();
 
-        // Jailer flute signature notes frequency sequence
         const notes = [587.33, 659.25, 783.99, 880.00, 783.99, 659.25];
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
-          osc.type = 'triangle'; // Flute-like warm waveform
+          osc.type = 'triangle';
           osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
           
           gain.gain.setValueAtTime(0.25, ctx.currentTime + idx * 0.18);
@@ -171,7 +171,7 @@ export default function App() {
       const total = expenseList.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
       reply = `Commander, aapka kul kharcha abhi tak ${total} rupaye hai.`;
     } else if (lowerQ.includes('briefing') || lowerQ.includes('news') || lowerQ.includes('samachar')) {
-      reply = "Commander, aaj ke sabhi systems nominal hain aur mausam bilkul thik hai.";
+      reply = "Commander, aaj ke sabhi systems nominal hain.";
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste')) {
       if (!isMonitoringActive) {
         reply = "Traffic monitoring abhi band hai.";
@@ -260,7 +260,7 @@ export default function App() {
           triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
           setCurrentAlertTaskId(idx);
-          startJailerFluteAlarm(); // Play Jailer Flute BGM Tune
+          startJailerFluteAlarm();
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -392,7 +392,7 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Sabhi systems nominal hain aur security protocols sakriya hain.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Sabhi systems nominal hain.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
@@ -408,14 +408,14 @@ export default function App() {
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Real-time traffic monitoring shuru kar di gayi hai.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Live traffic map load kar diya gaya hai.`);
   };
 
   const handleStopAll = () => {
     setIsMonitoringActive(false);
     stopAlarmSound();
     window.speechSynthesis.cancel();
-    setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai (Stopped)." });
+    setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai." });
     speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
@@ -428,7 +428,7 @@ export default function App() {
           <Shield size={22} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Live Traffic Map" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
@@ -458,15 +458,14 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Top Header with Working Master Mute Button */}
+        {/* Top Header with Master Mute Button */}
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Jailer Flute BGM Alarm & Master Mute Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Dark Mode Live Traffic Layer Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Functional Mute Speaker Button */}
             <button 
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute System" : "Mute System"} 
@@ -513,7 +512,7 @@ export default function App() {
           </p>
 
           {/* Live Visual Traffic Status Banner */}
-          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2) ' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
             {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
             <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
               Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
@@ -523,7 +522,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay with "Got It" Button */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -555,12 +554,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal */}
+      {/* Route Setup & Google Maps Dark Mode Traffic Layer Modal */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '580px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Route Setup & Live Map</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Google Traffic Map</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -584,25 +583,26 @@ export default function App() {
                 />
               </div>
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Route Set Karein & Monitor Karein
+                Live Traffic Map Load Karein
               </button>
             </form>
 
+            {/* Google Maps Embed with Directions & Traffic Layer view */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Google Maps Directions"
+                title="Google Maps Live Traffic"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}`}
+                src={`https://www.google.com/maps/embed/v1/directions?key=${GOOGLE_MAPS_API_KEY}&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}&mode=driving`}
               ></iframe>
             </div>
           </div>
         </div>
       )}
 
-      {/* Permanent Watcher Modal with Green Tick Indicator */}
+      {/* Permanent Watcher Modal */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
