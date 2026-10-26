@@ -52,12 +52,12 @@ export default function App() {
     } catch (e) {}
   }, [remindersList]);
 
-  // Continuous Repeating Alarm Sound until "Got It" is clicked
-  const startContinuousAlarm = useCallback(() => {
+  // Smooth & Pleasant Alarm Sound generator using Web Audio API
+  const startSmoothAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
-    const playBeep = () => {
+    const playTone = () => {
       try {
         if (!audioCtxRef.current) {
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -68,18 +68,19 @@ export default function App() {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(950, ctx.currentTime);
-        gain.gain.setValueAtTime(0.4, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5 smooth note
+        osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.2); // E5
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.3);
+        osc.stop(ctx.currentTime + 0.4);
       } catch (e) {}
     };
 
-    playBeep();
-    alarmIntervalRef.current = setInterval(playBeep, 800);
+    playTone();
+    alarmIntervalRef.current = setInterval(playTone, 1500);
   }, [isMuted]);
 
   const stopAlarmSound = useCallback(() => {
@@ -89,7 +90,7 @@ export default function App() {
     }
   }, []);
 
-  // Clear, Human-like Slow Hindi Male Voice Synthesizer
+  // Clear, Human-like Slow Hindi Male Voice Synthesizer (Only for Jarvis voice commands, NOT for Watcher)
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -194,7 +195,7 @@ export default function App() {
     }
   };
 
-  // Ultra-Reliable Watcher Time-Hit Checker (Checks every 3 seconds with duplicate prevention)
+  // Watcher Time-Hit Checker (Silent Voice, Only Smooth Sound & Notification)
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -206,15 +207,13 @@ export default function App() {
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const currentTimeStr = `${hours}:${minutes}`;
 
-      // Prevent triggering multiple times in the same minute
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
       remindersList.forEach(rem => {
         if (rem.task && rem.time === currentTimeStr) {
           triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
-          startContinuousAlarm();
-          speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Task hai: ${rem.task}`);
+          startSmoothAlarm(); // Only smooth sound, no Jarvis voice reading task
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -227,12 +226,12 @@ export default function App() {
           }
         }
       });
-    }, 3000); // Check every 3 seconds for zero lag
+    }, 3000);
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, speakText, startContinuousAlarm]);
+  }, [watcherActive, remindersList, startSmoothAlarm]);
 
   // Real-Time OSRM Traffic & Distance API Polling
   useEffect(() => {
@@ -268,8 +267,8 @@ export default function App() {
               isHeavy: true, 
               message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
             });
-            startContinuousAlarm();
-            speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai. Lagbhag ${durationMin} minute ka samay lagega!`);
+            startSmoothAlarm();
+            speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai.`);
             setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
           } else {
             setRouteStatus({ 
@@ -288,7 +287,7 @@ export default function App() {
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
-  }, [isMonitoringActive, activeRoute, speakText, startContinuousAlarm]);
+  }, [isMonitoringActive, activeRoute, speakText, startSmoothAlarm]);
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -355,7 +354,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Reliable Watcher & OSRM Traffic Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smooth Watcher Alarm & OSRM Traffic Active</span>
           </div>
         </div>
 
@@ -440,7 +439,7 @@ export default function App() {
             <AlertTriangle size={40} />
           </div>
           <span style={{ fontSize: '12px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
-            Red Alert: Exact Location Traffic / Watcher Hit
+            Nirdharit Samay Ho Chuka Hai
           </span>
           <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
