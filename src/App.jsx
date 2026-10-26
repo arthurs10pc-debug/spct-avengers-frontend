@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square
+  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
+  DollarSign, Newspaper, Home, MapPin, List
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -12,7 +13,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & Real-Time Traffic Monitoring State
+  // Route & Traffic State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -20,7 +21,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
-  // Permanent Watcher State (Saved in LocalStorage forever)
+  // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
@@ -33,9 +34,25 @@ export default function App() {
   const [currentTaskInput, setCurrentTaskInput] = useState('');
   const [currentTimeInput, setCurrentTimeInput] = useState('09:00');
   const [editingIndex, setEditingIndex] = useState(null);
-
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
+
+  // Feature 1: Expense & Pocket Money Tracker State
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [expenseList, setExpenseList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_expenses');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [expenseTitle, setExpenseTitle] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+
+  // Feature 2: Daily Briefing & News Flash State
+  const [showBriefingModal, setShowBriefingModal] = useState(false);
+  const [briefingData, setBriefingData] = useState("Briefing load ki ja rahi hai...");
 
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -45,14 +62,19 @@ export default function App() {
   const alarmIntervalRef = useRef(null);
   const triggeredMinuteRef = useRef('');
 
-  // Save reminders permanently
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
     } catch (e) {}
   }, [remindersList]);
 
-  // Smooth & Pleasant Alarm Sound generator using Web Audio API
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
+    } catch (e) {}
+  }, [expenseList]);
+
+  // Smooth Alarm Sound
   const startSmoothAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
@@ -90,7 +112,6 @@ export default function App() {
     }
   }, []);
 
-  // Clear, Human-like Slow Hindi Male Voice Synthesizer
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -107,7 +128,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Advanced Voice Command Processor
+  // Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
@@ -127,24 +148,28 @@ export default function App() {
       } catch (err) {
         reply = "Weather API se connection establish nahi ho paya.";
       }
-    } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kaisa hai')) {
+    } else if (lowerQ.includes('kharcha') || lowerQ.includes('expense')) {
+      const total = expenseList.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+      reply = `Commander, aapka kul kharcha abhi tak ${total} rupaye hai.`;
+    } else if (lowerQ.includes('briefing') || lowerQ.includes('news') || lowerQ.includes('samachar')) {
+      reply = "Commander, aaj ke sabhi systems nominal hain aur mausam bilkul thik hai.";
+    } else if (lowerQ.includes('traffic') || lowerQ.includes('raste')) {
       if (!isMonitoringActive) {
-        reply = "Traffic monitoring abhi band hai. Kripya Route panel se monitoring chalu karein.";
+        reply = "Traffic monitoring abhi band hai.";
       } else if (routeStatus.isHeavy) {
-        reply = `Boss, dhyan dein! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert bana hua hai!`;
+        reply = `Boss, dhyan dein! ${activeRoute.from} se ${activeRoute.to} par bhari traffic hai!`;
       } else {
-        reply = `Commander, ${activeRoute.from} se ${activeRoute.to} ke raste par filhal traffic bilkul clear hai.`;
+        reply = `Commander, ${activeRoute.from} se ${activeRoute.to} par rasta saaf hai.`;
       }
-    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('status') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
-      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain.";
+    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
+      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems sakriya hain.";
     } else {
       reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
 
     speakText(reply);
-  }, [activeRoute, routeStatus, isMonitoringActive, speakText]);
+  }, [activeRoute, routeStatus, isMonitoringActive, expenseList, speakText]);
 
-  // Voice Recognition Engine Initialization
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
     
@@ -217,12 +242,6 @@ export default function App() {
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
-          } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
-              }
-            });
           }
         }
       });
@@ -233,7 +252,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startSmoothAlarm]);
 
-  // Real-Time OSRM Traffic & Distance API Polling
+  // Real-Time OSRM Traffic Polling
   useEffect(() => {
     if (!isMonitoringActive || !activeRoute.from || !activeRoute.to) return;
 
@@ -268,7 +287,7 @@ export default function App() {
               message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
             });
             startSmoothAlarm();
-            speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai.`);
+            speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic detect hua hai.`);
             setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
           } else {
             setRouteStatus({ 
@@ -289,6 +308,7 @@ export default function App() {
     };
   }, [isMonitoringActive, activeRoute, speakText, startSmoothAlarm]);
 
+  // Watcher handlers with Yes/No Confirmation
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
     if (!currentTaskInput.trim()) {
@@ -315,16 +335,47 @@ export default function App() {
     setEditingIndex(index);
   };
 
-  // Strict Yes/No Confirmation on Delete
   const handleDeleteReminder = (index) => {
     const taskName = remindersList[index].task;
-    const confirmDelete = window.confirm(`Kya aap sach mein "${taskName}" reminder ko delete karna chahte hain?`);
+    const confirmDelete = window.confirm(`Kya aap sach mein "${taskName}" reminder ko delete karna chahte hain? (Yes/No)`);
     if (confirmDelete) {
       setRemindersList(prev => prev.filter((_, idx) => idx !== index));
       if (editingIndex === index) {
         setEditingIndex(null);
         setCurrentTaskInput('');
       }
+    }
+  };
+
+  // Expense Handler with Yes/No Confirmation
+  const handleAddExpense = (e) => {
+    e.preventDefault();
+    if (!expenseTitle.trim() || !expenseAmount) return;
+    setExpenseList(prev => [...prev, { title: expenseTitle.trim(), amount: expenseAmount, date: new Date().toLocaleDateString() }]);
+    setExpenseTitle('');
+    setExpenseAmount('');
+  };
+
+  const handleDeleteExpense = (index) => {
+    const title = expenseList[index].title;
+    const confirmDelete = window.confirm(`Kya aap "${title}" expense record ko delete karna chahte hain? (Yes/No)`);
+    if (confirmDelete) {
+      setExpenseList(prev => prev.filter((_, idx) => idx !== index));
+    }
+  };
+
+  // Daily Briefing Handler
+  const handleOpenBriefing = async () => {
+    setShowBriefingModal(true);
+    try {
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
+      const data = await res.json();
+      const temp = data?.current_weather?.temperature || 'N/A';
+      const wind = data?.current_weather?.windspeed || 'N/A';
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Sabhi systems nominal hain aur security protocols sakriya hain.`);
+      speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
+    } catch (e) {
+      setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
     }
   };
 
@@ -349,95 +400,107 @@ export default function App() {
   };
 
   return (
-    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Top Header */}
-      <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Shield size={20} />
-          </div>
+      {/* Left Side Thin Navigation Sidebar (As per user image requirement) */}
+      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '16px', flexShrink: 0, boxSizing: 'border-box' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+          <Shield size={22} />
+        </div>
+
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+          <Navigation size={20} />
+          <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
+        </button>
+
+        <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+          <Clock size={20} />
+          <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
+        </button>
+
+        {/* Expense Tracker Button */}
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+          <DollarSign size={20} />
+          <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
+        </button>
+
+        {/* Daily Briefing & News Flash Button */}
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+          <Newspaper size={20} />
+          <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
+        </button>
+
+        <div style={{ marginTop: 'auto' }}>
+          <button onClick={handleStopAll} title="Stop All" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Square size={16} />
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+        
+        {/* Top Header */}
+        <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Delete Confirmation & OSRM Traffic Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Expense & Briefing Integrated System</span>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => setShowRoutePanel(true)}
-            style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
-          >
-            <Navigation size={14} /> Route & Naksha
-          </button>
-
-          <button
-            onClick={() => setShowWatcherModal(true)}
-            style={{ border: 'none', background: '#059669', color: '#ffffff', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
-          >
-            <Clock size={14} /> Watcher ({remindersList.length})
-          </button>
-
-          <button
-            onClick={handleStopAll}
-            title="Sabhi monitoring aur voice rok dein"
-            style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
-          >
-            <Square size={13} /> Stop
-          </button>
-
-          <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
-        </div>
-      </header>
-
-      {/* Main Jarvis Heart / Arc Reactor UI Center */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
-        
-        <style>{`
-          @keyframes pulseCore {
-            0% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
-            50% { transform: scale(1.1); box-shadow: 0 0 80px rgba(56, 189, 248, 0.95), inset 0 0 65px rgba(56, 189, 248, 0.95); }
-            100% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
-          }
-          .jarvis-heart {
-            width: 240px;
-            height: 240px;
-            border-radius: 50%;
-            border: 3px solid #38bdf8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(3,7,18,0.95) 70%);
-            animation: pulseCore 2s infinite ease-in-out;
-            cursor: pointer;
-            position: relative;
-          }
-        `}</style>
-
-        {/* Jarvis Heart Widget */}
-        <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
-          <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {isListening ? <Mic size={48} color="#ef4444" /> : <Activity size={70} color="#38bdf8" />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
           </div>
-        </div>
+        </header>
 
-        <p style={{ marginTop: '20px', fontSize: '13px', color: '#f8fafc', fontWeight: '800' }}>
-          {assistantStatus}
-        </p>
+        {/* Main Jarvis Heart / Arc Reactor UI Center */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
+          
+          <style>{`
+            @keyframes pulseCore {
+              0% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
+              50% { transform: scale(1.1); box-shadow: 0 0 80px rgba(56, 189, 248, 0.95), inset 0 0 65px rgba(56, 189, 248, 0.95); }
+              100% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
+            }
+            .jarvis-heart {
+              width: 240px;
+              height: 240px;
+              border-radius: 50%;
+              border: 3px solid #38bdf8;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(3,7,18,0.95) 70%);
+              animation: pulseCore 2s infinite ease-in-out;
+              cursor: pointer;
+              position: relative;
+            }
+          `}</style>
 
-        {/* Live Visual Traffic Status Banner */}
-        <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
-          {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
-          <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
-            Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
-          </span>
-        </div>
+          {/* Jarvis Heart Widget */}
+          <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
+            <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isListening ? <Mic size={48} color="#ef4444" /> : <Activity size={70} color="#38bdf8" />}
+            </div>
+          </div>
 
-      </main>
+          <p style={{ marginTop: '20px', fontSize: '13px', color: '#f8fafc', fontWeight: '800' }}>
+            {assistantStatus}
+          </p>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay with "Got It" Button */}
+          {/* Live Visual Traffic Status Banner */}
+          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+            {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
+            <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
+              Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
+            </span>
+          </div>
+
+        </main>
+      </div>
+
+      {/* Full-Screen Watcher / Traffic Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -461,7 +524,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Side Route Setup & Visual Map Drawer */}
+      {/* Route Setup Modal */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
@@ -489,10 +552,7 @@ export default function App() {
                   style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              <button
-                type="submit"
-                style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
-              >
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
                 Route Set Karein & Monitor Karein
               </button>
             </form>
@@ -526,12 +586,11 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
             </div>
 
-            {/* Add/Edit Form */}
             <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  placeholder="Task likhein (e.g. Office nikalna hai)..."
+                  placeholder="Task likhein..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
                   style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -544,18 +603,14 @@ export default function App() {
                 />
               </div>
 
-              <button
-                type="submit"
-                style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <Plus size={16} /> {editingIndex !== null ? "Reminder Update Karein" : "Permanent Reminder Add Karein"}
               </button>
             </form>
 
-            {/* Reminders Permanent List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
               {remindersList.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai. Yeh tab tak nahi mitenge jab tak aap delete na karein.</p>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
               ) : (
                 remindersList.map((rem, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
@@ -564,12 +619,8 @@ export default function App() {
                       <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {rem.time}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                      <button onClick={() => handleEditReminder(idx)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => handleDeleteReminder(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
-                        <Trash2 size={13} />
-                      </button>
+                      <button onClick={() => handleEditReminder(idx)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Edit2 size={13} /></button>
+                      <button onClick={() => handleDeleteReminder(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
                     </div>
                   </div>
                 ))
@@ -578,6 +629,77 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Expense & Pocket Money Tracker Modal */}
+      {showExpenseModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={20} /></div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
+            </div>
+
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Kharcha kahan kiya (e.g. Chai)..."
+                  value={expenseTitle}
+                  onChange={(e) => setExpenseTitle(e.target.value)}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="number"
+                  placeholder="Amount (₹)"
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(e.target.value)}
+                  style={{ width: '100px', padding: '10px 8px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Kharcha Jodein</button>
+            </form>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+              {expenseList.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi kharcha darj nahi hai.</p>
+              ) : (
+                expenseList.map((exp, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{exp.title} - <span style={{ color: '#38bdf8' }}>₹{exp.amount}</span></p>
+                      <span style={{ fontSize: '9px', color: '#94a3b8' }}>{exp.date}</span>
+                    </div>
+                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily Briefing & News Flash Modal */}
+      {showBriefingModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
+            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={20} /></div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Daily Briefing & News Flash</h3>
+            </div>
+
+            <p style={{ fontSize: '13px', lineHeight: '1.6', color: '#cbd5e1', backgroundColor: '#030712', padding: '16px', borderRadius: '12px', border: '1px solid #1e293b', margin: '0 0 16px 0' }}>
+              {briefingData}
+            </p>
+
+            <button onClick={() => setShowBriefingModal(false)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>Band Karein</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
