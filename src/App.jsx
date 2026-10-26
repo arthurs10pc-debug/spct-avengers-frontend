@@ -43,6 +43,7 @@ export default function App() {
   const liveTrafficCheckRef = useRef(null);
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
+  const triggeredMinuteRef = useRef('');
 
   // Save reminders permanently
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function App() {
         const gain = ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(950, ctx.currentTime);
-        gain.gain.setValueAtTime(0.35, ctx.currentTime);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -78,7 +79,7 @@ export default function App() {
     };
 
     playBeep();
-    alarmIntervalRef.current = setInterval(playBeep, 1000);
+    alarmIntervalRef.current = setInterval(playBeep, 800);
   }, [isMuted]);
 
   const stopAlarmSound = useCallback(() => {
@@ -193,7 +194,7 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker with Continuous Alarm until "Got It" clicked
+  // Ultra-Reliable Watcher Time-Hit Checker (Checks every 3 seconds with duplicate prevention)
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -201,37 +202,48 @@ export default function App() {
 
     watcherIntervalRef.current = setInterval(() => {
       const now = new Date();
-      const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${hours}:${minutes}`;
+
+      // Prevent triggering multiple times in the same minute
+      if (triggeredMinuteRef.current === currentTimeStr) return;
 
       remindersList.forEach(rem => {
-        if (rem.task && rem.time === currentTimeStr && !activeAlertTask) {
+        if (rem.task && rem.time === currentTimeStr) {
+          triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
           startContinuousAlarm();
           speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Task hai: ${rem.task}`);
+          
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
+              }
+            });
           }
         }
       });
-    }, 15000);
+    }, 3000); // Check every 3 seconds for zero lag
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, activeAlertTask, speakText, startContinuousAlarm]);
+  }, [watcherActive, remindersList, speakText, startContinuousAlarm]);
 
-  // Real & Real-Time OSRM Traffic & Distance API Polling
+  // Real-Time OSRM Traffic & Distance API Polling
   useEffect(() => {
     if (!isMonitoringActive || !activeRoute.from || !activeRoute.to) return;
 
     const checkRealTraffic = async () => {
       try {
-        // 1. Geocode From
         const resFrom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeRoute.from)}`);
         const dataFrom = await resFrom.json();
         if (!dataFrom.length) return;
 
-        // 2. Geocode To
         const resTo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeRoute.to)}`);
         const dataTo = await resTo.json();
         if (!dataTo.length) return;
@@ -241,16 +253,14 @@ export default function App() {
         const dLon = dataTo[0].lon;
         const dLat = dataTo[0].lat;
 
-        // 3. OSRM Live Routing API
         const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${oLon},${oLat};${dLon},${dLat}?overview=false`);
         const routeData = await routeRes.json();
 
         if (routeData.routes && routeData.routes.length > 0) {
-          const durationSec = routeData.routes[0].duration; // duration in seconds
+          const durationSec = routeData.routes[0].duration;
           const distanceKm = (routeData.routes[0].distance / 1000).toFixed(1);
           const durationMin = Math.round(durationSec / 60);
 
-          // Real-time congestion check (if duration is exceptionally high per km)
           const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 5; 
 
           if (isHeavy) {
@@ -273,7 +283,7 @@ export default function App() {
 
     checkRealTraffic();
     if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 60000); // Check every 1 minute
+    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 60000);
 
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
@@ -345,7 +355,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Real-Time OSRM Traffic & Stop Control Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Reliable Watcher & OSRM Traffic Active</span>
           </div>
         </div>
 
@@ -364,7 +374,6 @@ export default function App() {
             <Clock size={14} /> Watcher ({remindersList.length})
           </button>
 
-          {/* Emergency Stop Button */}
           <button
             onClick={handleStopAll}
             title="Sabhi monitoring aur voice rok dein"
