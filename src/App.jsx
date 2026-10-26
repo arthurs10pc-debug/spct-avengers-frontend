@@ -21,7 +21,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
-  // Permanent Watcher State (Permanent LocalStorage Sync)
+  // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
@@ -38,7 +38,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Expense Tracker State (Permanent LocalStorage Sync)
+  // Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -75,7 +75,7 @@ export default function App() {
     } catch (e) {}
   }, [expenseList]);
 
-  // Master Mute Handler (Stops all speech and audio when muted)
+  // Master Mute Handler
   useEffect(() => {
     if (isMuted) {
       window.speechSynthesis.cancel();
@@ -86,12 +86,12 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Smooth Alarm Sound
-  const startSmoothAlarm = useCallback(() => {
+  // Jailer Flute BGM Alarm Sound using Web Audio API (Synthesized Flute Melodic Notes)
+  const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
-    const playTone = () => {
+    const playFluteTune = () => {
       if (isMuted) return;
       try {
         if (!audioCtxRef.current) {
@@ -100,22 +100,27 @@ export default function App() {
         const ctx = audioCtxRef.current;
         if (ctx.state === 'suspended') ctx.resume();
 
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.4);
+        // Jailer flute signature notes frequency sequence
+        const notes = [587.33, 659.25, 783.99, 880.00, 783.99, 659.25];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle'; // Flute-like warm waveform
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
+          
+          gain.gain.setValueAtTime(0.25, ctx.currentTime + idx * 0.18);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.15);
+          
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.18);
+          osc.stop(ctx.currentTime + idx * 0.18 + 0.15);
+        });
       } catch (e) {}
     };
 
-    playTone();
-    alarmIntervalRef.current = setInterval(playTone, 1500);
+    playFluteTune();
+    alarmIntervalRef.current = setInterval(playFluteTune, 1800);
   }, [isMuted]);
 
   const stopAlarmSound = useCallback(() => {
@@ -255,7 +260,7 @@ export default function App() {
           triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
           setCurrentAlertTaskId(idx);
-          startSmoothAlarm();
+          startJailerFluteAlarm(); // Play Jailer Flute BGM Tune
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -267,7 +272,7 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, startSmoothAlarm, isMuted]);
+  }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
   // Real-Time OSRM Traffic Polling
   useEffect(() => {
@@ -303,7 +308,7 @@ export default function App() {
               isHeavy: true, 
               message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
             });
-            startSmoothAlarm();
+            startJailerFluteAlarm();
             speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic detect hua hai.`);
             setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
             setCurrentAlertTaskId(null);
@@ -324,7 +329,7 @@ export default function App() {
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
-  }, [isMonitoringActive, activeRoute, speakText, startSmoothAlarm, isMuted]);
+  }, [isMonitoringActive, activeRoute, speakText, startJailerFluteAlarm, isMuted]);
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -457,7 +462,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Master Mute & Persistent Sync Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Jailer Flute BGM Alarm & Master Mute Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -508,7 +513,7 @@ export default function App() {
           </p>
 
           {/* Live Visual Traffic Status Banner */}
-          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2) ' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
             {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
             <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
               Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
