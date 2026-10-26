@@ -68,8 +68,8 @@ export default function App() {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5 smooth note
-        osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.2); // E5
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.2);
         gain.gain.setValueAtTime(0.2, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
         osc.connect(gain);
@@ -90,7 +90,7 @@ export default function App() {
     }
   }, []);
 
-  // Clear, Human-like Slow Hindi Male Voice Synthesizer (Only for Jarvis voice commands, NOT for Watcher)
+  // Clear, Human-like Slow Hindi Male Voice Synthesizer
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -195,7 +195,7 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker (Silent Voice, Only Smooth Sound & Notification)
+  // Watcher Time-Hit Checker
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -213,7 +213,7 @@ export default function App() {
         if (rem.task && rem.time === currentTimeStr) {
           triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
-          startSmoothAlarm(); // Only smooth sound, no Jarvis voice reading task
+          startSmoothAlarm();
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -315,11 +315,16 @@ export default function App() {
     setEditingIndex(index);
   };
 
+  // Strict Yes/No Confirmation on Delete
   const handleDeleteReminder = (index) => {
-    setRemindersList(prev => prev.filter((_, idx) => idx !== index));
-    if (editingIndex === index) {
-      setEditingIndex(null);
-      setCurrentTaskInput('');
+    const taskName = remindersList[index].task;
+    const confirmDelete = window.confirm(`Kya aap sach mein "${taskName}" reminder ko delete karna chahte hain?`);
+    if (confirmDelete) {
+      setRemindersList(prev => prev.filter((_, idx) => idx !== index));
+      if (editingIndex === index) {
+        setEditingIndex(null);
+        setCurrentTaskInput('');
+      }
     }
   };
 
@@ -354,7 +359,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smooth Watcher Alarm & OSRM Traffic Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Delete Confirmation & OSRM Traffic Active</span>
           </div>
         </div>
 
