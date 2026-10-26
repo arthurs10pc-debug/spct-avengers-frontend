@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Home, MapPin, List
+  DollarSign, Newspaper, Check
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -21,7 +21,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
-  // Permanent Watcher State
+  // Permanent Watcher State (with completed status)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
@@ -36,8 +36,9 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
+  const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Feature 1: Expense & Pocket Money Tracker State
+  // Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -50,7 +51,7 @@ export default function App() {
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
 
-  // Feature 2: Daily Briefing & News Flash State
+  // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Briefing load ki ja rahi hai...");
 
@@ -234,10 +235,11 @@ export default function App() {
 
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
-      remindersList.forEach(rem => {
-        if (rem.task && rem.time === currentTimeStr) {
+      remindersList.forEach((rem, idx) => {
+        if (rem.task && rem.time === currentTimeStr && !rem.completed) {
           triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
+          setCurrentAlertTaskId(idx);
           startSmoothAlarm();
           
           if (Notification.permission === 'granted') {
@@ -289,6 +291,7 @@ export default function App() {
             startSmoothAlarm();
             speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic detect hua hai.`);
             setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
+            setCurrentAlertTaskId(null);
           } else {
             setRouteStatus({ 
               isHeavy: false, 
@@ -308,7 +311,6 @@ export default function App() {
     };
   }, [isMonitoringActive, activeRoute, speakText, startSmoothAlarm]);
 
-  // Watcher handlers with Yes/No Confirmation
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
     if (!currentTaskInput.trim()) {
@@ -318,11 +320,11 @@ export default function App() {
 
     if (editingIndex !== null) {
       const updated = [...remindersList];
-      updated[editingIndex] = { task: currentTaskInput.trim(), time: currentTimeInput };
+      updated[editingIndex] = { ...updated[editingIndex], task: currentTaskInput.trim(), time: currentTimeInput };
       setRemindersList(updated);
       setEditingIndex(null);
     } else {
-      setRemindersList(prev => [...prev, { task: currentTaskInput.trim(), time: currentTimeInput }]);
+      setRemindersList(prev => [...prev, { task: currentTaskInput.trim(), time: currentTimeInput, completed: false }]);
     }
 
     setCurrentTaskInput('');
@@ -347,7 +349,6 @@ export default function App() {
     }
   };
 
-  // Expense Handler with Yes/No Confirmation
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) return;
@@ -364,7 +365,6 @@ export default function App() {
     }
   };
 
-  // Daily Briefing Handler
   const handleOpenBriefing = async () => {
     setShowBriefingModal(true);
     try {
@@ -402,7 +402,7 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Left Side Thin Navigation Sidebar (As per user image requirement) */}
+      {/* Left Side Thin Navigation Sidebar */}
       <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '16px', flexShrink: 0, boxSizing: 'border-box' }}>
         <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
           <Shield size={22} />
@@ -418,13 +418,11 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        {/* Expense Tracker Button */}
         <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
-        {/* Daily Briefing & News Flash Button */}
         <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <Newspaper size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
@@ -444,7 +442,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Expense & Briefing Integrated System</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Green Checkmark Completed Indicator Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -500,7 +498,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay with "Got It" Button */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -515,7 +513,15 @@ export default function App() {
           <button
             onClick={() => {
               stopAlarmSound();
+              if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
+                const updated = [...remindersList];
+                if (updated[currentAlertTaskId]) {
+                  updated[currentAlertTaskId].completed = true;
+                  setRemindersList(updated);
+                }
+              }
               setActiveAlertTask(null);
+              setCurrentAlertTaskId(null);
             }}
             style={{ padding: '16px 36px', borderRadius: '16px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
           >
@@ -571,7 +577,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal */}
+      {/* Permanent Watcher Modal with Green Tick Indicator */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -615,10 +621,18 @@ export default function App() {
                 remindersList.map((rem, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
                     <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rem.task}</p>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: rem.completed ? '#6ee7b7' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {rem.task} {rem.completed && "✓"}
+                      </p>
                       <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {rem.time}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                      {/* Green Tick indicator next to edit button if completed */}
+                      {rem.completed && (
+                        <div title="Task Completed" style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                          <Check size={14} />
+                        </div>
+                      )}
                       <button onClick={() => handleEditReminder(idx)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Edit2 size={13} /></button>
                       <button onClick={() => handleDeleteReminder(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
                     </div>
@@ -630,7 +644,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Expense & Pocket Money Tracker Modal */}
+      {/* Expense Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -645,7 +659,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  placeholder="Kharcha kahan kiya (e.g. Chai)..."
+                  placeholder="Kharcha kahan kiya..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
                   style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -680,7 +694,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Daily Briefing & News Flash Modal */}
+      {/* Briefing Modal */}
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
