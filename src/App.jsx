@@ -21,7 +21,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
-  // Permanent Watcher State (with completed status)
+  // Permanent Watcher State (Permanent LocalStorage Sync)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
@@ -38,7 +38,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Expense Tracker State
+  // Expense Tracker State (Permanent LocalStorage Sync)
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -75,12 +75,24 @@ export default function App() {
     } catch (e) {}
   }, [expenseList]);
 
+  // Master Mute Handler (Stops all speech and audio when muted)
+  useEffect(() => {
+    if (isMuted) {
+      window.speechSynthesis.cancel();
+      if (alarmIntervalRef.current) {
+        clearInterval(alarmIntervalRef.current);
+        alarmIntervalRef.current = null;
+      }
+    }
+  }, [isMuted]);
+
   // Smooth Alarm Sound
   const startSmoothAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
     const playTone = () => {
+      if (isMuted) return;
       try {
         if (!audioCtxRef.current) {
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -131,6 +143,7 @@ export default function App() {
 
   // Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
+    if (isMuted) return;
     const lowerQ = query.toLowerCase();
     let reply = "Maaf kijiye Commander, main samajh nahi paya.";
 
@@ -169,7 +182,7 @@ export default function App() {
     }
 
     speakText(reply);
-  }, [activeRoute, routeStatus, isMonitoringActive, expenseList, speakText]);
+  }, [activeRoute, routeStatus, isMonitoringActive, expenseList, isMuted, speakText]);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
@@ -186,6 +199,7 @@ export default function App() {
       recognition.interimResults = false;
 
       recognition.onresult = (event) => {
+        if (isMuted) return;
         const transcript = event.results[0][0].transcript;
         setIsListening(false);
         handleVoiceCommand(transcript);
@@ -204,9 +218,10 @@ export default function App() {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
       stopAlarmSound();
     };
-  }, [handleVoiceCommand, stopAlarmSound]);
+  }, [handleVoiceCommand, stopAlarmSound, isMuted]);
 
   const startListening = () => {
+    if (isMuted) return;
     if (!recognitionRef.current) {
       alert("Aapka browser Speech Recognition support nahi karta.");
       return;
@@ -223,7 +238,7 @@ export default function App() {
 
   // Watcher Time-Hit Checker
   useEffect(() => {
-    if (!watcherActive) return;
+    if (!watcherActive || isMuted) return;
 
     if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
 
@@ -252,11 +267,11 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, startSmoothAlarm]);
+  }, [watcherActive, remindersList, startSmoothAlarm, isMuted]);
 
   // Real-Time OSRM Traffic Polling
   useEffect(() => {
-    if (!isMonitoringActive || !activeRoute.from || !activeRoute.to) return;
+    if (!isMonitoringActive || !activeRoute.from || !activeRoute.to || isMuted) return;
 
     const checkRealTraffic = async () => {
       try {
@@ -309,7 +324,7 @@ export default function App() {
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
-  }, [isMonitoringActive, activeRoute, speakText, startSmoothAlarm]);
+  }, [isMonitoringActive, activeRoute, speakText, startSmoothAlarm, isMuted]);
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -438,16 +453,21 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Top Header */}
+        {/* Top Header with Working Master Mute Button */}
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Green Checkmark Completed Indicator Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Master Mute & Persistent Sync Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            {/* Functional Mute Speaker Button */}
+            <button 
+              onClick={() => setIsMuted(!isMuted)} 
+              title={isMuted ? "Unmute System" : "Mute System"} 
+              style={{ border: 'none', background: isMuted ? '#7f1d1d' : '#1e293b', color: isMuted ? '#fecaca' : '#38bdf8', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
           </div>
         </header>
@@ -627,7 +647,6 @@ export default function App() {
                       <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {rem.time}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
-                      {/* Green Tick indicator next to edit button if completed */}
                       {rem.completed && (
                         <div title="Task Completed" style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
                           <Check size={14} />
