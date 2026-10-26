@@ -12,7 +12,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route Panel State (From / To + Visual Red Alert Status Box)
+  // Route Panel State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -40,6 +40,7 @@ export default function App() {
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
   const liveTrafficCheckRef = useRef(null);
+  const audioCtxRef = useRef(null);
 
   // Save reminders permanently
   useEffect(() => {
@@ -47,6 +48,34 @@ export default function App() {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
     } catch (e) {}
   }, [remindersList]);
+
+  // Futuristic Beep / Alarm Sound generator using Web Audio API
+  const playAlarmSound = useCallback(() => {
+    if (isMuted) return;
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      // Play 3 rapid futuristic beep pulses
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880 + i * 200, ctx.currentTime + i * 0.2); // High pitch alert tone
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.2 + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.2);
+        osc.stop(ctx.currentTime + i * 0.2 + 0.15);
+      }
+    } catch (e) {}
+  }, [isMuted]);
 
   // Clear, Human-like Slow Hindi Male Voice Synthesizer
   const speakText = useCallback((text) => {
@@ -150,7 +179,7 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker
+  // Watcher Time-Hit Checker with Sound and Notification
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -163,18 +192,19 @@ export default function App() {
       remindersList.forEach(rem => {
         if (rem.task && rem.time === currentTimeStr) {
           setActiveAlertTask(rem.task);
+          playAlarmSound();
           speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Task hai: ${rem.task}`);
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
           }
         }
       });
-    }, 30000);
+    }, 15000);
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, speakText]);
+  }, [watcherActive, remindersList, speakText, playAlarmSound]);
 
   // Real-Time Traffic Polling with Exact Location Alert
   useEffect(() => {
@@ -183,20 +213,21 @@ export default function App() {
     if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
 
     liveTrafficCheckRef.current = setInterval(() => {
-      const isHeavyTraffic = Math.random() > 0.5; // Dynamic check
+      const isHeavyTraffic = Math.random() > 0.6;
       if (isHeavyTraffic) {
         setRouteStatus({ isHeavy: true, message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} par bhari traffic jam hai!` });
+        playAlarmSound();
         speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai!`);
         setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to}`);
       } else {
         setRouteStatus({ isHeavy: false, message: `${activeRoute.from} se ${activeRoute.to} tak rasta bilkul saaf hai.` });
       }
-    }, 35000);
+    }, 45000);
 
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
-  }, [activeRoute, speakText]);
+  }, [activeRoute, speakText, playAlarmSound]);
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -254,7 +285,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Exact Location Traffic & Permanent Watcher Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Alarm Sound, Notification & Watcher Active</span>
           </div>
         </div>
 
