@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
-  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle
+  X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -12,12 +12,13 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route Panel State
+  // Route & Real-Time Traffic Monitoring State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle', to: 'Vaishnodevi Circle' });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Rasta bilkul surakshit aur saaf hai." });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
+  const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State (Saved in LocalStorage forever)
   const [showWatcherModal, setShowWatcherModal] = useState(false);
@@ -41,6 +42,7 @@ export default function App() {
   const socketRef = useRef(null);
   const liveTrafficCheckRef = useRef(null);
   const audioCtxRef = useRef(null);
+  const alarmIntervalRef = useRef(null);
 
   // Save reminders permanently
   useEffect(() => {
@@ -49,33 +51,42 @@ export default function App() {
     } catch (e) {}
   }, [remindersList]);
 
-  // Futuristic Beep / Alarm Sound generator using Web Audio API
-  const playAlarmSound = useCallback(() => {
+  // Continuous Repeating Alarm Sound until "Got It" is clicked
+  const startContinuousAlarm = useCallback(() => {
     if (isMuted) return;
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
+    if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
-      // Play 3 rapid futuristic beep pulses
-      for (let i = 0; i < 3; i++) {
+    const playBeep = () => {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === 'suspended') ctx.resume();
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880 + i * 200, ctx.currentTime + i * 0.2); // High pitch alert tone
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.2);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.2 + 0.15);
+        osc.frequency.setValueAtTime(950, ctx.currentTime);
+        gain.gain.setValueAtTime(0.35, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + i * 0.2);
-        osc.stop(ctx.currentTime + i * 0.2 + 0.15);
-      }
-    } catch (e) {}
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {}
+    };
+
+    playBeep();
+    alarmIntervalRef.current = setInterval(playBeep, 1000);
   }, [isMuted]);
+
+  const stopAlarmSound = useCallback(() => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+  }, []);
 
   // Clear, Human-like Slow Hindi Male Voice Synthesizer
   const speakText = useCallback((text) => {
@@ -87,8 +98,8 @@ export default function App() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     if (selectedVoice) utterance.voice = selectedVoice;
-    utterance.rate = 0.82; // Slow human speed
-    utterance.pitch = 0.75; // Natural deep male tone
+    utterance.rate = 0.82; 
+    utterance.pitch = 0.75; 
     utterance.lang = 'hi-IN';
 
     window.speechSynthesis.speak(utterance);
@@ -115,10 +126,12 @@ export default function App() {
         reply = "Weather API se connection establish nahi ho paya.";
       }
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste') || lowerQ.includes('aage') || lowerQ.includes('kaisa hai')) {
-      if (routeStatus.isHeavy) {
+      if (!isMonitoringActive) {
+        reply = "Traffic monitoring abhi band hai. Kripya Route panel se monitoring chalu karein.";
+      } else if (routeStatus.isHeavy) {
         reply = `Boss, dhyan dein! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert bana hua hai!`;
       } else {
-        reply = `Commander, ${activeRoute.from} se ${activeRoute.to} ke raste par filhal koi traffic nahi hai, rasta clear hai.`;
+        reply = `Commander, ${activeRoute.from} se ${activeRoute.to} ke raste par filhal traffic bilkul clear hai.`;
       }
     } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('status') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
       reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems puri tarah sakriya hain.";
@@ -127,7 +140,7 @@ export default function App() {
     }
 
     speakText(reply);
-  }, [activeRoute, routeStatus, speakText]);
+  }, [activeRoute, routeStatus, isMonitoringActive, speakText]);
 
   // Voice Recognition Engine Initialization
   useEffect(() => {
@@ -161,8 +174,9 @@ export default function App() {
       if (socketRef.current) socketRef.current.disconnect();
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
+      stopAlarmSound();
     };
-  }, [handleVoiceCommand]);
+  }, [handleVoiceCommand, stopAlarmSound]);
 
   const startListening = () => {
     if (!recognitionRef.current) {
@@ -179,7 +193,7 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker with Sound and Notification
+  // Watcher Time-Hit Checker with Continuous Alarm until "Got It" clicked
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -190,9 +204,9 @@ export default function App() {
       const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
       remindersList.forEach(rem => {
-        if (rem.task && rem.time === currentTimeStr) {
+        if (rem.task && rem.time === currentTimeStr && !activeAlertTask) {
           setActiveAlertTask(rem.task);
-          playAlarmSound();
+          startContinuousAlarm();
           speakText(`Dhyan dein Commander, nirdharit samay ho chuka hai. Task hai: ${rem.task}`);
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -204,30 +218,67 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, speakText, playAlarmSound]);
+  }, [watcherActive, remindersList, activeAlertTask, speakText, startContinuousAlarm]);
 
-  // Real-Time Traffic Polling with Exact Location Alert
+  // Real & Real-Time OSRM Traffic & Distance API Polling
   useEffect(() => {
-    if (!activeRoute.from || !activeRoute.to) return;
+    if (!isMonitoringActive || !activeRoute.from || !activeRoute.to) return;
 
+    const checkRealTraffic = async () => {
+      try {
+        // 1. Geocode From
+        const resFrom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeRoute.from)}`);
+        const dataFrom = await resFrom.json();
+        if (!dataFrom.length) return;
+
+        // 2. Geocode To
+        const resTo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeRoute.to)}`);
+        const dataTo = await resTo.json();
+        if (!dataTo.length) return;
+
+        const oLon = dataFrom[0].lon;
+        const oLat = dataFrom[0].lat;
+        const dLon = dataTo[0].lon;
+        const dLat = dataTo[0].lat;
+
+        // 3. OSRM Live Routing API
+        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${oLon},${oLat};${dLon},${dLat}?overview=false`);
+        const routeData = await routeRes.json();
+
+        if (routeData.routes && routeData.routes.length > 0) {
+          const durationSec = routeData.routes[0].duration; // duration in seconds
+          const distanceKm = (routeData.routes[0].distance / 1000).toFixed(1);
+          const durationMin = Math.round(durationSec / 60);
+
+          // Real-time congestion check (if duration is exceptionally high per km)
+          const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 5; 
+
+          if (isHeavy) {
+            setRouteStatus({ 
+              isHeavy: true, 
+              message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
+            });
+            startContinuousAlarm();
+            speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai. Lagbhag ${durationMin} minute ka samay lagega!`);
+            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
+          } else {
+            setRouteStatus({ 
+              isHeavy: false, 
+              message: `${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par rasta saaf hai. Samay: ${durationMin} min.` 
+            });
+          }
+        }
+      } catch (e) {}
+    };
+
+    checkRealTraffic();
     if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-
-    liveTrafficCheckRef.current = setInterval(() => {
-      const isHeavyTraffic = Math.random() > 0.6;
-      if (isHeavyTraffic) {
-        setRouteStatus({ isHeavy: true, message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} par bhari traffic jam hai!` });
-        playAlarmSound();
-        speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic aur red alert detect hua hai!`);
-        setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to}`);
-      } else {
-        setRouteStatus({ isHeavy: false, message: `${activeRoute.from} se ${activeRoute.to} tak rasta bilkul saaf hai.` });
-      }
-    }, 45000);
+    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 60000); // Check every 1 minute
 
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
     };
-  }, [activeRoute, speakText, playAlarmSound]);
+  }, [isMonitoringActive, activeRoute, speakText, startContinuousAlarm]);
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -270,8 +321,17 @@ export default function App() {
       return;
     }
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
+    setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Ab main is raste par exact location ke sath traffic monitoring kar raha hu.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Real-time traffic monitoring shuru kar di gayi hai.`);
+  };
+
+  const handleStopAll = () => {
+    setIsMonitoringActive(false);
+    stopAlarmSound();
+    window.speechSynthesis.cancel();
+    setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai (Stopped)." });
+    speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
   return (
@@ -285,7 +345,7 @@ export default function App() {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Alarm Sound, Notification & Watcher Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Real-Time OSRM Traffic & Stop Control Active</span>
           </div>
         </div>
 
@@ -302,6 +362,15 @@ export default function App() {
             style={{ border: 'none', background: '#059669', color: '#ffffff', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
           >
             <Clock size={14} /> Watcher ({remindersList.length})
+          </button>
+
+          {/* Emergency Stop Button */}
+          <button
+            onClick={handleStopAll}
+            title="Sabhi monitoring aur voice rok dein"
+            style={{ border: 'none', background: '#7f1d1d', color: '#fecaca', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <Square size={13} /> Stop
           </button>
 
           <button onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Aawaz Chalu Karein" : "Aawaz Band Karein"} style={{ border: 'none', background: '#1e293b', color: '#38bdf8', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
@@ -346,7 +415,7 @@ export default function App() {
         </p>
 
         {/* Live Visual Traffic Status Banner */}
-        <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '450px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+        <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
           {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
           <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
             Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
@@ -355,23 +424,26 @@ export default function App() {
 
       </main>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay with "Got It" Button */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
             <AlertTriangle size={40} />
           </div>
           <span style={{ fontSize: '12px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
-            Red Alert: Exact Location Traffic Detected
+            Red Alert: Exact Location Traffic / Watcher Hit
           </span>
           <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
           </h1>
           <button
-            onClick={() => setActiveAlertTask(null)}
+            onClick={() => {
+              stopAlarmSound();
+              setActiveAlertTask(null);
+            }}
             style={{ padding: '16px 36px', borderRadius: '16px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
           >
-            Hataein (Dismiss)
+            Got It (Samajh Gaya)
           </button>
         </div>
       )}
