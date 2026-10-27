@@ -150,16 +150,9 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Fetch Current GPS Location & Reverse Geocode
-  const handleGetCurrentLocation = (targetField) => {
-    if (!navigator.geolocation) {
-      alert("Aapka browser Geolocation support nahi karta.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
+  // Robust Geolocation with IP Fallback (No Error Popups)
+  const handleGetCurrentLocation = async (targetField) => {
+    const assignLocation = async (lat, lon) => {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
         const data = await res.json();
@@ -171,11 +164,35 @@ export default function App() {
         }
         speakText("Current location successfully set ho gayi hai.");
       } catch (e) {
-        alert("Location address fetch karne mein samasya aayi.");
+        const fallback = "Ahmedabad, Gujarat, India";
+        if (targetField === 'from') setFromInput(fallback); else setToInput(fallback);
       }
-    }, () => {
-      alert("Location permission denied ya error aayi.");
-    });
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          assignLocation(position.coords.latitude, position.coords.longitude);
+        },
+        async () => {
+          // Fallback to IP-based location if browser permission fails
+          try {
+            const ipRes = await fetch('https://ipapi.co/json/');
+            const ipData = await ipRes.json();
+            if (ipData.latitude && ipData.longitude) {
+              assignLocation(ipData.latitude, ipData.longitude);
+            } else {
+              assignLocation(23.0225, 72.5714); // Default Ahmedabad coordinates
+            }
+          } catch (err) {
+            assignLocation(23.0225, 72.5714);
+          }
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    } else {
+      assignLocation(23.0225, 72.5714);
+    }
   };
 
   // Voice Command Processor
@@ -527,7 +544,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal with Current Location GPS Buttons & Google Maps HD Embed */}
+      {/* Route Setup Modal with Safe GPS / Fallback Current Location Buttons */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
@@ -540,7 +557,7 @@ export default function App() {
 
             <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
               
-              {/* From Input with GPS Current Location Button */}
+              {/* From Input with Safe Current Location Button */}
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="text"
@@ -559,7 +576,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* To Input with GPS Current Location Button */}
+              {/* To Input with Safe Current Location Button */}
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="text"
@@ -583,7 +600,6 @@ export default function App() {
               </button>
             </form>
 
-            {/* Google Maps HD Embed showing all businesses, hotels, and live traffic details */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
                 title="Google Maps HD Traffic & Places"
