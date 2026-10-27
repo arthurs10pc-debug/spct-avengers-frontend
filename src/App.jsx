@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, BellRing
+  DollarSign, Newspaper, Check, MapPin
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -31,15 +31,6 @@ export default function App() {
 
   // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
-  const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jarvis_snooze_duration');
-      return saved ? parseInt(saved, 10) : 1;
-    } catch {
-      return 1;
-    }
-  });
-
   const [remindersList, setRemindersList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_permanent_reminders');
@@ -55,16 +46,8 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Expense Tracker State
+  // Expense Tracker State (Restored simple layout with total spent counter)
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [monthlyBudget, setMonthlyBudget] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jarvis_monthly_budget');
-      return saved ? parseFloat(saved) : 5000;
-    } catch {
-      return 5000;
-    }
-  });
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_expenses');
@@ -75,9 +58,6 @@ export default function App() {
   });
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseCategory, setExpenseCategory] = useState('Food / Chai');
-  const [isSettingBudget, setIsSettingBudget] = useState(false);
-  const [tempBudgetInput, setTempBudgetInput] = useState(5000);
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -104,21 +84,9 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('jarvis_snooze_duration', snoozeMinutes.toString());
-    } catch (e) {}
-  }, [snoozeMinutes]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
     } catch (e) {}
   }, [expenseList]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('jarvis_monthly_budget', monthlyBudget.toString());
-    } catch (e) {}
-  }, [monthlyBudget]);
 
   // Master Mute Handler
   useEffect(() => {
@@ -488,7 +456,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze
+  // Handle Snooze (+1 min default)
   const handleSnooze = () => {
     stopAlarmSound();
     if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
@@ -497,7 +465,7 @@ export default function App() {
         const [h, m] = targetRem.time.split(':').map(Number);
         const dateObj = new Date();
         dateObj.setHours(h);
-        dateObj.setMinutes(m + snoozeMinutes);
+        dateObj.setMinutes(m + 1); // +1 min snooze
         
         const newH = String(dateObj.getHours()).padStart(2, '0');
         const newM = String(dateObj.getMinutes()).padStart(2, '0');
@@ -551,7 +519,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers
+  // Safe Expense Handlers (Restored to exact working structure with total spent)
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -561,13 +529,11 @@ export default function App() {
     const newExp = {
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
-      category: expenseCategory || 'Food / Chai',
       date: new Date().toLocaleDateString()
     };
     setExpenseList(prev => [...prev, newExp]);
     setExpenseTitle('');
     setExpenseAmount('');
-    setExpenseCategory('Food / Chai');
   };
 
   const handleDeleteExpense = (index) => {
@@ -575,16 +541,6 @@ export default function App() {
     const confirmDelete = window.confirm(`Kya aap "${exp.title}" (₹${exp.amount}) expense record ko delete karna chahte hain? (Yes/No)`);
     if (confirmDelete) {
       setExpenseList(prev => prev.filter((_, idx) => idx !== index));
-    }
-  };
-
-  const handleUpdateBudget = (e) => {
-    e.preventDefault();
-    const val = parseFloat(tempBudgetInput);
-    if (!isNaN(val) && val > 0) {
-      setMonthlyBudget(val);
-      setIsSettingBudget(false);
-      speakText("Monthly budget update kar diya gaya hai.");
     }
   };
 
@@ -634,7 +590,6 @@ export default function App() {
   };
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const remainingBudget = monthlyBudget - totalSpent;
 
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -737,7 +692,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay with Snooze (+1 min) */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -771,7 +726,7 @@ export default function App() {
               onClick={handleSnooze}
               style={{ padding: '14px 28px', borderRadius: '14px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#38bdf8', fontWeight: '900', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <BellRing size={18} /> Snooze (+{snoozeMinutes} min)
+              Snooze (+1 min)
             </button>
           </div>
         </div>
@@ -860,21 +815,6 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#030712', padding: '8px 12px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Snooze Duration:</span>
-              <select 
-                value={snoozeMinutes} 
-                onChange={(e) => setSnoozeMinutes(Number(e.target.value))}
-                style={{ background: '#1e293b', color: '#38bdf8', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value={1}>1 Minute</option>
-                <option value={5}>5 Minutes</option>
-                <option value={10}>10 Minutes</option>
-                <option value={15}>15 Minutes</option>
-                <option value={30}>30 Minutes</option>
-              </select>
-            </div>
-
             <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
@@ -897,7 +837,7 @@ export default function App() {
               </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
               {remindersList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
               ) : (
@@ -926,7 +866,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Stable Expense & Pocket Money Tracker Modal */}
+      {/* Stable Expense Tracker Modal (Restored exact working structure with Total Spent counter) */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -941,31 +881,14 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Simple Budget Summary Card */}
+            {/* Total Spent Summary Banner */}
             <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Kul Kharcha (Total Spent)</span>
                 <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fca5a5' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
-              <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>
-                {isSettingBudget ? "Cancel" : `Budget: ₹${monthlyBudget}`}
-              </button>
             </div>
 
-            {isSettingBudget && (
-              <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                <input 
-                  type="number" 
-                  value={tempBudgetInput} 
-                  onChange={(e) => setTempBudgetInput(e.target.value)} 
-                  placeholder="New monthly budget..."
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none' }}
-                />
-                <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>Save</button>
-              </form>
-            )}
-
-            {/* Add Expense Form */}
             <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
@@ -989,7 +912,6 @@ export default function App() {
               </button>
             </form>
 
-            {/* Expense List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi kharcha darj nahi hai.</p>
