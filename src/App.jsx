@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, BellRing
+  DollarSign, Newspaper, Check, MapPin, BellRing, PieChart
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -29,12 +29,12 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State with Adjustable Snooze
+  // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_snooze_duration');
-      return saved ? parseInt(saved, 10) : 1; // Default 1 minute
+      return saved ? parseInt(saved, 10) : 1;
     } catch {
       return 1;
     }
@@ -55,8 +55,16 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Expense Tracker State
+  // Advanced Expense & Pocket Money Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [monthlyBudget, setMonthlyBudget] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_monthly_budget');
+      return saved ? parseFloat(saved) : 5000;
+    } catch {
+      return 5000;
+    }
+  });
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_expenses');
@@ -67,6 +75,9 @@ export default function App() {
   });
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('Food / Chai');
+  const [isSettingBudget, setIsSettingBudget] = useState(false);
+  const [tempBudgetInput, setTempBudgetInput] = useState(monthlyBudget);
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -102,6 +113,12 @@ export default function App() {
       localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
     } catch (e) {}
   }, [expenseList]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis_monthly_budget', monthlyBudget.toString());
+    } catch (e) {}
+  }, [monthlyBudget]);
 
   // Master Mute Handler
   useEffect(() => {
@@ -205,7 +222,7 @@ export default function App() {
     );
   };
 
-  // Leaflet Interactive Map Loader with Click-to-Select & Dynamic Traffic Polyline
+  // Leaflet Interactive Map Loader
   useEffect(() => {
     if (!showRoutePanel) return;
 
@@ -312,7 +329,7 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, speakText]);
 
-  // Nominatim Autocomplete for 'From' & 'To'
+  // Autocomplete
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -471,13 +488,12 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze Functionality (+X minutes)
+  // Handle Snooze
   const handleSnooze = () => {
     stopAlarmSound();
     if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
       const targetRem = remindersList[currentAlertTaskId];
       if (targetRem) {
-        // Calculate new time based on snoozeMinutes
         const [h, m] = targetRem.time.split(':').map(Number);
         const dateObj = new Date();
         dateObj.setHours(h);
@@ -494,7 +510,7 @@ export default function App() {
     }
     setActiveAlertTask(null);
     setCurrentAlertTaskId(null);
-    triggeredMinuteRef.current = ''; // Reset trigger to allow future hits
+    triggeredMinuteRef.current = '';
   };
 
   const handleAddOrUpdateReminder = (e) => {
@@ -535,19 +551,40 @@ export default function App() {
     }
   };
 
+  // Advanced Expense Handlers with Strict Confirmation
   const handleAddExpense = (e) => {
     e.preventDefault();
-    if (!expenseTitle.trim() || !expenseAmount) return;
-    setExpenseList(prev => [...prev, { title: expenseTitle.trim(), amount: expenseAmount, date: new Date().toLocaleDateString() }]);
+    if (!expenseTitle.trim() || !expenseAmount) {
+      alert("Kripya title aur amount dono bharein.");
+      return;
+    }
+    const newExp = {
+      title: expenseTitle.trim(),
+      amount: parseFloat(expenseAmount),
+      category: expenseCategory,
+      date: new Date().toLocaleDateString()
+    };
+    setExpenseList(prev => [...prev, newExp]);
     setExpenseTitle('');
     setExpenseAmount('');
+    setExpenseCategory('Food / Chai');
   };
 
   const handleDeleteExpense = (index) => {
-    const title = expenseList[index].title;
-    const confirmDelete = window.confirm(`Kya aap "${title}" expense record ko delete karna chahte hain? (Yes/No)`);
+    const exp = expenseList[index];
+    const confirmDelete = window.confirm(`Kya aap "${exp.title}" (₹${exp.amount}) expense record ko delete karna chahte hain? (Yes/No)`);
     if (confirmDelete) {
       setExpenseList(prev => prev.filter((_, idx) => idx !== index));
+    }
+  };
+
+  const handleUpdateBudget = (e) => {
+    e.preventDefault();
+    const val = parseFloat(tempBudgetInput);
+    if (!isNaN(val) && val > 0) {
+      setMonthlyBudget(val);
+      setIsSettingBudget(false);
+      speakText("Monthly pocket money budget update kar diya gaya hai.");
     }
   };
 
@@ -558,7 +595,7 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Live traffic active hai.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Financial systems active hain.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
@@ -596,6 +633,15 @@ export default function App() {
     speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
+  // Calculate Total Expenses & Category Breakdown
+  const totalSpent = expenseList.reduce((acc, curr) => acc + curr.amount, 0);
+  const remainingBudget = monthlyBudget - totalSpent;
+
+  const categoryTotals = expenseList.reduce((acc, curr) => {
+    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+    return acc;
+  }, {});
+
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
@@ -615,7 +661,7 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#38bdf8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
@@ -639,7 +685,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Watcher Snooze & Interactive Map Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Advanced Expense & Pocket Money Hub Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -697,7 +743,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay with "Got It" & "Snooze" Buttons */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -737,7 +783,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal with Click-to-Select Map & GPS Buttons */}
+      {/* Route Setup Modal */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
@@ -805,7 +851,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal with Snooze Duration Setting */}
+      {/* Permanent Watcher Modal */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -813,16 +859,13 @@ export default function App() {
               <X size={15} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'between', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Clock size={20} />
-                </div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={20} />
               </div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
             </div>
 
-            {/* Snooze Time Setting Control */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#030712', padding: '8px 12px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '14px' }}>
               <span style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Snooze Duration:</span>
               <select 
@@ -889,22 +932,64 @@ export default function App() {
         </div>
       )}
 
-      {/* Expense Modal */}
+      {/* Advanced Expense & Pocket Money Tracker Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '480px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={15} />
+            </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><DollarSign size={20} /></div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={20} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Dashboard</h3>
             </div>
 
+            {/* Budget Summary Card */}
+            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '14px', padding: '14px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Monthly Budget / Pocket Money</span>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toFixed(2)}</h2>
+                </div>
+                <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>
+                  {isSettingBudget ? "Cancel" : "Edit Budget"}
+                </button>
+              </div>
+
+              {isSettingBudget && (
+                <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '8px' }}>
+                  <input 
+                    type="number" 
+                    value={tempBudgetInput} 
+                    onChange={(e) => setTempBudgetInput(e.target.value)} 
+                    placeholder="New budget amount..."
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#0b0f19', color: '#f8fafc', fontSize: '12px', outline: 'none' }}
+                  />
+                  <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>Save</button>
+                </form>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: '700' }}>Total Spent</span>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: '#fca5a5' }}>₹{totalSpent.toFixed(2)}</p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '10px', color: '#10b981', fontWeight: '700' }}>Remaining Balance</span>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: '#6ee7b7' }}>₹{remainingBudget.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Add Expense Form with Categories */}
             <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  placeholder="Kharcha kahan kiya..."
+                  placeholder="Kharcha kahan kiya (e.g. Chai, Petrol)..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
                   style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -914,23 +999,56 @@ export default function App() {
                   placeholder="Amount (₹)"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  style={{ width: '100px', padding: '10px 8px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '90px', padding: '10px 8px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Kharcha Jodein</button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="Food / Chai">Food / Chai</option>
+                  <option value="Transport / Fuel">Transport / Fuel</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Bills & Recharges">Bills & Recharges</option>
+                  <option value="Miscellaneous">Miscellaneous</option>
+                </select>
+
+                <button type="submit" style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
+                  Add Expense
+                </button>
+              </div>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+            {/* Category Breakdown Chips */}
+            {Object.keys(categoryTotals).length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
+                {Object.entries(categoryTotals).map(([cat, amt], i) => (
+                  <div key={i} style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '8px', padding: '6px 10px', fontSize: '10px', fontWeight: '700', color: '#94a3b8' }}>
+                    {cat}: <span style={{ color: '#38bdf8' }}>₹{amt.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Expense History List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi kharcha darj nahi hai.</p>
               ) : (
                 expenseList.map((exp, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{exp.title} - <span style={{ color: '#38bdf8' }}>₹{exp.amount}</span></p>
-                      <span style={{ fontSize: '9px', color: '#94a3b8' }}>{exp.date}</span>
+                    <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {exp.title} - <span style={{ color: '#38bdf8' }}>₹{exp.amount}</span>
+                      </p>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp.category} | {exp.date}</span>
                     </div>
-                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 ))
               )}
