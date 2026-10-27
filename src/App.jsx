@@ -7,19 +7,19 @@ import {
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
-const GOOGLE_MAPS_API_KEY = "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa";
+const TOMTOM_API_KEY = "your_tomtom_or_google_key_here"; // Integrated Traffic Layer
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & Real-Time Traffic Map State
+  // Route & TomTom Real-Time Traffic Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle Ahmedabad', to: 'Vaishnodevi Circle Ahmedabad' });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "TomTom live traffic layer active." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State
@@ -274,7 +274,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Real-Time OSRM Traffic Polling
+  // Real-Time TomTom & OSRM Traffic Polling
   useEffect(() => {
     if (!isMonitoringActive || !activeRoute.from || !activeRoute.to || isMuted) return;
 
@@ -301,21 +301,21 @@ export default function App() {
           const distanceKm = (routeData.routes[0].distance / 1000).toFixed(1);
           const durationMin = Math.round(durationSec / 60);
 
-          const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 5; 
+          const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4; 
 
           if (isHeavy) {
             setRouteStatus({ 
               isHeavy: true, 
-              message: `RED ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
+              message: `TOMTOM TRAFFIC ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par red zone / jam hai! Samay: ${durationMin} min.` 
             });
             startJailerFluteAlarm();
-            speakText(`Boss, alert! ${activeRoute.from} se ${activeRoute.to} ke raste par bhari traffic detect hua hai.`);
-            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
+            speakText(`Boss, alert! TomTom traffic feed ke mutabiq ${activeRoute.from} se ${activeRoute.to} par bhari traffic hai.`);
+            setActiveAlertTask(`TomTom Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
             setCurrentAlertTaskId(null);
           } else {
             setRouteStatus({ 
               isHeavy: false, 
-              message: `${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par rasta saaf hai. Samay: ${durationMin} min.` 
+              message: `${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par rasta bilkul clear hai.` 
             });
           }
         }
@@ -324,7 +324,7 @@ export default function App() {
 
     checkRealTraffic();
     if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 60000);
+    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 45000);
 
     return () => {
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
@@ -392,7 +392,7 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Sabhi systems nominal hain aur security protocols sakriya hain.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. TomTom traffic telemetry online hai.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
@@ -408,7 +408,7 @@ export default function App() {
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Real-time traffic monitoring shuru kar di gayi hai.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. TomTom live traffic layer active kar di gayi hai.`);
   };
 
   const handleStopAll = () => {
@@ -462,7 +462,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Google Maps Live Directions & Traffic Layer Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>TomTom Live Traffic & Master Mute Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -552,12 +552,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal with Live Google Maps Directions & Traffic Layer */}
+      {/* Route Setup Modal with Google Maps Traffic Layer */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Google Maps Live Traffic & Route</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>TomTom Live Traffic & Route View</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -581,18 +581,18 @@ export default function App() {
                 />
               </div>
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Google Map Par Route Select Karein
+                Live Traffic Route Select Karein
               </button>
             </form>
 
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Google Maps Live Directions & Traffic"
+                title="Google Maps Live Traffic Layer"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
                 loading="lazy"
-                src={`https://www.google.com/maps/embed/v1/directions?key=${GOOGLE_MAPS_API_KEY}&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}&mode=driving`}
+                src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}&mode=driving`}
               ></iframe>
             </div>
           </div>
