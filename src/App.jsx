@@ -55,7 +55,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Advanced Expense & Pocket Money Tracker State
+  // Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [monthlyBudget, setMonthlyBudget] = useState(() => {
     try {
@@ -551,6 +551,7 @@ export default function App() {
     }
   };
 
+  // Safe Expense Handlers
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -635,12 +636,6 @@ export default function App() {
   const totalSpent = expenseList.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const remainingBudget = monthlyBudget - totalSpent;
 
-  const categoryTotals = expenseList.reduce((acc, curr) => {
-    const cat = curr.category || 'Miscellaneous';
-    acc[cat] = (acc[cat] || 0) + (curr.amount || 0);
-    return acc;
-  }, {});
-
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
@@ -684,7 +679,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Advanced Expense & Pocket Money Hub Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Stable Expense & Watcher Hub Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -931,10 +926,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Advanced Expense & Pocket Money Tracker Modal */}
+      {/* Stable Expense & Pocket Money Tracker Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '480px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
             <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={15} />
             </button>
@@ -943,47 +938,34 @@ export default function App() {
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <DollarSign size={20} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Dashboard</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Budget Summary Card */}
-            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '14px', padding: '14px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Monthly Budget / Pocket Money</span>
-                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toFixed(2)}</h2>
-                </div>
-                <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>
-                  {isSettingBudget ? "Cancel" : "Edit Budget"}
-                </button>
+            {/* Simple Budget Summary Card */}
+            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Kul Kharcha (Total Spent)</span>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fca5a5' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
-
-              {isSettingBudget && (
-                <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="number" 
-                    value={tempBudgetInput} 
-                    onChange={(e) => setTempBudgetInput(e.target.value)} 
-                    placeholder="New budget amount..."
-                    style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#0b0f19', color: '#f8fafc', fontSize: '12px', outline: 'none' }}
-                  />
-                  <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>Save</button>
-                </form>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px' }}>
-                <div>
-                  <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: '700' }}>Total Spent</span>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: '#fca5a5' }}>₹{totalSpent.toFixed(2)}</p>
-                </div>
-                <div>
-                  <span style={{ fontSize: '10px', color: '#10b981', fontWeight: '700' }}>Remaining Balance</span>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: '#6ee7b7' }}>₹{remainingBudget.toFixed(2)}</p>
-                </div>
-              </div>
+              <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>
+                {isSettingBudget ? "Cancel" : `Budget: ₹${monthlyBudget}`}
+              </button>
             </div>
 
-            {/* Add Expense Form with Categories */}
+            {isSettingBudget && (
+              <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+                <input 
+                  type="number" 
+                  value={tempBudgetInput} 
+                  onChange={(e) => setTempBudgetInput(e.target.value)} 
+                  placeholder="New monthly budget..."
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none' }}
+                />
+                <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>Save</button>
+              </form>
+            )}
+
+            {/* Add Expense Form */}
             <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
@@ -1002,38 +984,13 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  value={expenseCategory}
-                  onChange={(e) => setExpenseCategory(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', cursor: 'pointer' }}
-                >
-                  <option value="Food / Chai">Food / Chai</option>
-                  <option value="Transport / Fuel">Transport / Fuel</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Bills & Recharges">Bills & Recharges</option>
-                  <option value="Miscellaneous">Miscellaneous</option>
-                </select>
-
-                <button type="submit" style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                  Add Expense
-                </button>
-              </div>
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
+                Kharcha Jodein
+              </button>
             </form>
 
-            {/* Category Breakdown Chips */}
-            {Object.keys(categoryTotals).length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
-                {Object.entries(categoryTotals).map(([cat, amt], i) => (
-                  <div key={i} style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '8px', padding: '6px 10px', fontSize: '10px', fontWeight: '700', color: '#94a3b8' }}>
-                    {cat}: <span style={{ color: '#38bdf8' }}>₹{amt.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Expense History List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
+            {/* Expense List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi kharcha darj nahi hai.</p>
               ) : (
@@ -1043,7 +1000,7 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp.title} - <span style={{ color: '#38bdf8' }}>₹{exp.amount}</span>
                       </p>
-                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp.category} | {exp.date}</span>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp.date}</span>
                     </div>
                     <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={13} />
