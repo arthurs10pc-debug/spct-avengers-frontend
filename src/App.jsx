@@ -7,19 +7,26 @@ import {
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
-const TOMTOM_API_KEY = "your_tomtom_or_google_key_here"; // Integrated Traffic Layer
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & TomTom Real-Time Traffic Map State
+  // Route & Live Map State with Autocomplete Suggestions
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle Ahmedabad', to: 'Vaishnodevi Circle Ahmedabad' });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "TomTom live traffic layer active." });
+  const [fromSuggestions, setFromSuggestions] = useState([]);
+  const [toSuggestions, setToSuggestions] = useState([]);
+  
+  const [activeRoute, setActiveRoute] = useState({ 
+    fromName: 'Iskon Circle, Ahmedabad', 
+    fromCoords: [72.5083, 23.0293], 
+    toName: 'Vaishnodevi Circle, Ahmedabad', 
+    toCoords: [72.5514, 23.1200] 
+  });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "OpenStreetMap live traffic & routing active." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State
@@ -63,6 +70,8 @@ export default function App() {
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
   const triggeredMinuteRef = useRef('');
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -146,6 +155,103 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
+  // Leaflet Map Loader & Initializer
+  useEffect(() => {
+    if (!showRoutePanel) return;
+
+    // Load Leaflet CSS & JS dynamically if not present
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    const initMapScript = () => {
+      if (!window.L) return;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+
+      if (mapContainerRef.current) {
+        const map = window.L.map(mapContainerRef.current).setView([activeRoute.fromCoords[1], activeRoute.fromCoords[0]], 12);
+        mapInstanceRef.current = map;
+
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        window.L.marker([activeRoute.fromCoords[1], activeRoute.fromCoords[0]]).addTo(map)
+          .bindPopup(`From: ${activeRoute.fromName}`).openPopup();
+
+        window.L.marker([activeRoute.toCoords[1], activeRoute.toCoords[0]]).addTo(map)
+          .bindPopup(`To: ${activeRoute.toName}`);
+
+        // Fetch OSRM route line
+        fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=full&geometries=geojson`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.routes && data.routes.length > 0) {
+              const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+              window.L.polyline(coords, { color: '#38bdf8', weight: 5, opacity: 0.8 }).addTo(map);
+              map.fitBounds(window.L.polyline(coords).getBounds(), { padding: [50, 50] });
+            }
+          }).catch(e => {});
+      }
+    };
+
+    if (window.L) {
+      initMapScript();
+    } else {
+      const existingScript = document.getElementById('leaflet-js');
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.id = 'leaflet-js';
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.async = true;
+        script.onload = initMapScript;
+        document.body.appendChild(script);
+      } else {
+        existingScript.onload = initMapScript;
+      }
+    }
+  }, [showRoutePanel, activeRoute]);
+
+  // Nominatim Autocomplete for 'From'
+  useEffect(() => {
+    if (fromInput.trim().length < 2) {
+      setFromSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fromInput)}`);
+        const data = await res.json();
+        setFromSuggestions(data.slice(0, 5));
+      } catch (e) {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fromInput]);
+
+  // Nominatim Autocomplete for 'To'
+  useEffect(() => {
+    if (toInput.trim().length < 2) {
+      setToSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(toInput)}`);
+        const data = await res.json();
+        setToSuggestions(data.slice(0, 5));
+      } catch (e) {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [toInput]);
+
   // Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
     if (isMuted) return;
@@ -176,9 +282,9 @@ export default function App() {
       if (!isMonitoringActive) {
         reply = "Traffic monitoring abhi band hai.";
       } else if (routeStatus.isHeavy) {
-        reply = `Boss, dhyan dein! ${activeRoute.from} se ${activeRoute.to} par bhari traffic hai!`;
+        reply = `Boss, dhyan dein! ${activeRoute.fromName} se ${activeRoute.toName} par bhari traffic hai!`;
       } else {
-        reply = `Commander, ${activeRoute.from} se ${activeRoute.to} par rasta saaf hai.`;
+        reply = `Commander, ${activeRoute.fromName} se ${activeRoute.toName} par rasta saaf hai.`;
       }
     } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
       reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems sakriya hain.";
@@ -274,26 +380,13 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Real-Time TomTom & OSRM Traffic Polling
+  // Real-Time OSRM Traffic Polling
   useEffect(() => {
-    if (!isMonitoringActive || !activeRoute.from || !activeRoute.to || isMuted) return;
+    if (!isMonitoringActive || !activeRoute.fromCoords || !activeRoute.toCoords || isMuted) return;
 
     const checkRealTraffic = async () => {
       try {
-        const resFrom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeRoute.from)}`);
-        const dataFrom = await resFrom.json();
-        if (!dataFrom.length) return;
-
-        const resTo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(activeRoute.to)}`);
-        const dataTo = await resTo.json();
-        if (!dataTo.length) return;
-
-        const oLon = dataFrom[0].lon;
-        const oLat = dataFrom[0].lat;
-        const dLon = dataTo[0].lon;
-        const dLat = dataTo[0].lat;
-
-        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${oLon},${oLat};${dLon},${dLat}?overview=false`);
+        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=false`);
         const routeData = await routeRes.json();
 
         if (routeData.routes && routeData.routes.length > 0) {
@@ -306,16 +399,16 @@ export default function App() {
           if (isHeavy) {
             setRouteStatus({ 
               isHeavy: true, 
-              message: `TOMTOM TRAFFIC ALERT: ${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par red zone / jam hai! Samay: ${durationMin} min.` 
+              message: `RED ALERT: ${activeRoute.fromName} se ${activeRoute.toName} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
             });
             startJailerFluteAlarm();
-            speakText(`Boss, alert! TomTom traffic feed ke mutabiq ${activeRoute.from} se ${activeRoute.to} par bhari traffic hai.`);
-            setActiveAlertTask(`TomTom Traffic Alert: ${activeRoute.from} ➔ ${activeRoute.to} (${durationMin} min)`);
+            speakText(`Boss, alert! ${activeRoute.fromName} se ${activeRoute.toName} par bhari traffic detect hua hai.`);
+            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.fromName} ➔ ${activeRoute.toName} (${durationMin} min)`);
             setCurrentAlertTaskId(null);
           } else {
             setRouteStatus({ 
               isHeavy: false, 
-              message: `${activeRoute.from} se ${activeRoute.to} (${distanceKm} KM) par rasta bilkul clear hai.` 
+              message: `${activeRoute.fromName} se ${activeRoute.toName} (${distanceKm} KM) par rasta saaf hai. Samay: ${durationMin} min.` 
             });
           }
         }
@@ -392,23 +485,34 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. TomTom traffic telemetry online hai.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. OpenStreetMap live traffic active hai.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
     }
   };
 
+  const handleSelectFromSuggestion = (item) => {
+    setFromInput(item.display_name);
+    setActiveRoute(prev => ({ ...prev, fromName: item.display_name, fromCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
+    setFromSuggestions([]);
+  };
+
+  const handleSelectToSuggestion = (item) => {
+    setToInput(item.display_name);
+    setActiveRoute(prev => ({ ...prev, toName: item.display_name, toCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
+    setToSuggestions([]);
+  };
+
   const handleApplyRoute = (e) => {
     e.preventDefault();
     if (!fromInput.trim() || !toInput.trim()) {
-      alert("Kripya 'From' aur 'To' locations bharein.");
+      alert("Kripya 'From' aur 'To' locations select karein.");
       return;
     }
-    setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. TomTom live traffic layer active kar di gayi hai.`);
+    speakText(`Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.`);
   };
 
   const handleStopAll = () => {
@@ -462,7 +566,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>TomTom Live Traffic & Master Mute Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Interactive Leaflet Map & Autocomplete Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -513,7 +617,7 @@ export default function App() {
           <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
             {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
             <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
-              Route: {activeRoute.from} ➔ {activeRoute.to} | {routeStatus.message}
+              Route: {activeRoute.fromName.split(',')[0]} ➔ {activeRoute.toName.split(',')[0]} | {routeStatus.message}
             </span>
           </div>
 
@@ -552,48 +656,64 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal with Google Maps Traffic Layer */}
+      {/* Route Setup Modal with Autocomplete & Leaflet Map */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>TomTom Live Traffic & Route View</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="From (Kahan se)..."
-                  value={fromInput}
-                  onChange={(e) => setFromInput(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                />
-                <input
-                  type="text"
-                  placeholder="To (Kahan tak)..."
-                  value={toInput}
-                  onChange={(e) => setToInput(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                />
+            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', position: 'relative' }}>
+              <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="From (Kahan se)..."
+                    value={fromInput}
+                    onChange={(e) => setFromInput(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  {fromSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '150px', overflowY: 'auto' }}>
+                      {fromSuggestions.map((item, i) => (
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
+                          {item.display_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="To (Kahan tak)..."
+                    value={toInput}
+                    onChange={(e) => setToInput(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  {toSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '150px', overflowY: 'auto' }}>
+                      {toSuggestions.map((item, i) => (
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
+                          {item.display_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Live Traffic Route Select Karein
+                Map Par Route Load Karein
               </button>
             </form>
 
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
-              <iframe
-                title="Google Maps Live Traffic Layer"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa&origin=${encodeURIComponent(activeRoute.from)}&destination=${encodeURIComponent(activeRoute.to)}&mode=driving`}
-              ></iframe>
+              <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
           </div>
         </div>
