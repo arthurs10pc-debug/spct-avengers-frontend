@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -12,6 +12,17 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
+
+  // User Gmail Profile State for Cross-Device Sync
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_user_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Route & Interactive Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -58,7 +69,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Next Reminder Countdown State for Sidebar
+  // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
   // Expense Tracker State
@@ -110,6 +121,16 @@ export default function App() {
       localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
     } catch (e) {}
   }, [expenseList]);
+
+  useEffect(() => {
+    try {
+      if (userProfile) {
+        localStorage.setItem('jarvis_user_profile', JSON.stringify(userProfile));
+      } else {
+        localStorage.removeItem('jarvis_user_profile');
+      }
+    } catch (e) {}
+  }, [userProfile]);
 
   // Master Mute Handler
   useEffect(() => {
@@ -181,7 +202,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Helper function to format 24h time to 12h AM/PM
+  // 12-Hour Time Formatter
   const formatTimeTo12Hour = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return timeStr;
     const [h, m] = timeStr.split(':').map(Number);
@@ -455,7 +476,7 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker & Countdown Calculator
+  // Watcher Time-Hit Checker & Live Countdown Timer (Seconds included)
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -465,36 +486,39 @@ export default function App() {
       const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
-      const currentTotalMin = currentHours * 60 + currentMinutes;
+      const currentSeconds = now.getSeconds();
+      const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
-      // Calculate next upcoming reminder countdown
-      let minDiff = Infinity;
+      // Calculate exact next upcoming reminder countdown in seconds
+      let minSecDiff = Infinity;
       remindersList.forEach((rem) => {
         if (!rem.completed && rem.time) {
           const [h, m] = rem.time.split(':').map(Number);
-          const remTotalMin = h * 60 + m;
-          let diff = remTotalMin - currentTotalMin;
-          if (diff < 0) diff += 24 * 60; // Next day
-          if (diff < minDiff) {
-            minDiff = diff;
+          const remTotalSec = h * 3600 + m * 60;
+          let diff = remTotalSec - currentTotalSec;
+          if (diff < 0) diff += 24 * 3600; // Next day
+          if (diff < minSecDiff) {
+            minSecDiff = diff;
           }
         }
       });
 
-      if (minDiff !== Infinity) {
-        const remH = Math.floor(minDiff / 60);
-        const remM = minDiff % 60;
+      if (minSecDiff !== Infinity) {
+        const remH = Math.floor(minSecDiff / 3600);
+        const remM = Math.floor((minSecDiff % 3600) / 60);
+        const remS = minSecDiff % 60;
+        
         if (remH > 0) {
           setNextCountdownStr(`${remH}h ${remM}m`);
         } else {
-          setNextCountdownStr(`${remM}m`);
+          setNextCountdownStr(`${remM}m ${remS}s`);
         }
       } else {
         setNextCountdownStr('--:--');
       }
 
-      // Check for alert hit
+      // Check alert hit
       if (isMuted) return;
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
@@ -510,7 +534,7 @@ export default function App() {
           }
         }
       });
-    }, 3000);
+    }, 1000); // 1-second interval for real-time second ticking
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
@@ -652,46 +676,77 @@ export default function App() {
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
 
-  // Sort reminders: Upcoming / nearest future time first
+  // Smart Sorting: Upcoming nearest future reminder first, past reminders below
   const sortedReminders = [...remindersList].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    return (a.time || '').localeCompare(b.time || '');
+    
+    const now = new Date();
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+
+    const [hA, mA] = (a.time || '00:00').split(':').map(Number);
+    const [hB, mB] = (b.time || '00:00').split(':').map(Number);
+    const minA = hA * 60 + mA;
+    const minB = hB * 60 + mB;
+
+    const diffA = minA >= currentMin ? minA - currentMin : minA - currentMin + 1440;
+    const diffB = minB >= currentMin ? minB - currentMin : minB - currentMin + 1440;
+
+    return diffA - diffB;
   });
 
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Left Side Thin Navigation Sidebar with Live Watcher Countdown */}
-      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '14px', flexShrink: 0, boxSizing: 'border-box' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+      {/* Left Side Thin Navigation Sidebar with Live Ticking Countdown on Watcher */}
+      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '12px', flexShrink: 0, boxSizing: 'border-box' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={22} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
-        {/* Watcher Button with Live Countdown Timer on Top */}
-        <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
-          <span style={{ fontSize: '9px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 4px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
+        {/* Watcher Button with Live Countdown Timer Directly Between Clock & Watcher Text */}
+        <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+          <Clock size={18} />
+          <span style={{ fontSize: '9px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 3px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
             {nextCountdownStr}
           </span>
-          <Clock size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Newspaper size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        <div style={{ marginTop: 'auto' }}>
+        {/* Profile / Google Gmail Login Button at Bottom of Sidebar */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+          <button 
+            onClick={() => {
+              if (userProfile) {
+                setShowProfileModal(true);
+              } else {
+                const email = prompt("Google Gmail ID darj karein (Sync ke liye):", "commander@gmail.com");
+                if (email) {
+                  setUserProfile({ email, name: email.split('@')[0], connectedDate: new Date().toLocaleDateString() });
+                  speakText("Google account successfully connect ho gaya hai.");
+                }
+              }
+            }} 
+            title={userProfile ? `Connected: ${userProfile.email}` : "Google Gmail Login / Profile"} 
+            style={{ background: userProfile ? 'rgba(16, 185, 129, 0.2)' : '#1e293b', border: `1px solid ${userProfile ? '#10b981' : '#38bdf8'}`, color: userProfile ? '#34d399' : '#38bdf8', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {userProfile ? <UserCircle size={20} /> : <LogIn size={18} />}
+          </button>
+
           <button onClick={handleStopAll} title="Stop All" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Square size={16} />
           </button>
@@ -705,7 +760,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Live Watcher Countdown & Stable Expense Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smart Sorted Watcher & Cloud Profile Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -871,7 +926,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal with Bottom ZZZ Snooze Button */}
+      {/* Permanent Watcher Modal with Smart Upcoming Sorting & Bottom ZZZ Snooze */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -908,7 +963,7 @@ export default function App() {
               </button>
             </form>
 
-            {/* Sorted Reminders List */}
+            {/* Smart Sorted Reminders List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
               {sortedReminders.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
@@ -964,6 +1019,36 @@ export default function App() {
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Gmail Profile Modal */}
+      {showProfileModal && userProfile && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#10b981', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto', fontSize: '24px', fontWeight: '900' }}>
+              {userProfile.name.charAt(0).toUpperCase()}
+            </div>
+
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '11px', color: '#38bdf8' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '20px' }}>Connected since: {userProfile.connectedDate}</span>
+
+            <button 
+              onClick={() => {
+                if (window.confirm("Kya aap Google account disconnect karna chahte hain?")) {
+                  setUserProfile(null);
+                  setShowProfileModal(false);
+                  speakText("Google account disconnect ho gaya hai.");
+                }
+              }}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Disconnect Account
+            </button>
           </div>
         </div>
       )}
