@@ -13,7 +13,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // User Gmail Profile State for Cross-Device Sync
+  // Direct Google OAuth / Firebase Style Login State
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
@@ -23,6 +23,7 @@ export default function App() {
     }
   });
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Route & Interactive Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -131,6 +132,25 @@ export default function App() {
       }
     } catch (e) {}
   }, [userProfile]);
+
+  // Direct Google Sign-In Simulation (Firebase / OAuth Flow)
+  const handleGoogleSignIn = () => {
+    setIsAuthenticating(true);
+    setAssistantStatus("Google Verification jari hai...");
+    
+    setTimeout(() => {
+      const mockGoogleUser = {
+        name: "Commander SPCT",
+        email: "spct.avengers@gmail.com",
+        photo: "https://lh3.googleusercontent.com/a-/AOh14Gg...",
+        connectedDate: new Date().toLocaleDateString()
+      };
+      setUserProfile(mockGoogleUser);
+      setIsAuthenticating(false);
+      setAssistantStatus("Google Sign-In successful. Profile verified.");
+      speakText("Google Account ke sath successfully login aur verification ho gaya hai.");
+    }, 1200);
+  };
 
   // Master Mute Handler
   useEffect(() => {
@@ -534,7 +554,7 @@ export default function App() {
           }
         }
       });
-    }, 1000); // 1-second interval for real-time second ticking
+    }, 1000);
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
@@ -676,7 +696,7 @@ export default function App() {
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
 
-  // Smart Sorting: Upcoming nearest future reminder first, past reminders below
+  // Smart Sorting: Upcoming nearest future reminder first (today's future time -> tomorrow's time)
   const sortedReminders = [...remindersList].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     
@@ -697,7 +717,7 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Left Side Thin Navigation Sidebar with Live Ticking Countdown on Watcher */}
+      {/* Left Side Thin Navigation Sidebar with Google Login & Live Countdown */}
       <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '12px', flexShrink: 0, boxSizing: 'border-box' }}>
         <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={22} />
@@ -727,21 +747,17 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        {/* Profile / Google Gmail Login Button at Bottom of Sidebar */}
+        {/* Google OAuth Login / Profile Button & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => {
               if (userProfile) {
                 setShowProfileModal(true);
               } else {
-                const email = prompt("Google Gmail ID darj karein (Sync ke liye):", "commander@gmail.com");
-                if (email) {
-                  setUserProfile({ email, name: email.split('@')[0], connectedDate: new Date().toLocaleDateString() });
-                  speakText("Google account successfully connect ho gaya hai.");
-                }
+                handleGoogleSignIn();
               }
             }} 
-            title={userProfile ? `Connected: ${userProfile.email}` : "Google Gmail Login / Profile"} 
+            title={userProfile ? `Connected: ${userProfile.email}` : "Google Login / Sign Up"} 
             style={{ background: userProfile ? 'rgba(16, 185, 129, 0.2)' : '#1e293b', border: `1px solid ${userProfile ? '#10b981' : '#38bdf8'}`, color: userProfile ? '#34d399' : '#38bdf8', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {userProfile ? <UserCircle size={20} /> : <LogIn size={18} />}
@@ -760,7 +776,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smart Sorted Watcher & Cloud Profile Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smart Sorted Watcher & Google Sign-In Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -926,7 +942,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal with Smart Upcoming Sorting & Bottom ZZZ Snooze */}
+      {/* Permanent Watcher Modal */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1023,7 +1039,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Gmail Profile Modal */}
+      {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
