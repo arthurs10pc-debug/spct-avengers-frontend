@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, BellRing
+  DollarSign, Newspaper, Check, MapPin, Moon
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -29,9 +29,9 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State with Snooze and Sorting
+  // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
-  const [showWatcherSnoozeBar, setShowWatcherSnoozeBar] = useState(false);
+  const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_snooze_duration');
@@ -58,7 +58,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Expense Tracker State with Red Highlight
+  // Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -835,7 +835,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal with Horizontal Snooze Bar */}
+      {/* Permanent Watcher Modal with Bottom ZZZ Snooze Button */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -872,24 +872,8 @@ export default function App() {
               </button>
             </form>
 
-            {/* Horizontal Small Snooze Setting Bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '8px 12px', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Default Snooze Time:</span>
-              <select 
-                value={snoozeMinutes} 
-                onChange={(e) => setSnoozeMinutes(Number(e.target.value))}
-                style={{ background: '#1e293b', color: '#38bdf8', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value={1}>1 Minute</option>
-                <option value={5}>5 Minutes</option>
-                <option value={10}>10 Minutes</option>
-                <option value={15}>15 Minutes</option>
-                <option value={30}>30 Minutes</option>
-              </select>
-            </div>
-
-            {/* Sorted Reminders List with 12-Hour AM/PM Format */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
+            {/* Sorted Reminders List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
               {sortedReminders.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
               ) : (
@@ -917,11 +901,38 @@ export default function App() {
                 })
               )}
             </div>
+
+            {/* Bottom Horizontal ZZZ Snooze Button & Dropdown */}
+            <div style={{ position: 'relative', borderTop: '1px solid #1e293b', paddingTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
+                title="Snooze Settings"
+                style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Moon size={14} /> ZZZ ({snoozeMinutes}m)
+              </button>
+
+              {showSnoozeDropdown && (
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#030712', border: '1px solid #38bdf8', borderRadius: '10px', padding: '8px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                  <span style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', paddingLeft: '4px' }}>Select Snooze Time:</span>
+                  {[1, 5, 10, 15, 30].map((m) => (
+                    <button 
+                      key={m} 
+                      onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
+                      style={{ background: snoozeMinutes === m ? '#38bdf8' : 'transparent', color: snoozeMinutes === m ? '#030712' : '#f8fafc', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      {m} Minute{m > 1 ? 's' : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
 
-      {/* Stable Expense Tracker Modal with Red Highlighted Total */}
+      {/* Stable Expense Tracker Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -936,7 +947,7 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Total Spent Summary Banner with Red Highlight */}
+            {/* Total Spent Summary Banner */}
             <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Kul Kharcha (Total Spent)</span>
