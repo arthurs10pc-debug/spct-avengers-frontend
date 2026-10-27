@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin
+  DollarSign, Newspaper, Check, MapPin, BellRing
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -29,8 +29,17 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State
+  // Permanent Watcher State with Adjustable Snooze
   const [showWatcherModal, setShowWatcherModal] = useState(false);
+  const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_snooze_duration');
+      return saved ? parseInt(saved, 10) : 1; // Default 1 minute
+    } catch {
+      return 1;
+    }
+  });
+
   const [remindersList, setRemindersList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_permanent_reminders');
@@ -74,13 +83,19 @@ export default function App() {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const polylineRef = useRef(null);
-  const clickStepRef = useRef(0); // 0 = Selecting From, 1 = Selecting To
+  const clickStepRef = useRef(0);
 
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
     } catch (e) {}
   }, [remindersList]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis_snooze_duration', snoozeMinutes.toString());
+    } catch (e) {}
+  }, [snoozeMinutes]);
 
   useEffect(() => {
     try {
@@ -230,7 +245,6 @@ export default function App() {
           window.L.marker([activeRoute.toCoords[1], activeRoute.toCoords[0]]).addTo(map)
             .bindPopup(`To: ${activeRoute.toName}`);
 
-          // Fetch OSRM route line
           fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=full&geometries=geojson`)
             .then(res => res.json())
             .then(data => {
@@ -240,7 +254,7 @@ export default function App() {
                 const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
                 const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4;
 
-                const lineColor = isHeavy ? '#dc2626' : '#38bdf8'; // Red if traffic jam, Blue if clear
+                const lineColor = isHeavy ? '#dc2626' : '#38bdf8';
 
                 const polyline = window.L.polyline(coords, { color: lineColor, weight: 6, opacity: 0.85 }).addTo(map);
                 polylineRef.current = polyline;
@@ -255,7 +269,6 @@ export default function App() {
             }).catch(e => {});
         }
 
-        // Map Click Event for selecting From and To interactively
         map.on('click', async (e) => {
           const lat = e.latlng.lat;
           const lon = e.latlng.lng;
@@ -299,7 +312,7 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, speakText]);
 
-  // Nominatim Autocomplete for 'From'
+  // Nominatim Autocomplete for 'From' & 'To'
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -315,7 +328,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [fromInput]);
 
-  // Nominatim Autocomplete for 'To'
   useEffect(() => {
     if (toInput.trim().length < 2) {
       setToSuggestions([]);
@@ -459,51 +471,31 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Real-Time Traffic & Dynamic Polyline Color Update
-  useEffect(() => {
-    if (!isMonitoringActive || !activeRoute.fromCoords || !activeRoute.toCoords || isMuted) return;
+  // Handle Snooze Functionality (+X minutes)
+  const handleSnooze = () => {
+    stopAlarmSound();
+    if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
+      const targetRem = remindersList[currentAlertTaskId];
+      if (targetRem) {
+        // Calculate new time based on snoozeMinutes
+        const [h, m] = targetRem.time.split(':').map(Number);
+        const dateObj = new Date();
+        dateObj.setHours(h);
+        dateObj.setMinutes(m + snoozeMinutes);
+        
+        const newH = String(dateObj.getHours()).padStart(2, '0');
+        const newM = String(dateObj.getMinutes()).padStart(2, '0');
+        const newTimeStr = `${newH}:${newM}`;
 
-    const checkRealTraffic = async () => {
-      try {
-        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=false`);
-        const routeData = await routeRes.json();
-
-        if (routeData.routes && routeData.routes.length > 0) {
-          const durationSec = routeData.routes[0].duration;
-          const distanceKm = (routeData.routes[0].distance / 1000).toFixed(1);
-          const durationMin = Math.round(durationSec / 60);
-
-          const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4; 
-
-          if (isHeavy) {
-            setRouteStatus({ 
-              isHeavy: true, 
-              message: `RED ALERT: Bhari traffic jam! (${durationMin} min)` 
-            });
-            if (polylineRef.current) polylineRef.current.setStyle({ color: '#dc2626' }); // Turn Red
-            startJailerFluteAlarm();
-            speakText(`Boss, alert! Raste par bhari traffic jam detect hua hai.`);
-            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]} (${durationMin} min)`);
-            setCurrentAlertTaskId(null);
-          } else {
-            setRouteStatus({ 
-              isHeavy: false, 
-              message: `Rasta saaf hai. (${durationMin} min)` 
-            });
-            if (polylineRef.current) polylineRef.current.setStyle({ color: '#38bdf8' }); // Turn Normal Blue
-          }
-        }
-      } catch (e) {}
-    };
-
-    checkRealTraffic();
-    if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 45000);
-
-    return () => {
-      if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-    };
-  }, [isMonitoringActive, activeRoute, speakText, startJailerFluteAlarm, isMuted]);
+        const updated = [...remindersList];
+        updated[currentAlertTaskId].time = newTimeStr;
+        setRemindersList(updated);
+      }
+    }
+    setActiveAlertTask(null);
+    setCurrentAlertTaskId(null);
+    triggeredMinuteRef.current = ''; // Reset trigger to allow future hits
+  };
 
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
@@ -647,7 +639,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Interactive Click Map & High-Accuracy GPS Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Watcher Snooze & Interactive Map Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -705,7 +697,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay with "Got It" & "Snooze" Buttons */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -717,30 +709,38 @@ export default function App() {
           <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
           </h1>
-          <button
-            onClick={() => {
-              stopAlarmSound();
-              if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
-                const updated = [...remindersList];
-                if (updated[currentAlertTaskId]) {
-                  updated[currentAlertTaskId].completed = true;
-                  setRemindersList(updated);
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button
+              onClick={() => {
+                stopAlarmSound();
+                if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
+                  const updated = [...remindersList];
+                  if (updated[currentAlertTaskId]) {
+                    updated[currentAlertTaskId].completed = true;
+                    setRemindersList(updated);
+                  }
                 }
-              }
-              setActiveAlertTask(null);
-              setCurrentAlertTaskId(null);
-            }}
-            style={{ padding: '16px 36px', borderRadius: '16px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '16px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
-          >
-            Got It (Samajh Gaya)
-          </button>
+                setActiveAlertTask(null);
+                setCurrentAlertTaskId(null);
+              }}
+              style={{ padding: '14px 28px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '15px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
+            >
+              Got It (Samajh Gaya)
+            </button>
+            <button
+              onClick={handleSnooze}
+              style={{ padding: '14px 28px', borderRadius: '14px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#38bdf8', fontWeight: '900', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <BellRing size={18} /> Snooze (+{snoozeMinutes} min)
+            </button>
+          </div>
         </div>
       )}
 
       {/* Route Setup Modal with Click-to-Select Map & GPS Buttons */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%, maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -805,7 +805,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal */}
+      {/* Permanent Watcher Modal with Snooze Duration Setting */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -813,11 +813,29 @@ export default function App() {
               <X size={15} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Clock size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'between', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={20} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
+            </div>
+
+            {/* Snooze Time Setting Control */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#030712', padding: '8px 12px', borderRadius: '10px', border: '1px solid #1e293b', marginBottom: '14px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Snooze Duration:</span>
+              <select 
+                value={snoozeMinutes} 
+                onChange={(e) => setSnoozeMinutes(Number(e.target.value))}
+                style={{ background: '#1e293b', color: '#38bdf8', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value={1}>1 Minute</option>
+                <option value={5}>5 Minutes</option>
+                <option value={10}>10 Minutes</option>
+                <option value={15}>15 Minutes</option>
+                <option value={30}>30 Minutes</option>
+              </select>
             </div>
 
             <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
@@ -842,7 +860,7 @@ export default function App() {
               </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
               {remindersList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
               ) : (
