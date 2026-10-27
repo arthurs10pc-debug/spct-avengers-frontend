@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, BellRing, PieChart
+  DollarSign, Newspaper, Check, MapPin, BellRing
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -77,7 +77,7 @@ export default function App() {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('Food / Chai');
   const [isSettingBudget, setIsSettingBudget] = useState(false);
-  const [tempBudgetInput, setTempBudgetInput] = useState(monthlyBudget);
+  const [tempBudgetInput, setTempBudgetInput] = useState(5000);
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -551,7 +551,6 @@ export default function App() {
     }
   };
 
-  // Advanced Expense Handlers with Strict Confirmation
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -561,7 +560,7 @@ export default function App() {
     const newExp = {
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
-      category: expenseCategory,
+      category: expenseCategory || 'Food / Chai',
       date: new Date().toLocaleDateString()
     };
     setExpenseList(prev => [...prev, newExp]);
@@ -584,7 +583,7 @@ export default function App() {
     if (!isNaN(val) && val > 0) {
       setMonthlyBudget(val);
       setIsSettingBudget(false);
-      speakText("Monthly pocket money budget update kar diya gaya hai.");
+      speakText("Monthly budget update kar diya gaya hai.");
     }
   };
 
@@ -633,12 +632,12 @@ export default function App() {
     speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
-  // Calculate Total Expenses & Category Breakdown
-  const totalSpent = expenseList.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalSpent = expenseList.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const remainingBudget = monthlyBudget - totalSpent;
 
   const categoryTotals = expenseList.reduce((acc, curr) => {
-    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+    const cat = curr.category || 'Miscellaneous';
+    acc[cat] = (acc[cat] || 0) + (curr.amount || 0);
     return acc;
   }, {});
 
@@ -661,7 +660,7 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#38bdf8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
