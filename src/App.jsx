@@ -14,12 +14,12 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & Live Traffic Map State
+  // Route & Real-Time Traffic Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle, Ahmedabad', to: 'Vaishnodevi Circle, Ahmedabad' });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live traffic layer active." });
+  const [activeRoute, setActiveRoute] = useState({ from: 'Iskon Circle Ahmedabad', to: 'Vaishnodevi Circle Ahmedabad' });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live routing active. Rasta saaf hai." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State
@@ -171,7 +171,7 @@ export default function App() {
       const total = expenseList.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
       reply = `Commander, aapka kul kharcha abhi tak ${total} rupaye hai.`;
     } else if (lowerQ.includes('briefing') || lowerQ.includes('news') || lowerQ.includes('samachar')) {
-      reply = "Commander, aaj ke sabhi systems nominal hain.";
+      reply = "Commander, aaj ke sabhi systems nominal hain aur mausam bilkul thik hai.";
     } else if (lowerQ.includes('traffic') || lowerQ.includes('raste')) {
       if (!isMonitoringActive) {
         reply = "Traffic monitoring abhi band hai.";
@@ -392,7 +392,7 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Sabhi systems nominal hain.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Sabhi systems nominal hain aur security protocols sakriya hain.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
@@ -408,14 +408,14 @@ export default function App() {
     setActiveRoute({ from: fromInput.trim(), to: toInput.trim() });
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Live traffic map load kar diya gaya hai.`);
+    speakText(`Route set ho gaya hai: ${fromInput} se ${toInput}. Real-time traffic monitoring shuru kar di gayi hai.`);
   };
 
   const handleStopAll = () => {
     setIsMonitoringActive(false);
     stopAlarmSound();
     window.speechSynthesis.cancel();
-    setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai." });
+    setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai (Stopped)." });
     speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
@@ -428,7 +428,7 @@ export default function App() {
           <Shield size={22} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Live Traffic Map" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
@@ -458,11 +458,11 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Top Header with Master Mute Button */}
+        {/* Top Header */}
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Dark Mode Live Traffic Layer Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Google Maps Live Directions & Traffic Layer Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -500,7 +500,6 @@ export default function App() {
             }
           `}</style>
 
-          {/* Jarvis Heart Widget */}
           <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
             <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {isListening ? <Mic size={48} color="#ef4444" /> : <Activity size={70} color="#38bdf8" />}
@@ -511,7 +510,6 @@ export default function App() {
             {assistantStatus}
           </p>
 
-          {/* Live Visual Traffic Status Banner */}
           <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
             {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
             <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
@@ -554,12 +552,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup & Google Maps Dark Mode Traffic Layer Modal */}
+      {/* Route Setup Modal with Live Google Maps Directions & Traffic Layer */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '580px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Google Traffic Map</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Google Maps Live Traffic & Route</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
@@ -583,14 +581,13 @@ export default function App() {
                 />
               </div>
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Live Traffic Map Load Karein
+                Google Map Par Route Select Karein
               </button>
             </form>
 
-            {/* Google Maps Embed with Directions & Traffic Layer view */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
               <iframe
-                title="Google Maps Live Traffic"
+                title="Google Maps Live Directions & Traffic"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
