@@ -3,30 +3,27 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check
+  DollarSign, Newspaper, Check, MapPin
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
+const GOOGLE_MAPS_API_KEY = "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa";
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & Live Map State with Click-to-Select and Dynamic Traffic Color
+  // Route & Detailed Google Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
-  const [fromSuggestions, setFromSuggestions] = useState([]);
-  const [toSuggestions, setToSuggestions] = useState([]);
   
   const [activeRoute, setActiveRoute] = useState({ 
     fromName: 'Iskon Circle, Ahmedabad', 
-    fromCoords: [72.5083, 23.0293], 
-    toName: 'Vaishnodevi Circle, Ahmedabad', 
-    toCoords: [72.5514, 23.1200] 
+    toName: 'Vaishnodevi Circle, Ahmedabad' 
   });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live traffic routing active." });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Google Maps live traffic active." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State
@@ -70,11 +67,6 @@ export default function App() {
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
   const triggeredMinuteRef = useRef('');
-  
-  const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const polylineRef = useRef(null);
-  const clickStepRef = useRef(0); // 0 for selecting From, 1 for selecting To
 
   useEffect(() => {
     try {
@@ -158,138 +150,33 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Leaflet Map Loader with Click-to-Select & Dynamic Traffic Polyline Color
-  useEffect(() => {
-    if (!showRoutePanel) return;
-
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    const initMapScript = () => {
-      if (!window.L) return;
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-
-      if (mapContainerRef.current) {
-        const map = window.L.map(mapContainerRef.current).setView([activeRoute.fromCoords[1], activeRoute.fromCoords[0]], 12);
-        mapInstanceRef.current = map;
-
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        window.L.marker([activeRoute.fromCoords[1], activeRoute.fromCoords[0]]).addTo(map)
-          .bindPopup(`From: ${activeRoute.fromName}`).openPopup();
-
-        window.L.marker([activeRoute.toCoords[1], activeRoute.toCoords[0]]).addTo(map)
-          .bindPopup(`To: ${activeRoute.toName}`);
-
-        // Fetch OSRM route & render polyline with dynamic traffic color
-        fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=full&geometries=geojson`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.routes && data.routes.length > 0) {
-              const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-              const durationMin = Math.round(data.routes[0].duration / 60);
-              const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
-              const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4;
-
-              const lineColor = isHeavy ? '#dc2626' : '#38bdf8'; // Red if heavy traffic, Blue/Green if clear
-
-              const polyline = window.L.polyline(coords, { color: lineColor, weight: 6, opacity: 0.85 }).addTo(map);
-              polylineRef.current = polyline;
-              map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
-
-              if (isHeavy) {
-                setRouteStatus({ isHeavy: true, message: `RED ALERT: Bhari traffic jam! (${durationMin} min)` });
-              } else {
-                setRouteStatus({ isHeavy: false, message: `Rasta saaf hai. (${durationMin} min)` });
-              }
-            }
-          }).catch(e => {});
-
-        // Map Click Event for selecting From and To interactively
-        map.on('click', async (e) => {
-          const lat = e.latlng.lat;
-          const lon = e.latlng.lng;
-
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-            const data = await res.json();
-            const placeName = data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-
-            if (clickStepRef.current === 0) {
-              setFromInput(placeName);
-              setActiveRoute(prev => ({ ...prev, fromName: placeName, fromCoords: [lon, lat] }));
-              clickStepRef.current = 1;
-              speakText("From location select ho gayi hai. Ab map par To location par click karein.");
-            } else {
-              setToInput(placeName);
-              setActiveRoute(prev => ({ ...prev, toName: placeName, toCoords: [lon, lat] }));
-              clickStepRef.current = 0;
-              speakText("To location bhi select ho gayi hai. Route load ho raha hai.");
-            }
-          } catch (err) {}
-        });
-      }
-    };
-
-    if (window.L) {
-      initMapScript();
-    } else {
-      const existingScript = document.getElementById('leaflet-js');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.id = 'leaflet-js';
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.async = true;
-        script.onload = initMapScript;
-        document.body.appendChild(script);
-      } else {
-        existingScript.onload = initMapScript;
-      }
-    }
-  }, [showRoutePanel, activeRoute, speakText]);
-
-  // Nominatim Autocomplete for 'From'
-  useEffect(() => {
-    if (fromInput.trim().length < 2) {
-      setFromSuggestions([]);
+  // Fetch Current GPS Location & Reverse Geocode
+  const handleGetCurrentLocation = (targetField) => {
+    if (!navigator.geolocation) {
+      alert("Aapka browser Geolocation support nahi karta.");
       return;
     }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fromInput)}`);
-        const data = await res.json();
-        setFromSuggestions(data.slice(0, 5));
-      } catch (e) {}
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [fromInput]);
 
-  // Nominatim Autocomplete for 'To'
-  useEffect(() => {
-    if (toInput.trim().length < 2) {
-      setToSuggestions([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(toInput)}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
         const data = await res.json();
-        setToSuggestions(data.slice(0, 5));
-      } catch (e) {}
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [toInput]);
+        const address = data.display_name || `${lat}, ${lon}`;
+        if (targetField === 'from') {
+          setFromInput(address);
+        } else {
+          setToInput(address);
+        }
+        speakText("Current location successfully set ho gayi hai.");
+      } catch (e) {
+        alert("Location address fetch karne mein samasya aayi.");
+      }
+    }, () => {
+      alert("Location permission denied ya error aayi.");
+    });
+  };
 
   // Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
@@ -419,52 +306,6 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Real-Time Traffic & Dynamic Polyline Color Update
-  useEffect(() => {
-    if (!isMonitoringActive || !activeRoute.fromCoords || !activeRoute.toCoords || isMuted) return;
-
-    const checkRealTraffic = async () => {
-      try {
-        const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=false`);
-        const routeData = await routeRes.json();
-
-        if (routeData.routes && routeData.routes.length > 0) {
-          const durationSec = routeData.routes[0].duration;
-          const distanceKm = (routeData.routes[0].distance / 1000).toFixed(1);
-          const durationMin = Math.round(durationSec / 60);
-
-          const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4; 
-
-          if (isHeavy) {
-            setRouteStatus({ 
-              isHeavy: true, 
-              message: `RED ALERT: Bhari traffic jam! (${durationMin} min)` 
-            });
-            if (polylineRef.current) polylineRef.current.setStyle({ color: '#dc2626' }); // Turn Red
-            startJailerFluteAlarm();
-            speakText(`Boss, alert! Raste par bhari traffic jam detect hua hai.`);
-            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]} (${durationMin} min)`);
-            setCurrentAlertTaskId(null);
-          } else {
-            setRouteStatus({ 
-              isHeavy: false, 
-              message: `Rasta saaf hai. (${durationMin} min)` 
-            });
-            if (polylineRef.current) polylineRef.current.setStyle({ color: '#38bdf8' }); // Turn Normal Blue
-          }
-        }
-      } catch (e) {}
-    };
-
-    checkRealTraffic();
-    if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-    liveTrafficCheckRef.current = setInterval(checkRealTraffic, 45000);
-
-    return () => {
-      if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-    };
-  }, [isMonitoringActive, activeRoute, speakText, startJailerFluteAlarm, isMuted]);
-
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
     if (!currentTaskInput.trim()) {
@@ -526,34 +367,23 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Live traffic telemetry active hai.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Google Maps HD traffic active hai.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
     }
   };
 
-  const handleSelectFromSuggestion = (item) => {
-    setFromInput(item.display_name);
-    setActiveRoute(prev => ({ ...prev, fromName: item.display_name, fromCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
-    setFromSuggestions([]);
-  };
-
-  const handleSelectToSuggestion = (item) => {
-    setToInput(item.display_name);
-    setActiveRoute(prev => ({ ...prev, toName: item.display_name, toCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
-    setToSuggestions([]);
-  };
-
   const handleApplyRoute = (e) => {
     e.preventDefault();
     if (!fromInput.trim() || !toInput.trim()) {
-      alert("Kripya 'From' aur 'To' locations select karein.");
+      alert("Kripya 'From' aur 'To' locations bharein.");
       return;
     }
+    setActiveRoute({ fromName: fromInput.trim(), toName: toInput.trim() });
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText("Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.");
+    speakText("Google Map par route aur live traffic load kar diya gaya hai.");
   };
 
   const handleStopAll = () => {
@@ -607,7 +437,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Click-to-Select Map & Dynamic Traffic Polyline Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Google Maps HD Detailed Places & Current Location Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -697,65 +527,72 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal with Click-to-Select Map */}
+      {/* Route Setup Modal with Current Location GPS Buttons & Google Maps HD Embed */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Traffic Map (Click Map)</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Google Maps HD Route & Traffic</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', position: 'relative' }}>
-              <p style={{ margin: 0, fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>* Tip: Map par click karke bhi From aur To select kar sakte hain.</p>
-              <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <input
-                    type="text"
-                    placeholder="From (Kahan se)..."
-                    value={fromInput}
-                    onChange={(e) => setFromInput(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                  />
-                  {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '150px', overflowY: 'auto' }}>
-                      {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
-                          {item.display_name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <input
-                    type="text"
-                    placeholder="To (Kahan tak)..."
-                    value={toInput}
-                    onChange={(e) => setToInput(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                  />
-                  {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '150px', overflowY: 'auto' }}>
-                      {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
-                          {item.display_name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+              
+              {/* From Input with GPS Current Location Button */}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="From (Kahan se)..."
+                  value={fromInput}
+                  onChange={(e) => setFromInput(e.target.value)}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => handleGetCurrentLocation('from')} 
+                  title="Use Current Location for From"
+                  style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800', flexShrink: 0 }}
+                >
+                  <MapPin size={14} /> Current
+                </button>
               </div>
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Route Load Karein
+
+              {/* To Input with GPS Current Location Button */}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="To (Kahan tak)..."
+                  value={toInput}
+                  onChange={(e) => setToInput(e.target.value)}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => handleGetCurrentLocation('to')} 
+                  title="Use Current Location for To"
+                  style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800', flexShrink: 0 }}
+                >
+                  <MapPin size={14} /> Current
+                </button>
+              </div>
+
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer', marginTop: '4px' }}>
+                Google Map Par Route Load Karein
               </button>
             </form>
 
+            {/* Google Maps HD Embed showing all businesses, hotels, and live traffic details */}
             <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
-              <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+              <iframe
+                title="Google Maps HD Traffic & Places"
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                src={`https://www.google.com/maps/embed/v1/directions?key=${GOOGLE_MAPS_API_KEY}&origin=${encodeURIComponent(activeRoute.fromName)}&destination=${encodeURIComponent(activeRoute.toName)}&mode=driving`}
+              ></iframe>
             </div>
           </div>
         </div>
