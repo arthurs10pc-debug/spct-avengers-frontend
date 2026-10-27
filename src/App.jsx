@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin
+  DollarSign, Newspaper, Check, MapPin, BellRing
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -29,8 +29,18 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State with Error Boundary Fallback
+  // Permanent Watcher State with Snooze and Sorting
   const [showWatcherModal, setShowWatcherModal] = useState(false);
+  const [showWatcherSnoozeBar, setShowWatcherSnoozeBar] = useState(false);
+  const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_snooze_duration');
+      return saved ? parseInt(saved, 10) : 1;
+    } catch {
+      return 1;
+    }
+  });
+
   const [remindersList, setRemindersList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_permanent_reminders');
@@ -48,7 +58,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Crash-Proof Expense Tracker State
+  // Expense Tracker State with Red Highlight
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -85,6 +95,12 @@ export default function App() {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
     } catch (e) {}
   }, [remindersList]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis_snooze_duration', snoozeMinutes.toString());
+    } catch (e) {}
+  }, [snoozeMinutes]);
 
   useEffect(() => {
     try {
@@ -161,6 +177,15 @@ export default function App() {
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
+
+  // Helper function to format 24h time to 12h AM/PM
+  const formatTimeTo12Hour = (timeStr) => {
+    if (!timeStr || !timeStr.includes(':')) return timeStr;
+    const [h, m] = timeStr.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const adjustedH = h % 12 === 0 ? 12 : h % 12;
+    return `${String(adjustedH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+  };
 
   // Ultra-Accurate HTML5 GPS Geolocation
   const handleGetCurrentLocation = (targetField) => {
@@ -460,7 +485,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze (+1 min)
+  // Handle Snooze (+X minutes)
   const handleSnooze = () => {
     stopAlarmSound();
     if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
@@ -469,7 +494,7 @@ export default function App() {
         const [h, m] = targetRem.time.split(':').map(Number);
         const dateObj = new Date();
         dateObj.setHours(h);
-        dateObj.setMinutes(m + 1);
+        dateObj.setMinutes(m + snoozeMinutes);
         
         const newH = String(dateObj.getHours()).padStart(2, '0');
         const newM = String(dateObj.getMinutes()).padStart(2, '0');
@@ -593,7 +618,13 @@ export default function App() {
     speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
-  const totalSpent = expenseList.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
+
+  // Sort reminders: Upcoming / nearest future time first
+  const sortedReminders = [...remindersList].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return (a.time || '').localeCompare(b.time || '');
+  });
 
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -638,7 +669,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Crash-Proof Expense & Watcher Hub Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smart Sorted Watcher & Crash-Proof Expense Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -730,7 +761,7 @@ export default function App() {
               onClick={handleSnooze}
               style={{ padding: '14px 28px', borderRadius: '14px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#38bdf8', fontWeight: '900', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              Snooze (+1 min)
+              Snooze (+{snoozeMinutes} min)
             </button>
           </div>
         </div>
@@ -804,7 +835,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal */}
+      {/* Permanent Watcher Modal with Horizontal Snooze Bar */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -819,7 +850,7 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
             </div>
 
-            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
@@ -841,36 +872,56 @@ export default function App() {
               </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
-              {remindersList.length === 0 ? (
+            {/* Horizontal Small Snooze Setting Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '8px 12px', marginBottom: '14px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>Default Snooze Time:</span>
+              <select 
+                value={snoozeMinutes} 
+                onChange={(e) => setSnoozeMinutes(Number(e.target.value))}
+                style={{ background: '#1e293b', color: '#38bdf8', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value={1}>1 Minute</option>
+                <option value={5}>5 Minutes</option>
+                <option value={10}>10 Minutes</option>
+                <option value={15}>15 Minutes</option>
+                <option value={30}>30 Minutes</option>
+              </select>
+            </div>
+
+            {/* Sorted Reminders List with 12-Hour AM/PM Format */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
+              {sortedReminders.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
               ) : (
-                remindersList.map((rem, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
-                    <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: rem.completed ? '#6ee7b7' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {rem.task} {rem.completed && "✓"}
-                      </p>
-                      <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {rem.time}</span>
+                sortedReminders.map((rem, idx) => {
+                  const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
+                  return (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
+                      <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: rem.completed ? '#6ee7b7' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {rem.task} {rem.completed && "✓"}
+                        </p>
+                        <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {formatTimeTo12Hour(rem.time)}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                        {rem.completed && (
+                          <div title="Task Completed" style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                            <Check size={14} />
+                          </div>
+                        )}
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Edit2 size={13} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
-                      {rem.completed && (
-                        <div title="Task Completed" style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                          <Check size={14} />
-                        </div>
-                      )}
-                      <button onClick={() => handleEditReminder(idx)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Edit2 size={13} /></button>
-                      <button onClick={() => handleDeleteReminder(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Crash-Proof Expense Tracker Modal */}
+      {/* Stable Expense Tracker Modal with Red Highlighted Total */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -885,11 +936,11 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Total Spent Summary Banner */}
+            {/* Total Spent Summary Banner with Red Highlight */}
             <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Kul Kharcha (Total Spent)</span>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fca5a5' }}>₹{expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0).toFixed(2)}</p>
+                <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
             </div>
 
@@ -924,7 +975,7 @@ export default function App() {
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
                     <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {exp?.title || 'Expense'} - <span style={{ color: '#38bdf8' }}>₹{exp?.amount || 0}</span>
+                        {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
                       <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.date || ''}</span>
                     </div>
