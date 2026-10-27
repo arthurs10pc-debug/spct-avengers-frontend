@@ -29,13 +29,15 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State
+  // Permanent Watcher State with Error Boundary Fallback
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [remindersList, setRemindersList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_permanent_reminders');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
       return [];
     }
   });
@@ -46,13 +48,15 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Stable Expense Tracker State
+  // Crash-Proof Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_expenses');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
       return [];
     }
   });
@@ -634,7 +638,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Stable Expense & Watcher Hub Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Crash-Proof Expense & Watcher Hub Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -866,7 +870,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Stable Expense Tracker Modal */}
+      {/* Crash-Proof Expense Tracker Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -885,7 +889,7 @@ export default function App() {
             <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Kul Kharcha (Total Spent)</span>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fca5a5' }}>₹{totalSpent.toFixed(2)}</p>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fca5a5' }}>₹{expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0).toFixed(2)}</p>
               </div>
             </div>
 
@@ -920,9 +924,9 @@ export default function App() {
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
                     <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {exp.title} - <span style={{ color: '#38bdf8' }}>₹{exp.amount}</span>
+                        {exp?.title || 'Expense'} - <span style={{ color: '#38bdf8' }}>₹{exp?.amount || 0}</span>
                       </p>
-                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp.date}</span>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.date || ''}</span>
                     </div>
                     <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={13} />
