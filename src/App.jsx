@@ -46,7 +46,7 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
-  // Expense Tracker State (Restored simple layout with total spent counter)
+  // Stable Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -456,7 +456,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze (+1 min default)
+  // Handle Snooze (+1 min)
   const handleSnooze = () => {
     stopAlarmSound();
     if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
@@ -465,7 +465,7 @@ export default function App() {
         const [h, m] = targetRem.time.split(':').map(Number);
         const dateObj = new Date();
         dateObj.setHours(h);
-        dateObj.setMinutes(m + 1); // +1 min snooze
+        dateObj.setMinutes(m + 1);
         
         const newH = String(dateObj.getHours()).padStart(2, '0');
         const newM = String(dateObj.getMinutes()).padStart(2, '0');
@@ -519,7 +519,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Restored to exact working structure with total spent)
+  // Safe Expense Handlers
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -610,7 +610,7 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#38bdf8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
@@ -692,7 +692,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay with Snooze (+1 min) */}
+      {/* Full-Screen Watcher / Traffic Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
@@ -866,7 +866,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Stable Expense Tracker Modal (Restored exact working structure with Total Spent counter) */}
+      {/* Stable Expense Tracker Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
