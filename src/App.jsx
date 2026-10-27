@@ -610,7 +610,7 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#38bdf8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={20} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
