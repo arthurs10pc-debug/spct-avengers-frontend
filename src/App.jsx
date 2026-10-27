@@ -58,6 +58,9 @@ export default function App() {
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
 
+  // Next Reminder Countdown State for Sidebar
+  const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
+
   // Expense Tracker State
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
@@ -452,18 +455,47 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker
+  // Watcher Time-Hit Checker & Countdown Calculator
   useEffect(() => {
-    if (!watcherActive || isMuted) return;
+    if (!watcherActive) return;
 
     if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
 
     watcherIntervalRef.current = setInterval(() => {
       const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTimeStr = `${hours}:${minutes}`;
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTotalMin = currentHours * 60 + currentMinutes;
+      const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
+      // Calculate next upcoming reminder countdown
+      let minDiff = Infinity;
+      remindersList.forEach((rem) => {
+        if (!rem.completed && rem.time) {
+          const [h, m] = rem.time.split(':').map(Number);
+          const remTotalMin = h * 60 + m;
+          let diff = remTotalMin - currentTotalMin;
+          if (diff < 0) diff += 24 * 60; // Next day
+          if (diff < minDiff) {
+            minDiff = diff;
+          }
+        }
+      });
+
+      if (minDiff !== Infinity) {
+        const remH = Math.floor(minDiff / 60);
+        const remM = minDiff % 60;
+        if (remH > 0) {
+          setNextCountdownStr(`${remH}h ${remM}m`);
+        } else {
+          setNextCountdownStr(`${remM}m`);
+        }
+      } else {
+        setNextCountdownStr('--:--');
+      }
+
+      // Check for alert hit
+      if (isMuted) return;
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
       remindersList.forEach((rem, idx) => {
@@ -485,7 +517,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze (+X minutes)
+  // Handle Snooze (+X min)
   const handleSnooze = () => {
     stopAlarmSound();
     if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
@@ -629,29 +661,33 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Left Side Thin Navigation Sidebar */}
-      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '16px', flexShrink: 0, boxSizing: 'border-box' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+      {/* Left Side Thin Navigation Sidebar with Live Watcher Countdown */}
+      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0', gap: '14px', flexShrink: 0, boxSizing: 'border-box' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
           <Shield size={22} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
-          <Navigation size={20} />
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+          <Navigation size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
-        <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
-          <Clock size={20} />
+        {/* Watcher Button with Live Countdown Timer on Top */}
+        <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+          <span style={{ fontSize: '9px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 4px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
+            {nextCountdownStr}
+          </span>
+          <Clock size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
-          <DollarSign size={20} />
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+          <DollarSign size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px', borderRadius: '8px', width: '48px' }}>
-          <Newspaper size={20} />
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '6px', borderRadius: '8px', width: '48px' }}>
+          <Newspaper size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
@@ -669,7 +705,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smart Sorted Watcher & Crash-Proof Expense Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Live Watcher Countdown & Stable Expense Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
