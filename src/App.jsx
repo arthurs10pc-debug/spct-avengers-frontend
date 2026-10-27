@@ -13,7 +13,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
 
-  // Route & Live Map State with Autocomplete Suggestions
+  // Route & Live Map State with Click-to-Select and Dynamic Traffic Color
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -26,7 +26,7 @@ export default function App() {
     toName: 'Vaishnodevi Circle, Ahmedabad', 
     toCoords: [72.5514, 23.1200] 
   });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "OpenStreetMap live traffic & routing active." });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Live traffic routing active." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(true);
 
   // Permanent Watcher State
@@ -70,8 +70,11 @@ export default function App() {
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
   const triggeredMinuteRef = useRef('');
+  
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const polylineRef = useRef(null);
+  const clickStepRef = useRef(0); // 0 for selecting From, 1 for selecting To
 
   useEffect(() => {
     try {
@@ -155,11 +158,10 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
-  // Leaflet Map Loader & Initializer
+  // Leaflet Map Loader with Click-to-Select & Dynamic Traffic Polyline Color
   useEffect(() => {
     if (!showRoutePanel) return;
 
-    // Load Leaflet CSS & JS dynamically if not present
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css';
@@ -190,16 +192,53 @@ export default function App() {
         window.L.marker([activeRoute.toCoords[1], activeRoute.toCoords[0]]).addTo(map)
           .bindPopup(`To: ${activeRoute.toName}`);
 
-        // Fetch OSRM route line
+        // Fetch OSRM route & render polyline with dynamic traffic color
         fetch(`https://router.project-osrm.org/route/v1/driving/${activeRoute.fromCoords[0]},${activeRoute.fromCoords[1]};${activeRoute.toCoords[0]},${activeRoute.toCoords[1]}?overview=full&geometries=geojson`)
           .then(res => res.json())
           .then(data => {
             if (data.routes && data.routes.length > 0) {
               const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-              window.L.polyline(coords, { color: '#38bdf8', weight: 5, opacity: 0.8 }).addTo(map);
-              map.fitBounds(window.L.polyline(coords).getBounds(), { padding: [50, 50] });
+              const durationMin = Math.round(data.routes[0].duration / 60);
+              const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
+              const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4;
+
+              const lineColor = isHeavy ? '#dc2626' : '#38bdf8'; // Red if heavy traffic, Blue/Green if clear
+
+              const polyline = window.L.polyline(coords, { color: lineColor, weight: 6, opacity: 0.85 }).addTo(map);
+              polylineRef.current = polyline;
+              map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+              if (isHeavy) {
+                setRouteStatus({ isHeavy: true, message: `RED ALERT: Bhari traffic jam! (${durationMin} min)` });
+              } else {
+                setRouteStatus({ isHeavy: false, message: `Rasta saaf hai. (${durationMin} min)` });
+              }
             }
           }).catch(e => {});
+
+        // Map Click Event for selecting From and To interactively
+        map.on('click', async (e) => {
+          const lat = e.latlng.lat;
+          const lon = e.latlng.lng;
+
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+            const data = await res.json();
+            const placeName = data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+
+            if (clickStepRef.current === 0) {
+              setFromInput(placeName);
+              setActiveRoute(prev => ({ ...prev, fromName: placeName, fromCoords: [lon, lat] }));
+              clickStepRef.current = 1;
+              speakText("From location select ho gayi hai. Ab map par To location par click karein.");
+            } else {
+              setToInput(placeName);
+              setActiveRoute(prev => ({ ...prev, toName: placeName, toCoords: [lon, lat] }));
+              clickStepRef.current = 0;
+              speakText("To location bhi select ho gayi hai. Route load ho raha hai.");
+            }
+          } catch (err) {}
+        });
       }
     };
 
@@ -218,7 +257,7 @@ export default function App() {
         existingScript.onload = initMapScript;
       }
     }
-  }, [showRoutePanel, activeRoute]);
+  }, [showRoutePanel, activeRoute, speakText]);
 
   // Nominatim Autocomplete for 'From'
   useEffect(() => {
@@ -380,7 +419,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
 
-  // Real-Time OSRM Traffic Polling
+  // Real-Time Traffic & Dynamic Polyline Color Update
   useEffect(() => {
     if (!isMonitoringActive || !activeRoute.fromCoords || !activeRoute.toCoords || isMuted) return;
 
@@ -399,17 +438,19 @@ export default function App() {
           if (isHeavy) {
             setRouteStatus({ 
               isHeavy: true, 
-              message: `RED ALERT: ${activeRoute.fromName} se ${activeRoute.toName} (${distanceKm} KM) par bhari traffic hai! Samay: ${durationMin} min.` 
+              message: `RED ALERT: Bhari traffic jam! (${durationMin} min)` 
             });
+            if (polylineRef.current) polylineRef.current.setStyle({ color: '#dc2626' }); // Turn Red
             startJailerFluteAlarm();
-            speakText(`Boss, alert! ${activeRoute.fromName} se ${activeRoute.toName} par bhari traffic detect hua hai.`);
-            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.fromName} ➔ ${activeRoute.toName} (${durationMin} min)`);
+            speakText(`Boss, alert! Raste par bhari traffic jam detect hua hai.`);
+            setActiveAlertTask(`Bhari Traffic Alert: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]} (${durationMin} min)`);
             setCurrentAlertTaskId(null);
           } else {
             setRouteStatus({ 
               isHeavy: false, 
-              message: `${activeRoute.fromName} se ${activeRoute.toName} (${distanceKm} KM) par rasta saaf hai. Samay: ${durationMin} min.` 
+              message: `Rasta saaf hai. (${durationMin} min)` 
             });
+            if (polylineRef.current) polylineRef.current.setStyle({ color: '#38bdf8' }); // Turn Normal Blue
           }
         }
       } catch (e) {}
@@ -485,7 +526,7 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. OpenStreetMap live traffic active hai.`);
+      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Live traffic telemetry active hai.`);
       speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
@@ -512,7 +553,7 @@ export default function App() {
     }
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText(`Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.`);
+    speakText("Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.");
   };
 
   const handleStopAll = () => {
@@ -566,7 +607,7 @@ export default function App() {
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Interactive Leaflet Map & Autocomplete Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Click-to-Select Map & Dynamic Traffic Polyline Active</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -656,18 +697,19 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal with Autocomplete & Leaflet Map */}
+      {/* Route Setup Modal with Click-to-Select Map */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Traffic Map (Click Map)</h3>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', position: 'relative' }}>
+              <p style={{ margin: 0, fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>* Tip: Map par click karke bhi From aur To select kar sakte hain.</p>
               <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
                 <div style={{ flex: 1, position: 'relative' }}>
                   <input
@@ -708,7 +750,7 @@ export default function App() {
                 </div>
               </div>
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Map Par Route Load Karein
+                Route Load Karein
               </button>
             </form>
 
