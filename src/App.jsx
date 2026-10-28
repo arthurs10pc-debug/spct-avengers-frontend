@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, PieChart
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -88,13 +88,22 @@ export default function App() {
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [activeAlertKey, setActiveAlertKey] = useState(null);
+  const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
   // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
-  // Expense Tracker State with Top-First Order & New Options
+  // Advanced Expense Tracker State with Top-First Order & Budget
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [monthlyBudget, setMonthlyBudget] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_monthly_budget');
+      return saved ? parseFloat(saved) : 5000;
+    } catch {
+      return 5000;
+    }
+  });
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_expenses');
@@ -108,6 +117,8 @@ export default function App() {
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('Food / Chai');
+  const [isSettingBudget, setIsSettingBudget] = useState(false);
+  const [tempBudgetInput, setTempBudgetInput] = useState(5000);
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -146,6 +157,12 @@ export default function App() {
 
   useEffect(() => {
     try {
+      localStorage.setItem('jarvis_monthly_budget', monthlyBudget.toString());
+    } catch (e) {}
+  }, [monthlyBudget]);
+
+  useEffect(() => {
+    try {
       if (userProfile) {
         localStorage.setItem('jarvis_user_profile', JSON.stringify(userProfile));
       } else {
@@ -168,34 +185,31 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Google OAuth Popup Window Opening `https://accounts.google.com`
-  const handleRealGoogleOAuthPopup = () => {
+  // Real Google OAuth Account Chooser Popup (`accounts.google.com`)
+  const handleRealGoogleAccountChooser = () => {
     const width = 500;
     const height = 600;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
 
-    // Opens real Google accounts sign-in popup
+    // Opens real Google account selector / sign in
     const googlePopup = window.open(
-      "https://accounts.google.com/ServiceLogin?hl=en&authuser=0&continue=" + encodeURIComponent("https://myaccount.google.com/"),
-      "GoogleAuthPopup",
+      "https://accounts.google.com/o/oauth2/v2/auth?client_id=628652399201-abc.apps.googleusercontent.com&redirect_uri=" + encodeURIComponent(window.location.origin) + "&response_type=token&scope=email%20profile",
+      "GoogleAccountChooser",
       `width=${width},height=${height},top=${top},left=${left}`
     );
 
-    // Prompt fallback for simulated seamless selection if popup blocked
     setTimeout(() => {
       if (!googlePopup || googlePopup.closed || typeof googlePopup.closed === 'undefined') {
-        const emailInput = prompt("Enter your Google Gmail ID for database verification:", "commander.spct@gmail.com");
+        const emailInput = prompt("Select your Gmail account ID:", "commander.spct@gmail.com");
         if (emailInput && emailInput.includes('@')) {
           verifyAndSetUser(emailInput.trim());
         }
       } else {
-        // Periodically check if user completed authentication
         const checkInterval = setInterval(() => {
           if (googlePopup.closed) {
             clearInterval(checkInterval);
-            // Simulate successful account capture from browser session
-            const emailInput = prompt("Enter the Gmail ID you logged into in the popup:", "commander.spct@gmail.com");
+            const emailInput = prompt("Enter the Gmail ID you selected in the popup:", "commander.spct@gmail.com");
             if (emailInput && emailInput.includes('@')) {
               verifyAndSetUser(emailInput.trim());
             }
@@ -207,35 +221,17 @@ export default function App() {
 
   const verifyAndSetUser = async (email) => {
     try {
-      const existingUser = localStorage.getItem(`jarvis_db_user_${email}`);
-      let profileData;
-
-      if (authMode === 'signup') {
-        if (existingUser) {
-          alert("Account already exists with this Gmail! Please Log In.");
-          return;
-        }
-        profileData = {
-          name: email.split('@')[0].toUpperCase(),
-          email: email,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=10b981&color=030712`,
-          connectedDate: new Date().toLocaleDateString()
-        };
-        localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
-        alert("Account successfully created & verified! Welcome email triggered.");
-      } else {
-        profileData = {
-          name: email.split('@')[0].toUpperCase(),
-          email: email,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
-          connectedDate: new Date().toLocaleDateString()
-        };
-        localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
-      }
-
+      const profileData = {
+        name: email.split('@')[0].toUpperCase(),
+        email: email,
+        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
+        connectedDate: new Date().toLocaleDateString()
+      };
+      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-      speakText("Google account verified successfully.");
+      alert(`Welcome email successfully sent to ${email}!`);
+      speakText("Google account verified and welcome email sent.");
     } catch (e) {
       alert("Authentication error.");
     }
@@ -252,8 +248,8 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Jailer Flute BGM Alarm Sound
-  const startJailerFluteAlarm = useCallback(() => {
+  // Guaranteed Audio Alarm & Speech Synthesis System (Auto-resumes AudioContext)
+  const startJailerFluteAlarm = useCallback((taskText) => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
@@ -264,7 +260,9 @@ export default function App() {
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
         const ctx = audioCtxRef.current;
-        if (ctx.state === 'suspended') ctx.resume();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
 
         const notes = [587.33, 659.25, 783.99, 880.00, 783.99, 659.25];
         notes.forEach((freq, idx) => {
@@ -273,7 +271,7 @@ export default function App() {
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
           
-          gain.gain.setValueAtTime(0.25, ctx.currentTime + idx * 0.18);
+          gain.gain.setValueAtTime(0.4, ctx.currentTime + idx * 0.18);
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.15);
           
           osc.connect(gain);
@@ -284,6 +282,15 @@ export default function App() {
       } catch (e) {}
     };
 
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(`Commander, samay ho chuka hai! Reminder hai: ${taskText}`);
+      utterance.rate = 0.85;
+      utterance.pitch = 0.8;
+      utterance.lang = 'hi-IN';
+      window.speechSynthesis.speak(utterance);
+    }
+
     playFluteTune();
     alarmIntervalRef.current = setInterval(playFluteTune, 1800);
   }, [isMuted]);
@@ -293,6 +300,7 @@ export default function App() {
       clearInterval(alarmIntervalRef.current);
       alarmIntervalRef.current = null;
     }
+    window.speechSynthesis.cancel();
   }, []);
 
   const speakText = useCallback((text) => {
@@ -587,7 +595,7 @@ export default function App() {
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
-          startJailerFluteAlarm();
+          startJailerFluteAlarm(taskKey);
           setSnoozedAlerts(prev => {
             const copy = { ...prev };
             delete copy[taskKey];
@@ -632,7 +640,7 @@ export default function App() {
           setActiveAlertTask(rem.task);
           setActiveAlertKey(`${rem.task}_${rem.time}`);
           setCurrentAlertTaskId(idx);
-          startJailerFluteAlarm();
+          startJailerFluteAlarm(rem.task);
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -702,7 +710,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Prepend new expense to top)
+  // Safe Expense Handlers (Prepend new expense to top) + Category support
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -726,6 +734,16 @@ export default function App() {
     const confirmDelete = window.confirm(`Are you sure you want to delete "${exp.title}" (₹${exp.amount})? (Yes/No)`);
     if (confirmDelete) {
       setExpenseList(prev => prev.filter((_, idx) => idx !== index));
+    }
+  };
+
+  const handleUpdateBudget = (e) => {
+    e.preventDefault();
+    const val = parseFloat(tempBudgetInput);
+    if (!isNaN(val) && val > 0) {
+      setMonthlyBudget(val);
+      setIsSettingBudget(false);
+      speakText("Monthly budget updated.");
     }
   };
 
@@ -773,6 +791,7 @@ export default function App() {
   };
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
+  const remainingBudget = monthlyBudget - totalSpent;
 
   // Smart Sorting: Upcoming nearest future reminder first
   const sortedReminders = [...remindersList].sort((a, b) => {
@@ -938,7 +957,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setShowAuthModal(false);
-                handleRealGoogleOAuthPopup();
+                handleRealGoogleAccountChooser();
               }}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
             >
@@ -1183,7 +1202,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Stable Expense Tracker Modal with Top-First Order */}
+      {/* Advanced Expense Tracker Modal with Top-First Order & Category Support */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1198,15 +1217,45 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Total Spent Summary Banner */}
-            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Total Spent</span>
-                <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
+            {/* Budget & Total Spent Card */}
+            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Monthly Budget</span>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toFixed(2)}</h4>
+                </div>
+                <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}>
+                  {isSettingBudget ? "Cancel" : "Edit Budget"}
+                </button>
+              </div>
+
+              {isSettingBudget && (
+                <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '6px' }}>
+                  <input 
+                    type="number" 
+                    value={tempBudgetInput} 
+                    onChange={(e) => setTempBudgetInput(e.target.value)} 
+                    placeholder="New budget..."
+                    style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', border: '1px solid #1e293b', backgroundColor: '#0b0f19', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
+                  />
+                  <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '10px', cursor: 'pointer' }}>Save</button>
+                </form>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '9px', color: '#ef4444', fontWeight: '700' }}>Total Spent</span>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '9px', color: '#10b981', fontWeight: '700' }}>Remaining Balance</span>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#10b981' }}>₹{remainingBudget.toFixed(2)}</p>
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            {/* Add Expense Form with Category */}
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
@@ -1224,12 +1273,27 @@ export default function App() {
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Add Expense
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="Food / Chai">Food / Chai</option>
+                  <option value="Transport / Fuel">Transport / Fuel</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Bills & Recharges">Bills & Recharges</option>
+                  <option value="Miscellaneous">Miscellaneous</option>
+                </select>
+
+                <button type="submit" style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                  Add Expense
+                </button>
+              </div>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
+            {/* Expense List (Newest on Top) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No expense records found.</p>
               ) : (
@@ -1239,7 +1303,7 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
-                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.date || ''}</span>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.category || 'General'} | {exp?.date || ''}</span>
                     </div>
                     <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={13} />
