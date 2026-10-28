@@ -11,7 +11,7 @@ const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai...");
+  const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
   // Real Database Google Auth State
   const [userProfile, setUserProfile] = useState(() => {
@@ -23,7 +23,7 @@ export default function App() {
     }
   });
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Live Header Date, Day & Time State
@@ -42,10 +42,10 @@ export default function App() {
     toName: '', 
     toCoords: [72.5714, 23.0225] 
   });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
+  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State with Fixed Snooze Logic
+  // Permanent Watcher State with Pure Snooze Isolation
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
@@ -81,8 +81,8 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
-  const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
-  const [snoozedAlerts, setSnoozedAlerts] = useState({}); // Tracks snooze trigger times without altering original reminder time
+  const [activeAlertKey, setActiveAlertKey] = useState(null);
+  const [snoozedAlerts, setSnoozedAlerts] = useState({}); // Stores temporary snooze timestamps without modifying original time
 
   // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
@@ -104,7 +104,7 @@ export default function App() {
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
-  const [briefingData, setBriefingData] = useState("Briefing load ki ja rahi hai...");
+  const [briefingData, setBriefingData] = useState("Loading briefing data...");
 
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -161,7 +161,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Google Sign-In with Database Verification Simulation
+  // Real Google Sign-In with Database Verification
   const handleGoogleAuthAction = (selectedEmail) => {
     try {
       const existingDbUser = localStorage.getItem(`jarvis_db_user_${selectedEmail}`);
@@ -169,7 +169,7 @@ export default function App() {
 
       if (authMode === 'signup') {
         if (existingDbUser) {
-          alert("Yeh Gmail account pehle se registered hai! Kripya Log In karein.");
+          alert("This Gmail account is already registered! Please Log In.");
           return;
         }
         profileData = {
@@ -179,9 +179,8 @@ export default function App() {
           connectedDate: new Date().toLocaleDateString()
         };
         localStorage.setItem(`jarvis_db_user_${selectedEmail}`, JSON.stringify(profileData));
-        alert("Naya account successfully ban gaya hai!");
+        alert("Account successfully created!");
       } else {
-        // Login mode
         profileData = {
           name: selectedEmail.split('@')[0].toUpperCase(),
           email: selectedEmail,
@@ -195,13 +194,13 @@ export default function App() {
       setShowAuthModal(false);
       if (isMonitoringActive) speakText("Google account authenticated successfully.");
     } catch (e) {
-      alert("Authentication mein samasya aayi.");
+      alert("Authentication error.");
     }
   };
 
   const simulateChromeGmailAccounts = () => {
     const dummyAccounts = ["commander.spct@gmail.com", "jarvis.ai.official@gmail.com", "developer.admin@gmail.com"];
-    const chosen = prompt(`Chrome / Phone mein uplabdh Gmail ID chunein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Email ID yahan type karein:`, dummyAccounts[0]);
+    const chosen = prompt(`Select your Gmail ID:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nEnter Email ID here:`, dummyAccounts[0]);
     if (chosen && chosen.includes('@')) {
       handleGoogleAuthAction(chosen.trim());
     }
@@ -289,7 +288,7 @@ export default function App() {
   // Ultra-Accurate HTML5 GPS Geolocation
   const handleGetCurrentLocation = (targetField) => {
     if (!navigator.geolocation) {
-      alert("Aapka browser Geolocation support nahi karta.");
+      alert("Geolocation is not supported by your browser.");
       return;
     }
 
@@ -374,10 +373,10 @@ export default function App() {
                 map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
 
                 if (isHeavy) {
-                  setRouteStatus({ isHeavy: true, message: `RED ALERT: Bhari traffic! (${durationMin} min)` });
+                  setRouteStatus({ isHeavy: true, message: `RED ALERT: Heavy traffic! (${durationMin} min)` });
                   if (isMonitoringActive) speakText("Alert! Raste par bhari traffic hai.");
                 } else {
-                  setRouteStatus({ isHeavy: false, message: `Rasta saaf hai. (${durationMin} min)` });
+                  setRouteStatus({ isHeavy: false, message: `Route is clear. (${durationMin} min)` });
                 }
               }
             }).catch(e => {});
@@ -457,13 +456,13 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toInput]);
 
-  // Voice Command Processor (Restricted / Silent outside route monitoring)
+  // Voice Command Processor (Strictly restricted to route monitoring)
   const handleVoiceCommand = useCallback(async (query) => {
     if (isMuted) return;
     const lowerQ = query.toLowerCase();
     let reply = "";
 
-    if (lowerQ.includes('taapman') || lowerQ.includes('temperature')) {
+    if (lowerQ.includes('temperature')) {
       try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
         const data = await res.json();
@@ -523,7 +522,7 @@ export default function App() {
   const startListening = () => {
     if (isMuted) return;
     if (!recognitionRef.current) {
-      alert("Aapka browser Speech Recognition support nahi karta.");
+      alert("Speech recognition not supported in your browser.");
       return;
     }
     try {
@@ -549,12 +548,11 @@ export default function App() {
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
-      // Check snoozed alerts triggers first
+      // Check snoozed alerts triggers (Isolated from original reminder time)
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
           startJailerFluteAlarm();
-          // Remove from snoozed once triggered
           setSnoozedAlerts(prev => {
             const copy = { ...prev };
             delete copy[taskKey];
@@ -591,7 +589,7 @@ export default function App() {
         setNextCountdownStr('--:--');
       }
 
-      // Check standard alert hit (does NOT alter original reminder time)
+      // Check standard alert hit
       if (isMuted) return;
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
@@ -599,6 +597,7 @@ export default function App() {
         if (rem.task && rem.time === currentTimeStr && !rem.completed) {
           triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
+          setActiveAlertKey(`${rem.task}_${rem.time}`);
           setCurrentAlertTaskId(idx);
           startJailerFluteAlarm();
           
@@ -614,7 +613,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze: Keeps original reminder time intact, schedules a temporary trigger after snoozeMinutes
+  // Handle Snooze: Leaves original reminder time untouched, schedules temporary alert
   const handleSnooze = () => {
     stopAlarmSound();
     if (activeAlertTask) {
@@ -627,6 +626,7 @@ export default function App() {
       setSnoozedAlerts(prev => ({ ...prev, [activeAlertTask]: snoozeTimeStr }));
     }
     setActiveAlertTask(null);
+    setActiveAlertKey(null);
     setCurrentAlertTaskId(null);
     triggeredMinuteRef.current = '';
   };
@@ -634,7 +634,7 @@ export default function App() {
   const handleAddOrUpdateReminder = (e) => {
     e.preventDefault();
     if (!currentTaskInput.trim()) {
-      alert("Kripya reminder task darj karein.");
+      alert("Please enter reminder task.");
       return;
     }
 
@@ -659,7 +659,7 @@ export default function App() {
 
   const handleDeleteReminder = (index) => {
     const taskName = remindersList[index].task;
-    const confirmDelete = window.confirm(`Kya aap sach mein "${taskName}" reminder ko delete karna chahte hain? (Yes/No)`);
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${taskName}" reminder? (Yes/No)`);
     if (confirmDelete) {
       setRemindersList(prev => prev.filter((_, idx) => idx !== index));
       if (editingIndex === index) {
@@ -673,7 +673,7 @@ export default function App() {
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
-      alert("Kripya title aur amount dono bharein.");
+      alert("Please enter both title and amount.");
       return;
     }
     const newExp = {
@@ -688,7 +688,7 @@ export default function App() {
 
   const handleDeleteExpense = (index) => {
     const exp = expenseList[index];
-    const confirmDelete = window.confirm(`Kya aap "${exp.title}" (₹${exp.amount}) expense record ko delete karna chahte hain? (Yes/No)`);
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${exp.title}" (₹${exp.amount})? (Yes/No)`);
     if (confirmDelete) {
       setExpenseList(prev => prev.filter((_, idx) => idx !== index));
     }
@@ -701,9 +701,9 @@ export default function App() {
       const data = await res.json();
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Financial systems active hain.`);
+      setBriefingData(`Good morning Commander! Current temperature is ${temp}°C and wind speed is ${wind} km/h. Financial systems active.`);
     } catch (e) {
-      setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
+      setBriefingData("Failed to fetch briefing data.");
     }
   };
 
@@ -722,7 +722,7 @@ export default function App() {
   const handleApplyRoute = (e) => {
     e.preventDefault();
     if (!fromInput.trim() || !toInput.trim()) {
-      alert("Kripya 'From' aur 'To' locations select karein.");
+      alert("Please select 'From' and 'To' locations.");
       return;
     }
     setIsMonitoringActive(true);
@@ -734,7 +734,7 @@ export default function App() {
     setIsMonitoringActive(false);
     stopAlarmSound();
     window.speechSynthesis.cancel();
-    setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai (Stopped)." });
+    setRouteStatus({ isHeavy: false, message: "Monitoring stopped." });
   };
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
@@ -766,7 +766,7 @@ export default function App() {
           <Shield size={22} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Naksha" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
@@ -814,7 +814,7 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Top Header with Live Date & Day Bar */}
+        {/* Top Header with Date, Day & Time Line */}
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
@@ -869,7 +869,7 @@ export default function App() {
           <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
             {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
             <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
-              Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "Koi route set nahi hai"} | {routeStatus.message}
+              Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "No route selected"} | {routeStatus.message}
             </span>
           </div>
 
@@ -882,8 +882,8 @@ export default function App() {
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
             <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Account Auth</h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Sign up ya Log in karne ke liye apna Google account chunein.</p>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Authentication</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Select your Google account to Log In or Sign Up.</p>
 
             <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
               <button 
@@ -907,7 +907,7 @@ export default function App() {
               }}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
             >
-              <LogIn size={16} color="#38bdf8" /> Continue with Google (Chrome IDs)
+              <LogIn size={16} color="#38bdf8" /> Continue with Google
             </button>
           </div>
         </div>
@@ -920,7 +920,7 @@ export default function App() {
             <AlertTriangle size={40} />
           </div>
           <span style={{ fontSize: '12px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
-            Nirdharit Samay Ho Chuka Hai
+            Scheduled Time Reached
           </span>
           <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
             "{activeAlertTask}"
@@ -937,11 +937,12 @@ export default function App() {
                   }
                 }
                 setActiveAlertTask(null);
+                setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
               }}
               style={{ padding: '14px 28px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '15px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
             >
-              Got It (Samajh Gaya)
+              Got It
             </button>
             <button
               onClick={handleSnooze}
@@ -965,13 +966,13 @@ export default function App() {
             </div>
 
             <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', position: 'relative' }}>
-              <p style={{ margin: 0, fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>* Pehla click 'From' ke liye, doosra click 'To' ke liye hoga.</p>
+              <p style={{ margin: 0, fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>* First click for 'From', second click for 'To'.</p>
               
               <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
-                    placeholder="From (Kahan se)..."
+                    placeholder="From location..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -991,7 +992,7 @@ export default function App() {
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
-                    placeholder="To (Kahan tak)..."
+                    placeholder="To location..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -1010,7 +1011,7 @@ export default function App() {
               </div>
 
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Route Load Karein
+                Load Route
               </button>
             </form>
 
@@ -1040,7 +1041,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  placeholder="Task likhein..."
+                  placeholder="Enter task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
                   style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -1054,14 +1055,14 @@ export default function App() {
               </div>
 
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <Plus size={16} /> {editingIndex !== null ? "Reminder Update Karein" : "Permanent Reminder Add Karein"}
+                <Plus size={16} /> {editingIndex !== null ? "Update Reminder" : "Add Permanent Reminder"}
               </button>
             </form>
 
             {/* Smart Sorted Reminders List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
               {sortedReminders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi reminder set nahi hai.</p>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No reminders set.</p>
               ) : (
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
@@ -1071,7 +1072,7 @@ export default function App() {
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: rem.completed ? '#6ee7b7' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
-                        <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Samay: {formatTimeTo12Hour(rem.time)}</span>
+                        <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
                         {rem.completed && (
@@ -1134,7 +1135,7 @@ export default function App() {
 
             <button 
               onClick={() => {
-                if (window.confirm("Kya aap Google account disconnect karna chahte hain?")) {
+                if (window.confirm("Are you sure you want to disconnect your Google account?")) {
                   setUserProfile(null);
                   setShowProfileModal(false);
                 }
@@ -1165,7 +1166,7 @@ export default function App() {
             {/* Total Spent Summary Banner */}
             <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Kul Kharcha (Total Spent)</span>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Total Spent</span>
                 <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
             </div>
@@ -1174,7 +1175,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  placeholder="Kharcha kahan kiya (e.g. Chai, Petrol)..."
+                  placeholder="Expense title (e.g. Chai, Petrol)..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
                   style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
@@ -1189,13 +1190,13 @@ export default function App() {
               </div>
 
               <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Kharcha Jodein
+                Add Expense
               </button>
             </form>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>Koi kharcha darj nahi hai.</p>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No expense records found.</p>
               ) : (
                 expenseList.map((exp, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
@@ -1231,7 +1232,7 @@ export default function App() {
               {briefingData}
             </p>
 
-            <button onClick={() => setShowBriefingModal(false)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>Band Karein</button>
+            <button onClick={() => setShowBriefingModal(false)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}
