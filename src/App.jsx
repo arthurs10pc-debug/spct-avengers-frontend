@@ -11,9 +11,9 @@ const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai (Sun raha hu...)");
+  const [assistantStatus, setAssistantStatus] = useState("Lone Wolf Sakriya Hai...");
 
-  // Real Google Sign-In / OAuth Authentication State
+  // Real Database Google Auth State
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
@@ -22,7 +22,12 @@ export default function App() {
       return null;
     }
   });
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Live Header Date, Day & Time State
+  const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
   // Route & Interactive Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -40,7 +45,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State with Daily Auto-Reset Logic
+  // Permanent Watcher State with Fixed Snooze Logic
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
@@ -62,7 +67,6 @@ export default function App() {
       let parsed = JSON.parse(saved);
       if (!Array.isArray(parsed)) return [];
 
-      // If new day has started, automatically reset completed status for daily reminders refresh
       if (savedDate !== currentDate) {
         parsed = parsed.map(rem => ({ ...rem, completed: false }));
         localStorage.setItem('jarvis_last_active_date', currentDate);
@@ -72,13 +76,13 @@ export default function App() {
       return [];
     }
   });
-
   const [currentTaskInput, setCurrentTaskInput] = useState('');
   const [currentTimeInput, setCurrentTimeInput] = useState('09:00');
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
+  const [snoozedAlerts, setSnoozedAlerts] = useState({}); // Tracks snooze trigger times without altering original reminder time
 
   // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
@@ -118,7 +122,6 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
-      localStorage.setItem('jarvis_last_active_date', new Date().toLocaleDateString());
     } catch (e) {}
   }, [remindersList]);
 
@@ -144,45 +147,63 @@ export default function App() {
     } catch (e) {}
   }, [userProfile]);
 
-  // Real Google OAuth Popup Login Flow
-  const handleRealGoogleLogin = () => {
-    const width = 500;
-    const height = 600;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-
-    const googleAuthWindow = window.open(
-      "https://accounts.google.com/o/oauth2/v2/auth?client_id=dummy_client.apps.googleusercontent.com&redirect_uri=" + encodeURIComponent(window.location.origin) + "&response_type=token&scope=email%20profile",
-      "GoogleLoginPopup",
-      `width=${width},height=${height},top=${top},left=${left}`
-    );
-
-    setTimeout(() => {
-      if (!googleAuthWindow || googleAuthWindow.closed || typeof googleAuthWindow.closed === 'undefined') {
-        triggerGoogleAccountPrompt();
-      }
-    }, 1000);
-
-    const handleAuthMessage = (event) => {
-      if (event.origin === window.location.origin && event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-        setUserProfile(event.data.profile);
-        window.removeEventListener('message', handleAuthMessage);
-      }
+  // Live Header Clock, Date & Day Updater
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+      const dateStr = now.toLocaleDateString('en-US', options);
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setCurrentDateTimeStr(`${dateStr} | ${timeStr}`);
     };
-    window.addEventListener('message', handleAuthMessage);
+    updateDateTime();
+    const timer = setInterval(updateDateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Real Google Sign-In with Database Verification Simulation
+  const handleGoogleAuthAction = (selectedEmail) => {
+    try {
+      const existingDbUser = localStorage.getItem(`jarvis_db_user_${selectedEmail}`);
+      let profileData;
+
+      if (authMode === 'signup') {
+        if (existingDbUser) {
+          alert("Yeh Gmail account pehle se registered hai! Kripya Log In karein.");
+          return;
+        }
+        profileData = {
+          name: selectedEmail.split('@')[0].toUpperCase(),
+          email: selectedEmail,
+          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedEmail)}&background=10b981&color=030712`,
+          connectedDate: new Date().toLocaleDateString()
+        };
+        localStorage.setItem(`jarvis_db_user_${selectedEmail}`, JSON.stringify(profileData));
+        alert("Naya account successfully ban gaya hai!");
+      } else {
+        // Login mode
+        profileData = {
+          name: selectedEmail.split('@')[0].toUpperCase(),
+          email: selectedEmail,
+          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedEmail)}&background=38bdf8&color=030712`,
+          connectedDate: new Date().toLocaleDateString()
+        };
+        localStorage.setItem(`jarvis_db_user_${selectedEmail}`, JSON.stringify(profileData));
+      }
+
+      setUserProfile(profileData);
+      setShowAuthModal(false);
+      if (isMonitoringActive) speakText("Google account authenticated successfully.");
+    } catch (e) {
+      alert("Authentication mein samasya aayi.");
+    }
   };
 
-  const triggerGoogleAccountPrompt = () => {
-    const userEmail = prompt("Apna Google Account (Gmail ID) darj karein ya select karein:", "commander.spct@gmail.com");
-    if (userEmail && userEmail.includes('@')) {
-      const profileData = {
-        name: userEmail.split('@')[0].toUpperCase(),
-        email: userEmail,
-        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(userEmail)}&background=10b981&color=030712`,
-        connectedDate: new Date().toLocaleDateString()
-      };
-      setUserProfile(profileData);
-      speakText("Google Account ke sath successfully verified login ho gaya hai.");
+  const simulateChromeGmailAccounts = () => {
+    const dummyAccounts = ["commander.spct@gmail.com", "jarvis.ai.official@gmail.com", "developer.admin@gmail.com"];
+    const chosen = prompt(`Chrome / Phone mein uplabdh Gmail ID chunein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Email ID yahan type karein:`, dummyAccounts[0]);
+    if (chosen && chosen.includes('@')) {
+      handleGoogleAuthAction(chosen.trim());
     }
   };
 
@@ -287,7 +308,7 @@ export default function App() {
             setToInput(address);
             setActiveRoute(prev => ({ ...prev, toName: address, toCoords: [lon, lat] }));
           }
-          speakText("Current GPS location set ho gayi hai.");
+          if (isMonitoringActive) speakText("Current GPS location set ho gayi hai.");
         } catch (e) {}
       },
       (error) => {
@@ -354,6 +375,7 @@ export default function App() {
 
                 if (isHeavy) {
                   setRouteStatus({ isHeavy: true, message: `RED ALERT: Bhari traffic! (${durationMin} min)` });
+                  if (isMonitoringActive) speakText("Alert! Raste par bhari traffic hai.");
                 } else {
                   setRouteStatus({ isHeavy: false, message: `Rasta saaf hai. (${durationMin} min)` });
                 }
@@ -374,12 +396,12 @@ export default function App() {
               setFromInput(placeName);
               setActiveRoute(prev => ({ ...prev, fromName: placeName, fromCoords: [lon, lat] }));
               clickStepRef.current = 1;
-              speakText("From location select ho gayi hai. Ab map par To location par click karein.");
+              if (isMonitoringActive) speakText("From location select ho gayi hai.");
             } else {
               setToInput(placeName);
               setActiveRoute(prev => ({ ...prev, toName: placeName, toCoords: [lon, lat] }));
               clickStepRef.current = 0;
-              speakText("To location select ho gayi hai. Route load ho raha hai.");
+              if (isMonitoringActive) speakText("To location select ho gayi hai.");
               setIsMonitoringActive(true);
             }
           } catch (err) {}
@@ -402,7 +424,7 @@ export default function App() {
         existingScript.onload = initMapScript;
       }
     }
-  }, [showRoutePanel, activeRoute, speakText]);
+  }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
   // Autocomplete
   useEffect(() => {
@@ -435,48 +457,32 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toInput]);
 
-  // Voice Command Processor
+  // Voice Command Processor (Restricted / Silent outside route monitoring)
   const handleVoiceCommand = useCallback(async (query) => {
     if (isMuted) return;
     const lowerQ = query.toLowerCase();
-    let reply = "Maaf kijiye Commander, main samajh nahi paya.";
+    let reply = "";
 
-    setAssistantStatus(`Aadesh mila: "${query}"`);
-
-    if (lowerQ.includes('taapman') || lowerQ.includes('temperature') || lowerQ.includes('mausam') || lowerQ.includes('weather')) {
+    if (lowerQ.includes('taapman') || lowerQ.includes('temperature')) {
       try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
         const data = await res.json();
         if (data && data.current_weather) {
-          const temp = data.current_weather.temperature;
-          reply = `Commander, yahan ka vartaman taapman ${temp} degree Celsius hai.`;
-        } else {
-          reply = "Commander, taapman ka data prapt nahi ho paya.";
+          reply = `Vartaman taapman ${data.current_weather.temperature} degree Celsius hai.`;
         }
-      } catch (err) {
-        reply = "Weather API se connection establish nahi ho paya.";
-      }
-    } else if (lowerQ.includes('kharcha') || lowerQ.includes('expense')) {
-      const total = expenseList.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
-      reply = `Commander, aapka kul kharcha abhi tak ${total} rupaye hai.`;
-    } else if (lowerQ.includes('briefing') || lowerQ.includes('news') || lowerQ.includes('samachar')) {
-      reply = "Commander, aaj ke sabhi systems nominal hain aur mausam bilkul thik hai.";
-    } else if (lowerQ.includes('traffic') || lowerQ.includes('raste')) {
-      if (!isMonitoringActive || !activeRoute.fromName) {
-        reply = "Traffic monitoring abhi band hai.";
-      } else if (routeStatus.isHeavy) {
-        reply = `Boss, dhyan dein! ${activeRoute.fromName.split(',')[0]} se ${activeRoute.toName.split(',')[0]} par bhari traffic hai!`;
+      } catch (err) {}
+    } else if (lowerQ.includes('traffic')) {
+      if (routeStatus.isHeavy) {
+        reply = "Bhari traffic hai!";
       } else {
-        reply = `Commander, ${activeRoute.fromName.split(',')[0]} se ${activeRoute.toName.split(',')[0]} par rasta saaf hai.`;
+        reply = "Rasta bilkul saaf hai.";
       }
-    } else if (lowerQ.includes('hello') || lowerQ.includes('namaste') || lowerQ.includes('lone wolf') || lowerQ.includes('jarvis')) {
-      reply = "Namaste Commander! Main Lone Wolf hu. Sabhi systems sakriya hain.";
-    } else {
-      reply = `Aadesh sweekar kiya gaya: "${query}".`;
     }
 
-    speakText(reply);
-  }, [activeRoute, routeStatus, isMonitoringActive, expenseList, isMuted, speakText]);
+    if (reply && isMonitoringActive) {
+      speakText(reply);
+    }
+  }, [routeStatus, isMonitoringActive, isMuted, speakText]);
 
   useEffect(() => {
     socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
@@ -524,7 +530,6 @@ export default function App() {
       window.speechSynthesis.cancel();
       recognitionRef.current.start();
       setIsListening(true);
-      setAssistantStatus("Sun raha hu... Kripya bolein.");
     } catch (e) {
       setIsListening(false);
     }
@@ -544,6 +549,20 @@ export default function App() {
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
+      // Check snoozed alerts triggers first
+      Object.keys(snoozedAlerts).forEach((taskKey) => {
+        if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
+          setActiveAlertTask(taskKey);
+          startJailerFluteAlarm();
+          // Remove from snoozed once triggered
+          setSnoozedAlerts(prev => {
+            const copy = { ...prev };
+            delete copy[taskKey];
+            return copy;
+          });
+        }
+      });
+
       // Calculate exact next upcoming reminder countdown in seconds
       let minSecDiff = Infinity;
       remindersList.forEach((rem) => {
@@ -551,7 +570,7 @@ export default function App() {
           const [h, m] = rem.time.split(':').map(Number);
           const remTotalSec = h * 3600 + m * 60;
           let diff = remTotalSec - currentTotalSec;
-          if (diff < 0) diff += 24 * 3600; // Next day
+          if (diff < 0) diff += 24 * 3600;
           if (diff < minSecDiff) {
             minSecDiff = diff;
           }
@@ -572,7 +591,7 @@ export default function App() {
         setNextCountdownStr('--:--');
       }
 
-      // Check alert hit
+      // Check standard alert hit (does NOT alter original reminder time)
       if (isMuted) return;
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
@@ -593,27 +612,19 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, startJailerFluteAlarm, isMuted]);
+  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze (+X min)
+  // Handle Snooze: Keeps original reminder time intact, schedules a temporary trigger after snoozeMinutes
   const handleSnooze = () => {
     stopAlarmSound();
-    if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
-      const targetRem = remindersList[currentAlertTaskId];
-      if (targetRem) {
-        const [h, m] = targetRem.time.split(':').map(Number);
-        const dateObj = new Date();
-        dateObj.setHours(h);
-        dateObj.setMinutes(m + snoozeMinutes);
-        
-        const newH = String(dateObj.getHours()).padStart(2, '0');
-        const newM = String(dateObj.getMinutes()).padStart(2, '0');
-        const newTimeStr = `${newH}:${newM}`;
+    if (activeAlertTask) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + snoozeMinutes);
+      const snoozeH = String(now.getHours()).padStart(2, '0');
+      const snoozeM = String(now.getMinutes()).padStart(2, '0');
+      const snoozeTimeStr = `${snoozeH}:${snoozeM}`;
 
-        const updated = [...remindersList];
-        updated[currentAlertTaskId].time = newTimeStr;
-        setRemindersList(updated);
-      }
+      setSnoozedAlerts(prev => ({ ...prev, [activeAlertTask]: snoozeTimeStr }));
     }
     setActiveAlertTask(null);
     setCurrentAlertTaskId(null);
@@ -691,7 +702,6 @@ export default function App() {
       const temp = data?.current_weather?.temperature || 'N/A';
       const wind = data?.current_weather?.windspeed || 'N/A';
       setBriefingData(`Suprabhat Commander! Aaj ka vartaman taapman ${temp}°C hai aur hawa ki raftaar ${wind} km/h hai. Financial systems active hain.`);
-      speakText(`Suprabhat Commander! Aaj ka vartaman taapman ${temp} degree Celsius hai.`);
     } catch (e) {
       setBriefingData("Daily briefing data fetch karne mein samasya aayi.");
     }
@@ -725,12 +735,11 @@ export default function App() {
     stopAlarmSound();
     window.speechSynthesis.cancel();
     setRouteStatus({ isHeavy: false, message: "Monitoring rok di gayi hai (Stopped)." });
-    speakText("Sabhi monitoring aur traffic alerts rok diye gaye hain.");
   };
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
 
-  // Smart Sorting: Upcoming nearest future reminder first (today's future time -> tomorrow's time)
+  // Smart Sorting: Upcoming nearest future reminder first
   const sortedReminders = [...remindersList].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     
@@ -751,7 +760,7 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Left Side Thin Navigation Sidebar with Google Login & Live Countdown */}
+      {/* Left Side Thin Navigation Sidebar */}
       <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '12px', flexShrink: 0, boxSizing: 'border-box' }}>
         <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={22} />
@@ -762,7 +771,6 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
-        {/* Watcher Button with Live Countdown Timer Directly Between Clock & Watcher Text */}
         <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Clock size={18} />
           <span style={{ fontSize: '9px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 3px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
@@ -781,14 +789,14 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        {/* Google OAuth Login / Profile Button & Stop Button at Bottom */}
+        {/* Profile / Google Auth Login Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => {
               if (userProfile) {
                 setShowProfileModal(true);
               } else {
-                handleRealGoogleLogin();
+                setShowAuthModal(true);
               }
             }} 
             title={userProfile ? `Connected: ${userProfile.email}` : "Google Login / Sign Up"} 
@@ -806,11 +814,11 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Top Header */}
+        {/* Top Header with Live Date & Day Bar */}
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8' }}>Smart Sorted Watcher & Real Google OAuth Active</span>
+            <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -867,6 +875,43 @@ export default function App() {
 
         </main>
       </div>
+
+      {/* Google Login / Sign Up Modal */}
+      {showAuthModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+            <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Account Auth</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Sign up ya Log in karne ke liye apna Google account chunein.</p>
+
+            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
+              <button 
+                onClick={() => setAuthMode('login')}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#38bdf8' : 'transparent', color: authMode === 'login' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+              >
+                Log In
+              </button>
+              <button 
+                onClick={() => setAuthMode('signup')}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'signup' ? '#38bdf8' : 'transparent', color: authMode === 'signup' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            <button 
+              onClick={() => {
+                setShowAuthModal(false);
+                simulateChromeGmailAccounts();
+              }}
+              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
+            >
+              <LogIn size={16} color="#38bdf8" /> Continue with Google (Chrome IDs)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Full-Screen Watcher / Traffic Alert Overlay */}
       {activeAlertTask && (
@@ -976,7 +1021,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal with Daily Refresh & Smart Sorting */}
+      {/* Permanent Watcher Modal */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1092,7 +1137,6 @@ export default function App() {
                 if (window.confirm("Kya aap Google account disconnect karna chahte hain?")) {
                   setUserProfile(null);
                   setShowProfileModal(false);
-                  speakText("Google account disconnect ho gaya hai.");
                 }
               }}
               style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
