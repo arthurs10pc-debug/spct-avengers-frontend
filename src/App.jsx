@@ -29,7 +29,7 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Route & Interactive Map State (Restricted strictly to India using countrycodes=in)
+  // Route & Interactive Map State (Strictly bounded to India & Gujarat region)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -445,7 +445,7 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
-  // Autocomplete Restricted to India (countrycodes=in)
+  // Autocomplete Strictly Restricted to India & Gujarat Region using viewbox and countrycodes=in
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -453,7 +453,8 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(fromInput)}`);
+        // viewbox covers Gujarat/India region strictly [minLon, minLat, maxLon, maxLat]
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.1,6.5,97.4,35.5&bounded=1&q=${encodeURIComponent(fromInput)}`);
         const data = await res.json();
         setFromSuggestions(data.slice(0, 5));
       } catch (e) {}
@@ -468,7 +469,7 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(toInput)}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.1,6.5,97.4,35.5&bounded=1&q=${encodeURIComponent(toInput)}`);
         const data = await res.json();
         setToSuggestions(data.slice(0, 5));
       } catch (e) {}
@@ -1229,7 +1230,7 @@ export default function App() {
               ) : (
                 expenseList.map((exp, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
-                    <div style={{ overflow: 'hidden', paddingRight: '8px'</i>
+                    <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
@@ -1246,7 +1247,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Briefing Modal */}
+      {/* BriefingModal */}
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
