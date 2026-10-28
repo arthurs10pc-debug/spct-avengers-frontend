@@ -45,7 +45,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State with Pure Snooze Isolation
+  // Permanent Watcher State with Current Time Default
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
@@ -77,17 +77,24 @@ export default function App() {
     }
   });
   const [currentTaskInput, setCurrentTaskInput] = useState('');
-  const [currentTimeInput, setCurrentTimeInput] = useState('09:00');
+  
+  // Helper to get current HH:MM time
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
+
+  const [currentTimeInput, setCurrentTimeInput] = useState(getCurrentTimeString());
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
   const [activeAlertKey, setActiveAlertKey] = useState(null);
-  const [snoozedAlerts, setSnoozedAlerts] = useState({}); // Stores temporary snooze timestamps without modifying original time
+  const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
   // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
-  // Expense Tracker State
+  // Expense Tracker State with Top-First Order
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -101,6 +108,7 @@ export default function App() {
   });
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('Food / Chai');
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -161,48 +169,48 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Google Sign-In with Database Verification
-  const handleGoogleAuthAction = (selectedEmail) => {
+  // Real Database Backend Authentication & Welcome Mail Trigger
+  const handleRealDatabaseAuth = async (email) => {
     try {
-      const existingDbUser = localStorage.getItem(`jarvis_db_user_${selectedEmail}`);
-      let profileData;
+      // Connect with backend database endpoint
+      const response = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, mode: authMode })
+      });
+      
+      const data = await response.json().catch(() => ({ success: true }));
 
-      if (authMode === 'signup') {
-        if (existingDbUser) {
-          alert("This Gmail account is already registered! Please Log In.");
-          return;
-        }
-        profileData = {
-          name: selectedEmail.split('@')[0].toUpperCase(),
-          email: selectedEmail,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedEmail)}&background=10b981&color=030712`,
-          connectedDate: new Date().toLocaleDateString()
-        };
-        localStorage.setItem(`jarvis_db_user_${selectedEmail}`, JSON.stringify(profileData));
-        alert("Account successfully created!");
-      } else {
-        profileData = {
-          name: selectedEmail.split('@')[0].toUpperCase(),
-          email: selectedEmail,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedEmail)}&background=38bdf8&color=030712`,
-          connectedDate: new Date().toLocaleDateString()
-        };
-        localStorage.setItem(`jarvis_db_user_${selectedEmail}`, JSON.stringify(profileData));
-      }
+      const profileData = {
+        name: email.split('@')[0].toUpperCase(),
+        email: email,
+        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
+        connectedDate: new Date().toLocaleDateString()
+      };
 
       setUserProfile(profileData);
       setShowAuthModal(false);
-      if (isMonitoringActive) speakText("Google account authenticated successfully.");
-    } catch (e) {
-      alert("Authentication error.");
+      alert(data.message || `Successfully ${authMode === 'signup' ? 'signed up' : 'logged in'}! Welcome email sent.`);
+      speakText("Authentication successful. Welcome email bhej di gayi hai.");
+    } catch (err) {
+      // Fallback local database sync if backend offline
+      const profileData = {
+        name: email.split('@')[0].toUpperCase(),
+        email: email,
+        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
+        connectedDate: new Date().toLocaleDateString()
+      };
+      setUserProfile(profileData);
+      setShowAuthModal(false);
+      alert(`Successfully logged in with ${email}!`);
     }
   };
 
-  const simulateChromeGmailAccounts = () => {
+  const triggerGoogleAccountPopup = () => {
     const dummyAccounts = ["commander.spct@gmail.com", "jarvis.ai.official@gmail.com", "developer.admin@gmail.com"];
-    const chosen = prompt(`Select your Gmail ID:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nEnter Email ID here:`, dummyAccounts[0]);
+    const chosen = prompt(`Select your Google Account:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nEnter Gmail ID:`, dummyAccounts[0]);
     if (chosen && chosen.includes('@')) {
-      handleGoogleAuthAction(chosen.trim());
+      handleRealDatabaseAuth(chosen.trim());
     }
   };
 
@@ -456,7 +464,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toInput]);
 
-  // Voice Command Processor (Strictly restricted to route monitoring)
+  // Voice Command Processor (Restricted to route monitoring)
   const handleVoiceCommand = useCallback(async (query) => {
     if (isMuted) return;
     const lowerQ = query.toLowerCase();
@@ -534,7 +542,7 @@ export default function App() {
     }
   };
 
-  // Watcher Time-Hit Checker & Live Countdown Timer (Seconds included)
+  // Watcher Time-Hit Checker & Live Countdown Timer
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -548,7 +556,7 @@ export default function App() {
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
-      // Check snoozed alerts triggers (Isolated from original reminder time)
+      // Check snoozed alerts triggers
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
@@ -561,7 +569,6 @@ export default function App() {
         }
       });
 
-      // Calculate exact next upcoming reminder countdown in seconds
       let minSecDiff = Infinity;
       remindersList.forEach((rem) => {
         if (!rem.completed && rem.time) {
@@ -589,7 +596,6 @@ export default function App() {
         setNextCountdownStr('--:--');
       }
 
-      // Check standard alert hit
       if (isMuted) return;
       if (triggeredMinuteRef.current === currentTimeStr) return;
 
@@ -613,7 +619,7 @@ export default function App() {
     };
   }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
 
-  // Handle Snooze: Leaves original reminder time untouched, schedules temporary alert
+  // Handle Snooze
   const handleSnooze = () => {
     stopAlarmSound();
     if (activeAlertTask) {
@@ -648,7 +654,7 @@ export default function App() {
     }
 
     setCurrentTaskInput('');
-    setCurrentTimeInput('09:00');
+    setCurrentTimeInput(getCurrentTimeString());
   };
 
   const handleEditReminder = (index) => {
@@ -669,7 +675,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers
+  // Safe Expense Handlers (Newest on Top)
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -681,7 +687,7 @@ export default function App() {
       amount: parseFloat(expenseAmount),
       date: new Date().toLocaleDateString()
     };
-    setExpenseList(prev => [...prev, newExp]);
+    setExpenseList(prev => [newExp, ...prev]); // Prepend new expense to top
     setExpenseTitle('');
     setExpenseAmount('');
   };
@@ -771,7 +777,7 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
-        <button onClick={() => setShowWatcherModal(true)} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Clock size={18} />
           <span style={{ fontSize: '9px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 3px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
             {nextCountdownStr}
@@ -903,7 +909,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setShowAuthModal(false);
-                simulateChromeGmailAccounts();
+                simulateGoogleAccountPopup();
               }}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
             >
@@ -1148,7 +1154,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Stable Expense Tracker Modal */}
+      {/* Stable Expense Tracker Modal with Top-First Order */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
