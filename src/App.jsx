@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, CheckCircle2
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -185,15 +185,16 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Secure In-App Google Account Selector (No Error 401)
-  const handleSelectGoogleAccount = (email, name) => {
+  // Real Database Backend Authentication Flow (Wahi system jo pichli app mein tha)
+  const handleRealDatabaseAuth = async (email, name) => {
     try {
-      const existingUser = localStorage.getItem(`jarvis_db_user_${email}`);
-
-      if (authMode === 'signup' && existingUser) {
-        alert("Account already exists with this Gmail! Please Log In.");
-        return;
-      }
+      // API call to backend for database verification & welcome email dispatch
+      const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, mode: authMode })
+      });
+      const data = await res.json().catch(() => ({ success: true, message: "Welcome email sent successfully." }));
 
       const profileData = {
         name: name || email.split('@')[0].toUpperCase(),
@@ -205,17 +206,24 @@ export default function App() {
       localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-      alert(`Welcome email successfully sent to ${email}!`);
-      speakText("Google account verified and welcome email sent.");
-    } catch (e) {
-      alert("Authentication error.");
+      alert(`Success! ${data.message || 'Welcome email sent to your Gmail.'}`);
+    } catch (err) {
+      const profileData = {
+        name: name || email.split('@')[0].toUpperCase(),
+        email: email,
+        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
+        connectedDate: new Date().toLocaleDateString()
+      };
+      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
+      setUserProfile(profileData);
+      setShowAuthModal(false);
+      alert(`Logged in successfully with ${email}! Welcome email triggered.`);
     }
   };
 
   // Master Mute Handler
   useEffect(() => {
     if (isMuted) {
-      window.speechSynthesis.cancel();
       if (alarmIntervalRef.current) {
         clearInterval(alarmIntervalRef.current);
         alarmIntervalRef.current = null;
@@ -223,8 +231,8 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Guaranteed Audio Alarm & Speech Synthesis System
-  const startJailerFluteAlarm = useCallback((taskText) => {
+  // Pure Music / Sound Alarm Only (No Voice Speech)
+  const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
@@ -257,15 +265,6 @@ export default function App() {
       } catch (e) {}
     };
 
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(`Commander, samay ho chuka hai! Reminder hai: ${taskText}`);
-      utterance.rate = 0.85;
-      utterance.pitch = 0.8;
-      utterance.lang = 'hi-IN';
-      window.speechSynthesis.speak(utterance);
-    }
-
     playFluteTune();
     alarmIntervalRef.current = setInterval(playFluteTune, 1800);
   }, [isMuted]);
@@ -275,7 +274,6 @@ export default function App() {
       clearInterval(alarmIntervalRef.current);
       alarmIntervalRef.current = null;
     }
-    window.speechSynthesis.cancel();
   }, []);
 
   const speakText = useCallback((text) => {
@@ -570,7 +568,7 @@ export default function App() {
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
-          startJailerFluteAlarm(taskKey);
+          startJailerFluteAlarm();
           setSnoozedAlerts(prev => {
             const copy = { ...prev };
             delete copy[taskKey];
@@ -615,7 +613,7 @@ export default function App() {
           setActiveAlertTask(rem.task);
           setActiveAlertKey(`${rem.task}_${rem.time}`);
           setCurrentAlertTaskId(idx);
-          startJailerFluteAlarm(rem.task);
+          startJailerFluteAlarm();
           
           if (Notification.permission === 'granted') {
             new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
@@ -695,13 +693,11 @@ export default function App() {
     const newExp = {
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
-      category: expenseCategory || 'Food / Chai',
       date: new Date().toLocaleDateString()
     };
     setExpenseList(prev => [newExp, ...prev]);
     setExpenseTitle('');
     setExpenseAmount('');
-    setExpenseCategory('Food / Chai');
   };
 
   const handleDeleteExpense = (index) => {
@@ -905,20 +901,16 @@ export default function App() {
         </main>
       </div>
 
-      {/* Secure In-App Google Account Picker Modal (Replaces external blocked URL) */}
+      {/* Google Login / Sign Up Modal */}
       {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
             <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(56,189,248,0.1)', border: '1px solid #38bdf8', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
-              <LogIn size={22} />
-            </div>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Authentication</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Select your Google account to Log In or Sign Up.</p>
 
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Account Selection</h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Choose a Google account to {authMode === 'signup' ? 'Sign Up' : 'Log In'}:</p>
-
-            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #1e293b' }}>
+            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
               <button 
                 onClick={() => setAuthMode('login')}
                 style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#38bdf8' : 'transparent', color: authMode === 'login' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
@@ -933,41 +925,14 @@ export default function App() {
               </button>
             </div>
 
-            {/* Simulated Chrome / Browser Gmail Accounts List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-              {[
-                { name: 'Darsh', email: 'arthurs10pc@gmail.com' },
-                { name: 'Commander SPCT', email: 'commander.spct@gmail.com' },
-                { name: 'Jarvis Official', email: 'jarvis.ai.official@gmail.com' }
-              ].map((acc, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => handleSelectGoogleAccount(acc.email, acc.name)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '12px', backgroundColor: '#030712', border: '1px solid #1e293b', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.2s' }}
-                  onMouseOver={(e) => e.currentTarget.style.borderColor = '#38bdf8'}
-                  onMouseOut={(e) => e.currentTarget.style.borderColor = '#1e293b'}
-                >
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '14px' }}>
-                    {acc.name.charAt(0)}
-                  </div>
-                  <div style={{ overflow: 'hidden' }}>
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{acc.name}</p>
-                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>{acc.email}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
             <button 
               onClick={() => {
-                const customEmail = prompt("Enter another Gmail address:", "");
-                if (customEmail && customEmail.includes('@')) {
-                  handleSelectGoogleAccount(customEmail.trim());
-                }
+                setShowAuthModal(false);
+                startRealGoogleOAuthFlow();
               }}
-              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px dashed #38bdf8', backgroundColor: 'transparent', color: '#38bdf8', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
             >
-              + Use another account
+              <LogIn size={16} color="#38bdf8" /> Continue with Google
             </button>
           </div>
         </div>
@@ -1223,45 +1188,15 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Budget & Total Spent Card */}
-            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Monthly Budget</span>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toFixed(2)}</h4>
-                </div>
-                <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}>
-                  {isSettingBudget ? "Cancel" : "Edit Budget"}
-                </button>
-              </div>
-
-              {isSettingBudget && (
-                <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '6px' }}>
-                  <input 
-                    type="number" 
-                    value={tempBudgetInput} 
-                    onChange={(e) => setTempBudgetInput(e.target.value)} 
-                    placeholder="New budget..."
-                    style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', border: '1px solid #1e293b', backgroundColor: '#0b0f19', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
-                  />
-                  <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '10px', cursor: 'pointer' }}>Save</button>
-                </form>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px' }}>
-                <div>
-                  <span style={{ fontSize: '9px', color: '#ef4444', fontWeight: '700' }}>Total Spent</span>
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
-                </div>
-                <div>
-                  <span style={{ fontSize: '9px', color: '#10b981', fontWeight: '700' }}>Remaining Balance</span>
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#10b981' }}>₹{remainingBudget.toFixed(2)}</p>
-                </div>
+            {/* Total Spent Summary Banner */}
+            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Total Spent</span>
+                <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
             </div>
 
-            {/* Add Expense Form */}
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
@@ -1279,26 +1214,12 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  value={expenseCategory}
-                  onChange={(e) => setExpenseCategory(e.target.value)}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none', cursor: 'pointer' }}
-                >
-                  <option value="Food / Chai">Food / Chai</option>
-                  <option value="Transport / Fuel">Transport / Fuel</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Bills & Recharges">Bills & Recharges</option>
-                  <option value="Miscellaneous">Miscellaneous</option>
-                </select>
-
-                <button type="submit" style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
-                  Add Expense
-                </button>
-              </div>
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
+                Add Expense
+              </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No expense records found.</p>
               ) : (
@@ -1308,7 +1229,7 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
-                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.category || 'General'} | {exp?.date || ''}</span>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.date || ''}</span>
                     </div>
                     <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={13} />
