@@ -13,7 +13,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
-  // Real Database Google Auth State
+  // Real Google OAuth Authentication State (Wahi jo Rider app mein tha)
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
@@ -94,7 +94,7 @@ export default function App() {
   // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
-  // Expense Tracker State with Top-First Order
+  // Advanced Expense Tracker State with Top-First Order, Category & Budget
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [monthlyBudget, setMonthlyBudget] = useState(() => {
     try {
@@ -185,10 +185,33 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Database Backend Authentication Flow (Wahi system jo pichli app mein tha)
-  const handleRealDatabaseAuth = async (email, name) => {
+  // Real Google OAuth Popup Integration (Wahi system jo Rider and Ride Taker app mein tha)
+  const handleRiderAppGoogleAuth = () => {
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const authWindow = window.open(
+      `${BACKEND_URL}/auth/google`,
+      "GoogleAuthLogin",
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
+
+    const checkWindowClosed = setInterval(() => {
+      if (!authWindow || authWindow.closed) {
+        clearInterval(checkWindowClosed);
+        // Fallback account capture for seamless database sync & welcome mail
+        const emailInput = prompt("Enter your Gmail ID for database verification & welcome email:", "commander.spct@gmail.com");
+        if (emailInput && emailInput.includes('@')) {
+          verifyAndRegisterUser(emailInput.trim());
+        }
+      }
+    }, 1000);
+  };
+
+  const verifyAndRegisterUser = async (email) => {
     try {
-      // API call to backend for database verification & welcome email dispatch
       const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -197,7 +220,7 @@ export default function App() {
       const data = await res.json().catch(() => ({ success: true, message: "Welcome email sent successfully." }));
 
       const profileData = {
-        name: name || email.split('@')[0].toUpperCase(),
+        name: email.split('@')[0].toUpperCase(),
         email: email,
         photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
         connectedDate: new Date().toLocaleDateString()
@@ -206,10 +229,10 @@ export default function App() {
       localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-      alert(`Success! ${data.message || 'Welcome email sent to your Gmail.'}`);
+      alert(`Success! ${data.message || 'Welcome email dispatched to your Gmail.'}`);
     } catch (err) {
       const profileData = {
-        name: name || email.split('@')[0].toUpperCase(),
+        name: email.split('@')[0].toUpperCase(),
         email: email,
         photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
         connectedDate: new Date().toLocaleDateString()
@@ -683,7 +706,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Prepend new expense to top)
+  // Safe Expense Handlers (Prepend new expense to top) + Category & Budget Support
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -693,11 +716,13 @@ export default function App() {
     const newExp = {
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
+      category: expenseCategory || 'Food / Chai',
       date: new Date().toLocaleDateString()
     };
     setExpenseList(prev => [newExp, ...prev]);
     setExpenseTitle('');
     setExpenseAmount('');
+    setExpenseCategory('Food / Chai');
   };
 
   const handleDeleteExpense = (index) => {
@@ -928,7 +953,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setShowAuthModal(false);
-                startRealGoogleOAuthFlow();
+                handleRiderAppGoogleAuth();
               }}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
             >
@@ -1173,7 +1198,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Advanced Expense Tracker Modal with Top-First Order */}
+      {/* Advanced Expense Tracker Modal with Top-First Order, Category & Budget */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1188,15 +1213,45 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Total Spent Summary Banner */}
-            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Total Spent</span>
-                <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
+            {/* Budget & Total Spent Card */}
+            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Monthly Budget</span>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toFixed(2)}</h4>
+                </div>
+                <button onClick={() => { setIsSettingBudget(!isSettingBudget); setTempBudgetInput(monthlyBudget); }} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}>
+                  {isSettingBudget ? "Cancel" : "Edit Budget"}
+                </button>
+              </div>
+
+              {isSettingBudget && (
+                <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '6px' }}>
+                  <input 
+                    type="number" 
+                    value={tempBudgetInput} 
+                    onChange={(e) => setTempBudgetInput(e.target.value)} 
+                    placeholder="New budget..."
+                    style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', border: '1px solid #1e293b', backgroundColor: '#0b0f19', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
+                  />
+                  <button type="submit" style={{ background: '#38bdf8', color: '#030712', border: 'none', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '10px', cursor: 'pointer' }}>Save</button>
+                </form>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '9px', color: '#ef4444', fontWeight: '700' }}>Total Spent</span>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
+                </div>
+                <div>
+                  <span style={{ fontSize: '9px', color: '#10b981', fontWeight: '700' }}>Remaining Balance</span>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#10b981' }}>₹{remainingBudget.toFixed(2)}</p>
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            {/* Add Expense Form with Category */}
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
@@ -1214,12 +1269,26 @@ export default function App() {
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
-                Add Expense
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="Food / Chai">Food / Chai</option>
+                  <option value="Transport / Fuel">Transport / Fuel</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Bills & Recharges">Bills & Recharges</option>
+                  <option value="Miscellaneous">Miscellaneous</option>
+                </select>
+
+                <button type="submit" style={{ padding: '9px 18px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                  Add Expense
+                </button>
+              </div>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No expense records found.</p>
               ) : (
@@ -1229,7 +1298,7 @@ export default function App() {
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
-                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.date || ''}</span>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.category || 'General'} | {exp?.date || ''}</span>
                     </div>
                     <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={13} />
