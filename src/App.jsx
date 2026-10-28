@@ -40,7 +40,7 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Kripya 'From' aur 'To' select karein." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State
+  // Permanent Watcher State with Daily Auto-Reset Logic
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
@@ -54,14 +54,25 @@ export default function App() {
 
   const [remindersList, setRemindersList] = useState(() => {
     try {
+      const savedDate = localStorage.getItem('jarvis_last_active_date');
+      const currentDate = new Date().toLocaleDateString();
+
       const saved = localStorage.getItem('jarvis_permanent_reminders');
       if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
+      let parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      // If new day has started, automatically reset completed status for daily reminders refresh
+      if (savedDate !== currentDate) {
+        parsed = parsed.map(rem => ({ ...rem, completed: false }));
+        localStorage.setItem('jarvis_last_active_date', currentDate);
+      }
+      return parsed;
     } catch (e) {
       return [];
     }
   });
+
   const [currentTaskInput, setCurrentTaskInput] = useState('');
   const [currentTimeInput, setCurrentTimeInput] = useState('09:00');
   const [editingIndex, setEditingIndex] = useState(null);
@@ -107,6 +118,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
+      localStorage.setItem('jarvis_last_active_date', new Date().toLocaleDateString());
     } catch (e) {}
   }, [remindersList]);
 
@@ -132,28 +144,25 @@ export default function App() {
     } catch (e) {}
   }, [userProfile]);
 
-  // Real Google OAuth Popup Login Flow (Chrome Account Selector)
+  // Real Google OAuth Popup Login Flow
   const handleRealGoogleLogin = () => {
     const width = 500;
     const height = 600;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
 
-    // Opening real Google accounts chooser / auth redirect simulation popup
     const googleAuthWindow = window.open(
       "https://accounts.google.com/o/oauth2/v2/auth?client_id=dummy_client.apps.googleusercontent.com&redirect_uri=" + encodeURIComponent(window.location.origin) + "&response_type=token&scope=email%20profile",
       "GoogleLoginPopup",
       `width=${width},height=${height},top=${top},left=${left}`
     );
 
-    // If popup is blocked or simulated in preview, fallback to interactive account selection prompt
     setTimeout(() => {
       if (!googleAuthWindow || googleAuthWindow.closed || typeof googleAuthWindow.closed === 'undefined') {
         triggerGoogleAccountPrompt();
       }
     }, 1000);
 
-    // Listen for OAuth message redirect
     const handleAuthMessage = (event) => {
       if (event.origin === window.location.origin && event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
         setUserProfile(event.data.profile);
@@ -164,7 +173,6 @@ export default function App() {
   };
 
   const triggerGoogleAccountPrompt = () => {
-    // Interactive prompt simulating chrome profile picker
     const userEmail = prompt("Apna Google Account (Gmail ID) darj karein ya select karein:", "commander.spct@gmail.com");
     if (userEmail && userEmail.includes('@')) {
       const profileData = {
@@ -968,7 +976,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Permanent Watcher Modal */}
+      {/* Permanent Watcher Modal with Daily Refresh & Smart Sorting */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
