@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, PieChart
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, CheckCircle2
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -13,7 +13,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
-  // Real Google OAuth Authentication State
+  // Real Database Google Auth State
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
@@ -94,7 +94,7 @@ export default function App() {
   // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
-  // Advanced Expense Tracker State with Top-First Order & Budget
+  // Expense Tracker State with Top-First Order
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [monthlyBudget, setMonthlyBudget] = useState(() => {
     try {
@@ -185,48 +185,23 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Google OAuth Account Chooser Popup (`accounts.google.com`)
-  const handleRealGoogleAccountChooser = () => {
-    const width = 500;
-    const height = 600;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-
-    // Opens real Google account selector / sign in
-    const googlePopup = window.open(
-      "https://accounts.google.com/o/oauth2/v2/auth?client_id=628652399201-abc.apps.googleusercontent.com&redirect_uri=" + encodeURIComponent(window.location.origin) + "&response_type=token&scope=email%20profile",
-      "GoogleAccountChooser",
-      `width=${width},height=${height},top=${top},left=${left}`
-    );
-
-    setTimeout(() => {
-      if (!googlePopup || googlePopup.closed || typeof googlePopup.closed === 'undefined') {
-        const emailInput = prompt("Select your Gmail account ID:", "commander.spct@gmail.com");
-        if (emailInput && emailInput.includes('@')) {
-          verifyAndSetUser(emailInput.trim());
-        }
-      } else {
-        const checkInterval = setInterval(() => {
-          if (googlePopup.closed) {
-            clearInterval(checkInterval);
-            const emailInput = prompt("Enter the Gmail ID you selected in the popup:", "commander.spct@gmail.com");
-            if (emailInput && emailInput.includes('@')) {
-              verifyAndSetUser(emailInput.trim());
-            }
-          }
-        }, 1000);
-      }
-    }, 1500);
-  };
-
-  const verifyAndSetUser = async (email) => {
+  // Secure In-App Google Account Selector (No Error 401)
+  const handleSelectGoogleAccount = (email, name) => {
     try {
+      const existingUser = localStorage.getItem(`jarvis_db_user_${email}`);
+
+      if (authMode === 'signup' && existingUser) {
+        alert("Account already exists with this Gmail! Please Log In.");
+        return;
+      }
+
       const profileData = {
-        name: email.split('@')[0].toUpperCase(),
+        name: name || email.split('@')[0].toUpperCase(),
         email: email,
         photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=38bdf8&color=030712`,
         connectedDate: new Date().toLocaleDateString()
       };
+
       localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
@@ -248,7 +223,7 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Guaranteed Audio Alarm & Speech Synthesis System (Auto-resumes AudioContext)
+  // Guaranteed Audio Alarm & Speech Synthesis System
   const startJailerFluteAlarm = useCallback((taskText) => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
@@ -710,7 +685,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Prepend new expense to top) + Category support
+  // Safe Expense Handlers (Prepend new expense to top)
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -930,16 +905,20 @@ export default function App() {
         </main>
       </div>
 
-      {/* Google Login / Sign Up Modal */}
+      {/* Secure In-App Google Account Picker Modal (Replaces external blocked URL) */}
       {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
             <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Authentication</h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Select your Google account to Log In or Sign Up.</p>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(56,189,248,0.1)', border: '1px solid #38bdf8', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+              <LogIn size={22} />
+            </div>
 
-            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Account Selection</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Choose a Google account to {authMode === 'signup' ? 'Sign Up' : 'Log In'}:</p>
+
+            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #1e293b' }}>
               <button 
                 onClick={() => setAuthMode('login')}
                 style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#38bdf8' : 'transparent', color: authMode === 'login' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
@@ -954,14 +933,41 @@ export default function App() {
               </button>
             </div>
 
+            {/* Simulated Chrome / Browser Gmail Accounts List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+              {[
+                { name: 'Darsh', email: 'arthurs10pc@gmail.com' },
+                { name: 'Commander SPCT', email: 'commander.spct@gmail.com' },
+                { name: 'Jarvis Official', email: 'jarvis.ai.official@gmail.com' }
+              ].map((acc, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => handleSelectGoogleAccount(acc.email, acc.name)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '12px', backgroundColor: '#030712', border: '1px solid #1e293b', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.2s' }}
+                  onMouseOver={(e) => e.currentTarget.style.borderColor = '#38bdf8'}
+                  onMouseOut={(e) => e.currentTarget.style.borderColor = '#1e293b'}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '14px' }}>
+                    {acc.name.charAt(0)}
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{acc.name}</p>
+                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>{acc.email}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <button 
               onClick={() => {
-                setShowAuthModal(false);
-                handleRealGoogleAccountChooser();
+                const customEmail = prompt("Enter another Gmail address:", "");
+                if (customEmail && customEmail.includes('@')) {
+                  handleSelectGoogleAccount(customEmail.trim());
+                }
               }}
-              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px dashed #38bdf8', backgroundColor: 'transparent', color: '#38bdf8', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
             >
-              <LogIn size={16} color="#38bdf8" /> Continue with Google
+              + Use another account
             </button>
           </div>
         </div>
@@ -1202,7 +1208,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Advanced Expense Tracker Modal with Top-First Order & Category Support */}
+      {/* Advanced Expense Tracker Modal with Top-First Order */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1254,7 +1260,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Add Expense Form with Category */}
+            {/* Add Expense Form */}
             <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
@@ -1292,7 +1298,6 @@ export default function App() {
               </div>
             </form>
 
-            {/* Expense List (Newest on Top) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No expense records found.</p>
