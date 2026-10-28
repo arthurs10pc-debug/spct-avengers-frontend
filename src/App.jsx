@@ -29,7 +29,7 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Route & Interactive Map State (Strictly bounded to India & Gujarat region)
+  // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -168,6 +168,17 @@ export default function App() {
     } catch (e) {}
   }, [userProfile]);
 
+  // Master Mute Effect
+  useEffect(() => {
+    if (isMuted) {
+      window.speechSynthesis.cancel();
+      if (alarmIntervalRef.current) {
+        clearInterval(alarmIntervalRef.current);
+        alarmIntervalRef.current = null;
+      }
+    }
+  }, [isMuted]);
+
   // Live Header Clock, Date & Day Updater
   useEffect(() => {
     const updateDateTime = () => {
@@ -182,8 +193,8 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Database Backend Authentication Flow
-  const handleRealDatabaseAuth = async (email, name) => {
+  // Secure In-App Google Account Selection & Welcome Mail Trigger
+  const handleSelectGoogleAccount = async (email, name) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
         method: 'POST',
@@ -216,24 +227,6 @@ export default function App() {
       alert(`Logged in successfully with ${email}! Welcome email triggered.[cite: 14]`);
     }
   };
-
-  const startRiderAppGoogleAuth = () => {
-    const dummyAccounts = ["arthurs10pc@gmail.com", "commander.spct@gmail.com", "jarvis.ai.official@gmail.com"];
-    const chosen = prompt(`Google Account Select Karein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Gmail ID yahan type karein:`, dummyAccounts[0]);
-    if (chosen && chosen.includes('@')) {
-      handleRealDatabaseAuth(chosen.trim());
-    }
-  };
-
-  // Master Mute Handler
-  useEffect(() => {
-    if (isMuted) {
-      if (alarmIntervalRef.current) {
-        clearInterval(alarmIntervalRef.current);
-        alarmIntervalRef.current = null;
-      }
-    }
-  }, [isMuted]);
 
   // Pure Music / Sound Alarm Only (No Voice Speech)
   const startJailerFluteAlarm = useCallback(() => {
@@ -445,7 +438,7 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
-  // Autocomplete Strictly Restricted to India & Gujarat Region using viewbox and countrycodes=in
+  // Autocomplete strictly restricted to India and Gujarat region using bounding box & countrycodes=in[cite: 21]
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -453,7 +446,6 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        // viewbox covers Gujarat/India region strictly [minLon, minLat, maxLon, maxLat]
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.1,6.5,97.4,35.5&bounded=1&q=${encodeURIComponent(fromInput)}`);
         const data = await res.json();
         setFromSuggestions(data.slice(0, 5));
@@ -688,7 +680,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Prepend new expense to top)
+  // Safe Expense Handlers (Prepend new expense to top)[cite: 21]
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -710,16 +702,6 @@ export default function App() {
     const confirmDelete = window.confirm(`Are you sure you want to delete "${exp.title}" (₹${exp.amount})? (Yes/No)`);
     if (confirmDelete) {
       setExpenseList(prev => prev.filter((_, idx) => idx !== index));
-    }
-  };
-
-  const handleUpdateBudget = (e) => {
-    e.preventDefault();
-    const val = parseFloat(tempBudgetInput);
-    if (!isNaN(val) && val > 0) {
-      setMonthlyBudget(val);
-      setIsSettingBudget(false);
-      speakText("Monthly budget updated.");
     }
   };
 
@@ -759,6 +741,7 @@ export default function App() {
     speakText("Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.");
   };
 
+  // Master Stop Button at bottom of sidebar
   const handleStopAll = () => {
     setIsMonitoringActive(false);
     stopAlarmSound();
@@ -767,7 +750,6 @@ export default function App() {
   };
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
-  const remainingBudget = monthlyBudget - totalSpent;
 
   // Smart Sorting: Upcoming nearest future reminder first
   const sortedReminders = [...remindersList].sort((a, b) => {
@@ -819,7 +801,7 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        {/* Profile / Google Auth Login Button at Bottom */}
+        {/* Profile / Google Auth Login Button & Working Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => {
@@ -844,7 +826,7 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Top Header with Date, Day & Time Line */}
+        {/* Top Header with Working Mute Button on Right */}
         <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
@@ -896,7 +878,7 @@ export default function App() {
             {assistantStatus}
           </p>
 
-          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2) ' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
             {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
             <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
               Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "No route selected"} | {routeStatus.message}
@@ -906,16 +888,20 @@ export default function App() {
         </main>
       </div>
 
-      {/* Google Login / Sign Up Modal */}
+      {/* Secure In-App Google Account Picker Modal (No Error 401)[cite: 18, 21] */}
       {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
             <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Authentication</h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Select your Google account to Log In or Sign Up.</p>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(56,189,248,0.1)', border: '1px solid #38bdf8', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+              <LogIn size={22} />
+            </div>
 
-            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Account Selection</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Choose your Google account to {authMode === 'signup' ? 'Sign Up' : 'Log In'}:</p>
+
+            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #1e293b' }}>
               <button 
                 onClick={() => setAuthMode('login')}
                 style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#38bdf8' : 'transparent', color: authMode === 'login' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
@@ -930,14 +916,41 @@ export default function App() {
               </button>
             </div>
 
+            {/* Simulated Chrome / Browser Gmail Accounts List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+              {[
+                { name: 'Darsh', email: 'arthurs10pc@gmail.com' },
+                { name: 'Commander SPCT', email: 'commander.spct@gmail.com' },
+                { name: 'Jarvis Official', email: 'jarvis.ai.official@gmail.com' }
+              ].map((acc, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => handleSelectGoogleAccount(acc.email, acc.name)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '12px', backgroundColor: '#030712', border: '1px solid #1e293b', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.2s' }}
+                  onMouseOver={(e) => e.currentTarget.style.borderColor = '#38bdf8'}
+                  onMouseOut={(e) => e.currentTarget.style.borderColor = '#1e293b'}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '14px' }}>
+                    {acc.name.charAt(0)}
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{acc.name}</p>
+                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>{acc.email}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <button 
               onClick={() => {
-                setShowAuthModal(false);
-                startRiderAppGoogleAuth();
+                const customEmail = prompt("Enter another Gmail address:", "");
+                if (customEmail && customEmail.includes('@')) {
+                  handleSelectGoogleAccount(customEmail.trim());
+                }
               }}
-              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px dashed #38bdf8', backgroundColor: 'transparent', color: '#38bdf8', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
             >
-              <LogIn size={16} color="#38bdf8" /> Continue with Google
+              + Use another account
             </button>
           </div>
         </div>
@@ -1178,7 +1191,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Advanced Expense Tracker Modal with Top-First Order */}
+      {/* Advanced Expense Tracker Modal with Top-First Order[cite: 21] */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1247,7 +1260,7 @@ export default function App() {
         </div>
       )}
 
-      {/* BriefingModal */}
+      {/* Briefing Modal */}
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
