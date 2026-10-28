@@ -29,7 +29,7 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Route & Interactive Map State (OSRM Free Live Traffic Routing)
+  // Route & Interactive Map State (Restricted strictly to India using countrycodes=in)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -116,9 +116,6 @@ export default function App() {
   });
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseCategory, setExpenseCategory] = useState('Food / Chai');
-  const [isSettingBudget, setIsSettingBudget] = useState(false);
-  const [tempBudgetInput, setTempBudgetInput] = useState(5000);
 
   // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -185,8 +182,8 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Secure In-App Google Account Selection & Welcome Mail Trigger
-  const handleSelectGoogleAccount = async (email, name) => {
+  // Real Database Backend Authentication Flow
+  const handleRealDatabaseAuth = async (email, name) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
         method: 'POST',
@@ -217,6 +214,14 @@ export default function App() {
       setUserProfile(profileData);
       setShowAuthModal(false);
       alert(`Logged in successfully with ${email}! Welcome email triggered.[cite: 14]`);
+    }
+  };
+
+  const startRiderAppGoogleAuth = () => {
+    const dummyAccounts = ["arthurs10pc@gmail.com", "commander.spct@gmail.com", "jarvis.ai.official@gmail.com"];
+    const chosen = prompt(`Google Account Select Karein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Gmail ID yahan type karein:`, dummyAccounts[0]);
+    if (chosen && chosen.includes('@')) {
+      handleRealDatabaseAuth(chosen.trim());
     }
   };
 
@@ -440,7 +445,7 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
-  // Autocomplete
+  // Autocomplete Restricted to India (countrycodes=in)
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -448,7 +453,7 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fromInput)}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(fromInput)}`);
         const data = await res.json();
         setFromSuggestions(data.slice(0, 5));
       } catch (e) {}
@@ -463,7 +468,7 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(toInput)}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(toInput)}`);
         const data = await res.json();
         setToSuggestions(data.slice(0, 5));
       } catch (e) {}
@@ -927,7 +932,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setShowAuthModal(false);
-                handleRiderAppGoogleAuth();
+                startRiderAppGoogleAuth();
               }}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
             >
@@ -1224,7 +1229,7 @@ export default function App() {
               ) : (
                 expenseList.map((exp, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
-                    <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                    <div style={{ overflow: 'hidden', paddingRight: '8px'</i>
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
