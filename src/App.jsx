@@ -13,10 +13,10 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
-  // Real Database Google Auth State
+  // Real Database Google Auth State per user email
   const [userProfile, setUserProfile] = useState(() => {
     try {
-      const saved = localStorage.getItem('jarvis_user_profile');
+      const saved = localStorage.getItem('jarvis_active_user_profile');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -26,15 +26,18 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // Dynamic User-Specific Storage Keys
+  const userKey = userProfile ? `_${userProfile.email}` : '_guest';
+
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State with Clean Document Sanitizer
+  // Tools / Converter Feature State
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
 
-  // Route & Interactive Map State (Strictly Gujarat/India bounded)
+  // Route & Interactive Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -50,33 +53,17 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State
+  // Permanent Watcher State per User
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
-  const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jarvis_snooze_duration');
-      return saved ? parseInt(saved, 10) : 1;
-    } catch {
-      return 1;
-    }
-  });
+  const [snoozeMinutes, setSnoozeMinutes] = useState(1);
 
   const [remindersList, setRemindersList] = useState(() => {
     try {
-      const savedDate = localStorage.getItem('jarvis_last_active_date');
-      const currentDate = new Date().toLocaleDateString();
-
-      const saved = localStorage.getItem('jarvis_permanent_reminders');
+      const saved = localStorage.getItem(`jarvis_permanent_reminders${userKey}`);
       if (!saved) return [];
       let parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-
-      if (savedDate !== currentDate) {
-        parsed = parsed.map(rem => ({ ...rem, completed: false }));
-        localStorage.setItem('jarvis_last_active_date', currentDate);
-      }
-      return parsed;
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       return [];
     }
@@ -92,26 +79,17 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
-  const [activeAlertKey, setActiveAlertKey] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
-  // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
-  // Advanced Expense Tracker State with Top-First Order
+  // Advanced Expense Tracker State per User
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [monthlyBudget, setMonthlyBudget] = useState(() => {
-    try {
-      const saved = localStorage.getItem('jarvis_monthly_budget');
-      return saved ? parseFloat(saved) : 5000;
-    } catch {
-      return 5000;
-    }
-  });
+  const [monthlyBudget, setMonthlyBudget] = useState(5000);
   const [expenseList, setExpenseList] = useState(() => {
     try {
-      const saved = localStorage.getItem('jarvis_expenses');
+      const saved = localStorage.getItem(`jarvis_expenses${userKey}`);
       if (!saved) return [];
       const parsed = JSON.parse(saved);
       return Array.isArray(parsed) ? parsed : [];
@@ -129,46 +107,33 @@ export default function App() {
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
-  const liveTrafficCheckRef = useRef(null);
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
-  const triggeredMinuteRef = useRef('');
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const polylineRef = useRef(null);
   const clickStepRef = useRef(0);
 
+  // Sync user data to localStorage based on active user email
   useEffect(() => {
     try {
-      localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
+      localStorage.setItem(`jarvis_permanent_reminders${userKey}`, JSON.stringify(remindersList));
     } catch (e) {}
-  }, [remindersList]);
+  }, [remindersList, userKey]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('jarvis_snooze_duration', snoozeMinutes.toString());
+      localStorage.setItem(`jarvis_expenses${userKey}`, JSON.stringify(expenseList));
     } catch (e) {}
-  }, [snoozeMinutes]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
-    } catch (e) {}
-  }, [expenseList]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('jarvis_monthly_budget', monthlyBudget.toString());
-    } catch (e) {}
-  }, [monthlyBudget]);
+  }, [expenseList, userKey]);
 
   useEffect(() => {
     try {
       if (userProfile) {
-        localStorage.setItem('jarvis_user_profile', JSON.stringify(userProfile));
+        localStorage.setItem('jarvis_active_user_profile', JSON.stringify(userProfile));
       } else {
-        localStorage.removeItem('jarvis_user_profile');
+        localStorage.removeItem('jarvis_active_user_profile');
       }
     } catch (e) {}
   }, [userProfile]);
@@ -187,7 +152,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Database Backend Authentication Flow
+  // Real Multi-User Google Authentication Flow
   const handleRealDatabaseAuth = async (email, name) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
@@ -204,10 +169,17 @@ export default function App() {
         connectedDate: new Date().toLocaleDateString()
       };
 
-      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-      alert(`Success! ${data.message || 'Welcome email dispatched to your Gmail.'}`);
+
+      // Load specific user data if exists
+      const savedReminders = localStorage.getItem(`jarvis_permanent_reminders_${email}`);
+      setRemindersList(savedReminders ? JSON.parse(savedReminders) : []);
+
+      const savedExpenses = localStorage.getItem(`jarvis_expenses_${email}`);
+      setExpenseList(savedExpenses ? JSON.parse(savedExpenses) : []);
+
+      alert(`Success! Logged in as ${email}. Welcome email dispatched.`);
     } catch (err) {
       const profileData = {
         name: name || email.split('@')[0].toUpperCase(),
@@ -215,18 +187,16 @@ export default function App() {
         photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
         connectedDate: new Date().toLocaleDateString()
       };
-      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-      alert(`Logged in successfully with ${email}! Welcome email triggered.`);
+      alert(`Logged in successfully with ${email}!`);
     }
   };
 
   const startRiderAppGoogleAuth = () => {
-    const dummyAccounts = ["arthurs10pc@gmail.com", "commander.spct@gmail.com", "jarvis.ai.official@gmail.com"];
-    const chosen = prompt(`Google Account Select Karein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Gmail ID yahan type karein:`, dummyAccounts[0]);
-    if (chosen && chosen.includes('@')) {
-      handleRealDatabaseAuth(chosen.trim());
+    const emailInput = prompt("Apni real Gmail ID enter karein (Account login/signup ke liye):", "commander.spct@gmail.com");
+    if (emailInput && emailInput.includes('@')) {
+      handleRealDatabaseAuth(emailInput.trim());
     }
   };
 
@@ -284,22 +254,6 @@ export default function App() {
       alarmIntervalRef.current = null;
     }
   }, []);
-
-  const speakText = useCallback((text) => {
-    if (isMuted || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    
-    const voices = window.speechSynthesis.getVoices();
-    const selectedVoice = voices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('google')) || voices[0];
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (selectedVoice) utterance.voice = selectedVoice;
-    utterance.rate = 0.82; 
-    utterance.pitch = 0.75; 
-    utterance.lang = 'hi-IN';
-
-    window.speechSynthesis.speak(utterance);
-  }, [isMuted]);
 
   const formatTimeTo12Hour = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return timeStr;
@@ -475,7 +429,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toInput]);
 
-  // Watcher Time-Hit Checker & Live Countdown Timer
+  // Watcher Time-Hit Checker & Live Countdown Timer with Fixed Snooze Logic
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -529,13 +483,10 @@ export default function App() {
       }
 
       if (isMuted) return;
-      if (triggeredMinuteRef.current === currentTimeStr) return;
 
       remindersList.forEach((rem, idx) => {
-        if (rem.task && rem.time === currentTimeStr && !rem.completed) {
-          triggeredMinuteRef.current = currentTimeStr;
+        if (rem.task && rem.time === currentTimeStr && !rem.completed && activeAlertTask !== rem.task) {
           setActiveAlertTask(rem.task);
-          setActiveAlertKey(`${rem.task}_${rem.time}`);
           setCurrentAlertTaskId(idx);
           startJailerFluteAlarm();
         }
@@ -545,8 +496,9 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
+  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted, activeAlertTask]);
 
+  // Fixed Snooze Handler: Immediately clears active alert and schedules future trigger
   const handleSnooze = () => {
     stopAlarmSound();
     if (activeAlertTask) {
@@ -559,9 +511,7 @@ export default function App() {
       setSnoozedAlerts(prev => ({ ...prev, [activeAlertTask]: snoozeTimeStr }));
     }
     setActiveAlertTask(null);
-    setActiveAlertKey(null);
     setCurrentAlertTaskId(null);
-    triggeredMinuteRef.current = '';
   };
 
   const handleAddOrUpdateReminder = (e) => {
@@ -779,26 +729,6 @@ export default function App() {
         {/* Main Jarvis Heart Center */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto' }}>
           
-          <style>{`
-            @keyframes pulseCore {
-              0% { transform: scale(1); box-shadow: 0 0 35px rgba(232, 210, 181, 0.4), inset 0 0 30px rgba(232, 210, 181, 0.4); }
-              50% { transform: scale(1.1); box-shadow: 0 0 70px rgba(232, 210, 181, 0.8), inset 0 0 50px rgba(232, 210, 181, 0.8); }
-              100% { transform: scale(1); box-shadow: 0 0 35px rgba(232, 210, 181, 0.4), inset 0 0 30px rgba(232, 210, 181, 0.4); }
-            }
-            .jarvis-heart {
-              width: 220px;
-              height: 220px;
-              border-radius: 50%;
-              border: 3px solid #E8D2B5;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: radial-gradient(circle, rgba(232,210,181,0.2) 0%, rgba(89,9,7,0.95) 70%);
-              animation: pulseCore 2s infinite ease-in-out;
-              cursor: pointer;
-            }
-          `}</style>
-
           <div className="jarvis-heart" onClick={startListening} title="Click to speak">
             <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {isListening ? <Mic size={40} color="#E8D2B5" /> : <Activity size={56} color="#E8D2B5" />}
@@ -1022,7 +952,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Watcher Alert Overlay */}
+      {/* Watcher Alert Overlay with Fixed Snooze Logic */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#7c120f', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
@@ -1046,7 +976,6 @@ export default function App() {
                   }
                 }
                 setActiveAlertTask(null);
-                setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
               }}
               style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', backgroundColor: '#E8D2B5', color: '#590907', fontWeight: '900', fontSize: '14px', cursor: 'pointer' }}
@@ -1173,7 +1102,7 @@ export default function App() {
                   return (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #7c120f', borderRadius: '8px', padding: '8px 10px' }}>
                       <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#E8D2B5' : '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
                         <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
@@ -1192,35 +1121,32 @@ export default function App() {
                 })
               )}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Google Profile Modal */}
-      {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', textAlign: 'center' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+            <div style={{ position: 'relative', borderTop: '1px solid #7c120f', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
+                title="Snooze"
+                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Moon size={12} /> ZZZ ({snoozeMinutes}m)
+              </button>
 
-            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
-              {userProfile.name.charAt(0).toUpperCase()}
+              {showSnoozeDropdown && (
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#590907', border: '1px solid #E8D2B5', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#A5A79B', paddingLeft: '3px' }}>Select Snooze:</span>
+                  {[1, 5, 10, 15, 30].map((m) => (
+                    <button 
+                      key={m} 
+                      onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
+                      style={{ background: snoozeMinutes === m ? '#E8D2B5' : 'transparent', color: snoozeMinutes === m ? '#590907' : '#E8D2B5', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      {m} Minute{m > 1 ? 's' : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#E8D2B5' }}>{userProfile.name}</h3>
-            <p style={{ margin: '0 0 14px 0', fontSize: '10px', color: '#A5A79B' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '9px', color: '#A5A79B', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate}</span>
-
-            <button 
-              onClick={() => {
-                if (window.confirm("Are you sure you want to disconnect your Google account?")) {
-                  setUserProfile(null);
-                  setShowProfileModal(false);
-                }
-              }}
-              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#7c120f', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
-            >
-              Disconnect Account
-            </button>
           </div>
         </div>
       )}
