@@ -1004,7 +1004,6 @@ export default function App() {
 
                       try {
                         if (targetExt === 'pdf') {
-                          // Read text content if it's text/csv/docx/xlsx, else render placeholder text for binary files
                           const textContent = await uploadedFile.text().catch(() => `File Name: ${uploadedFile.name}\nSize: ${uploadedFile.size} bytes`);
                           const lines = textContent.split('\n').slice(0, 30).map(l => `(${l.replace(/[()\\]/g, '')}) Tj`).join('\n0 -20 Td\n');
                           
@@ -1021,7 +1020,6 @@ export default function App() {
                           URL.revokeObjectURL(url);
                           alert("PDF successfully parsed, generated and downloaded!");
                         } else {
-                          // Standard data extraction and conversion
                           const arrayBuffer = await uploadedFile.arrayBuffer();
                           let mimeType = 'application/octet-stream';
                           if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) mimeType = `image/${targetExt === 'jpg' ? 'jpeg' : targetExt}`;
@@ -1407,7 +1405,7 @@ export default function App() {
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc' }}>
-            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size: 16 /></button>
+            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={18} /></div>
