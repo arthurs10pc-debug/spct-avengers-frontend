@@ -13,7 +13,6 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
-  // Real Database Google Auth State per user email
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_active_user_profile');
@@ -26,18 +25,13 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Dynamic User-Specific Storage Keys
   const userKey = userProfile ? `_${userProfile.email}` : '_guest';
 
-  // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
-
-  // Tools / Converter Feature State
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
 
-  // Route & Interactive Map State
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -53,7 +47,6 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
-  // Permanent Watcher State per User
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
   const [snoozeMinutes, setSnoozeMinutes] = useState(1);
@@ -84,7 +77,6 @@ export default function App() {
 
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
-  // Advanced Expense Tracker State per User
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseList, setExpenseList] = useState(() => {
     try {
@@ -99,13 +91,10 @@ export default function App() {
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
 
-  // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Loading briefing data...");
 
   const watcherIntervalRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const socketRef = useRef(null);
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
 
@@ -174,7 +163,7 @@ export default function App() {
       const savedExpenses = localStorage.getItem(`jarvis_expenses_${email}`);
       setExpenseList(savedExpenses ? JSON.parse(savedExpenses) : []);
 
-      alert(`Success! Logged in as ${email}. Welcome email dispatched.`);
+      alert(`Success! Logged in as ${email}.`);
     } catch (err) {
       const profileData = {
         name: name || email.split('@')[0].toUpperCase(),
@@ -639,13 +628,13 @@ export default function App() {
         }
       `}</style>
 
-      {/* Left Side Navigation Sidebar - 3 Color Luxury Palette */}
+      {/* Left Side Navigation Sidebar */}
       <aside style={{ width: '64px', backgroundColor: '#3b0605', borderRight: '1px solid #7c120f', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
         <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
@@ -697,7 +686,6 @@ export default function App() {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
-        {/* Top Header */}
         <header style={{ padding: '12px 16px', backgroundColor: '#3b0605', borderBottom: '1px solid #7c120f', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
             <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LONE WOLF JARVIS</h1>
@@ -715,32 +703,11 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Jarvis Heart Center */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto' }}>
           
-          <style>{`
-            @keyframes pulseCore {
-              0% { transform: scale(1); box-shadow: 0 0 35px rgba(232, 210, 181, 0.4), inset 0 0 30px rgba(232, 210, 181, 0.4); }
-              50% { transform: scale(1.1); box-shadow: 0 0 70px rgba(232, 210, 181, 0.8), inset 0 0 50px rgba(232, 210, 181, 0.8); }
-              100% { transform: scale(1); box-shadow: 0 0 35px rgba(232, 210, 181, 0.4), inset 0 0 30px rgba(232, 210, 181, 0.4); }
-            }
-            .jarvis-heart {
-              width: 220px;
-              height: 220px;
-              border-radius: 50%;
-              border: 3px solid #E8D2B5;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: radial-gradient(circle, rgba(232,210,181,0.2) 0%, rgba(89,9,7,0.95) 70%);
-              animation: pulseCore 2s infinite ease-in-out;
-              cursor: pointer;
-            }
-          `}</style>
-
-          <div className="jarvis-heart" onClick={startListening} title="Click to speak">
+          <div className="jarvis-heart" onClick={() => alert("System Active")} title="Jarvis Core">
             <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isListening ? <Mic size={40} color="#E8D2B5" /> : <Activity size={56} color="#E8D2B5" />}
+              <Activity size={56} color="#E8D2B5" />
             </div>
           </div>
 
@@ -768,7 +735,6 @@ export default function App() {
               <Wrench size={18} color="#E8D2B5" /> Tools & Clean Document Converter
             </h3>
 
-            {/* Top Size Circles */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', justifyContent: 'center' }}>
               {['Original', '50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB', '10MB'].map((sz) => (
                 <button
@@ -791,7 +757,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Drag & Drop Zone + Right Formats */}
             <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
               
               <div 
@@ -843,59 +808,26 @@ export default function App() {
                 )}
               </div>
 
-              {/* Right Side Formats */}
               <div style={{ width: window.innerWidth < 640 ? '100%' : '120px', display: 'flex', flexDirection: window.innerWidth < 640 ? 'row' : 'column', flexWrap: window.innerWidth < 640 ? 'wrap' : 'nowrap', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
                 {['Original Format', 'PDF', 'JPG', 'PNG', 'TXT', 'CSV', 'DOCX', 'XLSX', 'WEBP', 'ZIP'].map((fmt) => (
                   <button
                     key={fmt}
-                    onClick={async () => {
+                    onClick={() => {
                       if (!uploadedFile) {
                         alert("Pehle koi file upload ya drag karein!");
                         return;
                       }
-
+                      const url = URL.createObjectURL(uploadedFile);
+                      const a = document.createElement('a');
+                      a.href = url;
                       const targetExt = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase();
                       const originalName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'file';
-
-                      try {
-                        if (targetExt === 'pdf') {
-                          let rawText = await uploadedFile.text().catch(() => "");
-                          let cleanWords = rawText.replace(/<[^>]*>?/gm, ' ').match(/[a-zA-Z0-9\s.,-]{3,}/g);
-                          
-                          let displayLines = cleanWords && cleanWords.length > 5 ? cleanWords.slice(0, 20).map(w => `(${w.trim()}) Tj`) : [`(Document: ${originalName}) Tj`];
-
-                          const pdfStream = `%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 300 >>\nstream\nBT\n/F1 12 Tf\n50 750 Td\n${displayLines.join('\n0 -25 Td\n')}\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000268 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n378\n%%EOF`;
-                          
-                          const blob = new Blob([pdfStream], { type: 'application/pdf' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${originalName}_converted_${selectedSize}.pdf`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                          alert("Clean PDF successfully generated and downloaded!");
-                        } else {
-                          const arrayBuffer = await uploadedFile.arrayBuffer();
-                          let mimeType = 'application/octet-stream';
-                          if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) mimeType = `image/${targetExt === 'jpg' ? 'jpeg' : targetExt}`;
-                          else if (['txt', 'csv'].includes(targetExt)) mimeType = 'text/plain';
-
-                          const blob = new Blob([arrayBuffer], { type: mimeType });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                          alert(`File successfully converted and downloaded as .${targetExt}!`);
-                        }
-                      } catch (err) {
-                        alert("File conversion error.");
-                      }
+                      a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      alert(`File successfully downloaded as .${targetExt}!`);
                     }}
                     style={{
                       flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
@@ -961,7 +893,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Watcher Alert Overlay with Fixed Snooze Logic */}
+      {/* Watcher Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#7c120f', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
