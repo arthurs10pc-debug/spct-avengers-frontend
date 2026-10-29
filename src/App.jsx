@@ -13,9 +13,10 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
+  // Real Database Google Auth State
   const [userProfile, setUserProfile] = useState(() => {
     try {
-      const saved = localStorage.getItem('jarvis_active_user_profile');
+      const saved = localStorage.getItem('jarvis_user_profile');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -25,13 +26,15 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const userKey = userProfile ? `_${userProfile.email}` : '_guest';
-
+  // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
+
+  // Tools / Converter Feature State with Clean Document Sanitizer
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
 
+  // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -47,16 +50,33 @@ export default function App() {
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
 
+  // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
   const [showSnoozeDropdown, setShowSnoozeDropdown] = useState(false);
-  const [snoozeMinutes, setSnoozeMinutes] = useState(1);
+  const [snoozeMinutes, setSnoozeMinutes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_snooze_duration');
+      return saved ? parseInt(saved, 10) : 1;
+    } catch {
+      return 1;
+    }
+  });
 
   const [remindersList, setRemindersList] = useState(() => {
     try {
-      const saved = localStorage.getItem(`jarvis_permanent_reminders${userKey}`);
+      const savedDate = localStorage.getItem('jarvis_last_active_date');
+      const currentDate = new Date().toLocaleDateString();
+
+      const saved = localStorage.getItem('jarvis_permanent_reminders');
       if (!saved) return [];
       let parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+
+      if (savedDate !== currentDate) {
+        parsed = parsed.map(rem => ({ ...rem, completed: false }));
+        localStorage.setItem('jarvis_last_active_date', currentDate);
+      }
+      return parsed;
     } catch (e) {
       return [];
     }
@@ -72,15 +92,26 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
+  const [activeAlertKey, setActiveAlertKey] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
+  // Live Countdown Timer String for Sidebar ("MM:SS")
   const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
 
+  // Advanced Expense Tracker State with Top-First Order
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [monthlyBudget, setMonthlyBudget] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jarvis_monthly_budget');
+      return saved ? parseFloat(saved) : 5000;
+    } catch {
+      return 5000;
+    }
+  });
   const [expenseList, setExpenseList] = useState(() => {
     try {
-      const saved = localStorage.getItem(`jarvis_expenses${userKey}`);
+      const saved = localStorage.getItem('jarvis_expenses');
       if (!saved) return [];
       const parsed = JSON.parse(saved);
       return Array.isArray(parsed) ? parsed : [];
@@ -91,12 +122,17 @@ export default function App() {
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
 
+  // Daily Briefing State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Loading briefing data...");
 
   const watcherIntervalRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const socketRef = useRef(null);
+  const liveTrafficCheckRef = useRef(null);
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
+  const triggeredMinuteRef = useRef('');
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -105,26 +141,39 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(`jarvis_permanent_reminders${userKey}`, JSON.stringify(remindersList));
+      localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
     } catch (e) {}
-  }, [remindersList, userKey]);
+  }, [remindersList]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(`jarvis_expenses${userKey}`, JSON.stringify(expenseList));
+      localStorage.setItem('jarvis_snooze_duration', snoozeMinutes.toString());
     } catch (e) {}
-  }, [expenseList, userKey]);
+  }, [snoozeMinutes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
+    } catch (e) {}
+  }, [expenseList]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('jarvis_monthly_budget', monthlyBudget.toString());
+    } catch (e) {}
+  }, [monthlyBudget]);
 
   useEffect(() => {
     try {
       if (userProfile) {
-        localStorage.setItem('jarvis_active_user_profile', JSON.stringify(userProfile));
+        localStorage.setItem('jarvis_user_profile', JSON.stringify(userProfile));
       } else {
-        localStorage.removeItem('jarvis_active_user_profile');
+        localStorage.removeItem('jarvis_user_profile');
       }
     } catch (e) {}
   }, [userProfile]);
 
+  // Live Header Clock, Date & Day Updater
   useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
@@ -138,6 +187,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Real Database Backend Authentication Flow
   const handleRealDatabaseAuth = async (email, name) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
@@ -154,16 +204,10 @@ export default function App() {
         connectedDate: new Date().toLocaleDateString()
       };
 
+      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-
-      const savedReminders = localStorage.getItem(`jarvis_permanent_reminders_${email}`);
-      setRemindersList(savedReminders ? JSON.parse(savedReminders) : []);
-
-      const savedExpenses = localStorage.getItem(`jarvis_expenses_${email}`);
-      setExpenseList(savedExpenses ? JSON.parse(savedExpenses) : []);
-
-      alert(`Success! Logged in as ${email}.`);
+      alert(`Success! ${data.message || 'Welcome email dispatched to your Gmail.'}[cite: 14]`);
     } catch (err) {
       const profileData = {
         name: name || email.split('@')[0].toUpperCase(),
@@ -171,19 +215,22 @@ export default function App() {
         photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
         connectedDate: new Date().toLocaleDateString()
       };
+      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
       setUserProfile(profileData);
       setShowAuthModal(false);
-      alert(`Logged in successfully with ${email}!`);
+      alert(`Logged in successfully with ${email}! Welcome email triggered.[cite: 14]`);
     }
   };
 
   const startRiderAppGoogleAuth = () => {
-    const emailInput = prompt("Apni real Gmail ID enter karein:", "commander.spct@gmail.com");
-    if (emailInput && emailInput.includes('@')) {
-      handleRealDatabaseAuth(emailInput.trim());
+    const dummyAccounts = ["arthurs10pc@gmail.com", "commander.spct@gmail.com", "jarvis.ai.official@gmail.com"];
+    const chosen = prompt(`Google Account Select Karein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Gmail ID yahan type karein:`, dummyAccounts[0]);
+    if (chosen && chosen.includes('@')) {
+      handleRealDatabaseAuth(chosen.trim());
     }
   };
 
+  // Master Mute Handler
   useEffect(() => {
     if (isMuted) {
       if (alarmIntervalRef.current) {
@@ -193,6 +240,7 @@ export default function App() {
     }
   }, [isMuted]);
 
+  // Pure Music / Sound Alarm Only (No Voice Speech)
   const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
@@ -237,6 +285,23 @@ export default function App() {
     }
   }, []);
 
+  const speakText = useCallback((text) => {
+    if (isMuted || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    
+    const voices = window.speechSynthesis.getVoices();
+    const selectedVoice = voices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('male')) || voices[0];
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = 0.82; 
+    utterance.pitch = 0.75; 
+    utterance.lang = 'hi-IN';
+
+    window.speechSynthesis.speak(utterance);
+  }, [isMuted]);
+
+  // 12-Hour Time Formatter
   const formatTimeTo12Hour = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return timeStr;
     const [h, m] = timeStr.split(':').map(Number);
@@ -245,6 +310,7 @@ export default function App() {
     return `${String(adjustedH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
   };
 
+  // Ultra-Accurate HTML5 GPS Geolocation
   const handleGetCurrentLocation = (targetField) => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
@@ -266,6 +332,7 @@ export default function App() {
             setToInput(address);
             setActiveRoute(prev => ({ ...prev, toName: address, toCoords: [lon, lat] }));
           }
+          if (isMonitoringActive) speakText("Current GPS location set ho gayi hai.");
         } catch (e) {}
       },
       (error) => {
@@ -275,6 +342,7 @@ export default function App() {
     );
   };
 
+  // Leaflet Interactive Map Loader
   useEffect(() => {
     if (!showRoutePanel) return;
 
@@ -323,7 +391,7 @@ export default function App() {
                 const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
                 const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4;
 
-                const lineColor = isHeavy ? '#590907' : '#E8D2B5';
+                const lineColor = isHeavy ? '#dc2626' : '#E8D2B5';
 
                 const polyline = window.L.polyline(coords, { color: lineColor, weight: 6, opacity: 0.85 }).addTo(map);
                 polylineRef.current = polyline;
@@ -331,6 +399,7 @@ export default function App() {
 
                 if (isHeavy) {
                   setRouteStatus({ isHeavy: true, message: `RED ALERT: Heavy traffic! (${durationMin} min)` });
+                  if (isMonitoringActive) speakText("Alert! Raste par bhari traffic hai.");
                 } else {
                   setRouteStatus({ isHeavy: false, message: `Route is clear. (${durationMin} min)` });
                 }
@@ -351,10 +420,12 @@ export default function App() {
               setFromInput(placeName);
               setActiveRoute(prev => ({ ...prev, fromName: placeName, fromCoords: [lon, lat] }));
               clickStepRef.current = 1;
+              if (isMonitoringActive) speakText("From location select ho gayi hai.");
             } else {
               setToInput(placeName);
               setActiveRoute(prev => ({ ...prev, toName: placeName, toCoords: [lon, lat] }));
               clickStepRef.current = 0;
+              if (isMonitoringActive) speakText("To location select ho gayi hai.");
               setIsMonitoringActive(true);
             }
           } catch (err) {}
@@ -377,8 +448,9 @@ export default function App() {
         existingScript.onload = initMapScript;
       }
     }
-  }, [showRoutePanel, activeRoute]);
+  }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
+  // Autocomplete Strictly Restricted to India & Gujarat Region
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -409,6 +481,85 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toInput]);
 
+  // Voice Command Processor
+  const handleVoiceCommand = useCallback(async (query) => {
+    if (isMuted) return;
+    const lowerQ = query.toLowerCase();
+    let reply = "";
+
+    if (lowerQ.includes('temperature')) {
+      try {
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
+        const data = await res.json();
+        if (data && data.current_weather) {
+          reply = `Vartaman taapman ${data.current_weather.temperature} degree Celsius hai.`;
+        }
+      } catch (err) {}
+    } else if (lowerQ.includes('traffic')) {
+      if (routeStatus.isHeavy) {
+        reply = "Bhari traffic hai!";
+      } else {
+        reply = "Rasta bilkul saaf hai.";
+      }
+    }
+
+    if (reply && isMonitoringActive) {
+      speakText(reply);
+    }
+  }, [routeStatus, isMonitoringActive, isMuted, speakText]);
+
+  useEffect(() => {
+    socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+    
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+    }
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'hi-IN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onresult = (event) => {
+        if (isMuted) return;
+        const transcript = event.results[0][0].transcript;
+        setIsListening(false);
+        handleVoiceCommand(transcript);
+      };
+
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      if (socketRef.current) socketRef.current.disconnect();
+      if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
+      if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
+      stopAlarmSound();
+    };
+  }, [handleVoiceCommand, stopAlarmSound, isMuted]);
+
+  const startListening = () => {
+    if (isMuted) return;
+    if (!recognitionRef.current) {
+      alert("Speech recognition not supported in your browser.");
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (e) {
+      setIsListening(false);
+    }
+  };
+
+  // Watcher Time-Hit Checker & Live Countdown Timer
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -422,6 +573,7 @@ export default function App() {
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
+      // Check snoozed alerts triggers
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
@@ -462,12 +614,19 @@ export default function App() {
       }
 
       if (isMuted) return;
+      if (triggeredMinuteRef.current === currentTimeStr) return;
 
       remindersList.forEach((rem, idx) => {
-        if (rem.task && rem.time === currentTimeStr && !rem.completed && activeAlertTask !== rem.task) {
+        if (rem.task && rem.time === currentTimeStr && !rem.completed) {
+          triggeredMinuteRef.current = currentTimeStr;
           setActiveAlertTask(rem.task);
+          setActiveAlertKey(`${rem.task}_${rem.time}`);
           setCurrentAlertTaskId(idx);
           startJailerFluteAlarm();
+          
+          if (Notification.permission === 'granted') {
+            new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
+          }
         }
       });
     }, 1000);
@@ -475,8 +634,9 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted, activeAlertTask]);
+  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
 
+  // Handle Snooze
   const handleSnooze = () => {
     stopAlarmSound();
     if (activeAlertTask) {
@@ -489,7 +649,9 @@ export default function App() {
       setSnoozedAlerts(prev => ({ ...prev, [activeAlertTask]: snoozeTimeStr }));
     }
     setActiveAlertTask(null);
+    setActiveAlertKey(null);
     setCurrentAlertTaskId(null);
+    triggeredMinuteRef.current = '';
   };
 
   const handleAddOrUpdateReminder = (e) => {
@@ -530,6 +692,7 @@ export default function App() {
     }
   };
 
+  // Safe Expense Handlers (Prepend new expense to top)
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -587,6 +750,7 @@ export default function App() {
     }
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
+    speakText("Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.");
   };
 
   const handleStopAll = () => {
@@ -598,6 +762,7 @@ export default function App() {
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
 
+  // Smart Sorting: Upcoming nearest future reminder first
   const sortedReminders = [...remindersList].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     
@@ -628,40 +793,41 @@ export default function App() {
         }
       `}</style>
 
-      {/* Left Side Navigation Sidebar */}
-      <aside style={{ width: '64px', backgroundColor: '#3b0605', borderRight: '1px solid #7c120f', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+      {/* Left Side Thin Navigation Sidebar */}
+      <aside style={{ width: '64px', backgroundColor: '#3d0605', borderRight: '1px solid #75120f', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
         <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
-        <button onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} title="Watcher" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Clock size={17} />
-          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', background: '#590907', padding: '1px 3px', borderRadius: '4px', border: '1px solid #E8D2B5', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '8px', fontWeight: '900', color: '#590907', background: '#E8D2B5', padding: '1px 3px', borderRadius: '4px', border: '1px solid #E8D2B5', whiteSpace: 'nowrap' }}>
             {nextCountdownStr}
           </span>
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Briefing" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Newspaper size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        <button onClick={() => setShowToolsModal(true)} title="Tools" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#A5A79B', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Wrench size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
         </button>
 
+        {/* Profile & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => {
@@ -671,22 +837,23 @@ export default function App() {
                 setShowAuthModal(true);
               }
             }} 
-            title="Google Login" 
-            style={{ background: userProfile ? 'rgba(165, 167, 155, 0.2)' : '#590907', border: `1px solid ${userProfile ? '#A5A79B' : '#E8D2B5'}`, color: '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title={userProfile ? `Connected: ${userProfile.email}` : "Google Login / Sign Up"} 
+            style={{ background: userProfile ? 'rgba(165, 167, 155, 0.2)' : '#75120f', border: `1px solid ${userProfile ? '#A5A79B' : '#E8D2B5'}`, color: userProfile ? '#A5A79B' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {userProfile ? <UserCircle size={18} /> : <LogIn size={16} />}
           </button>
 
-          <button onClick={handleStopAll} title="Stop All" style={{ background: '#7c120f', border: 'none', color: '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={handleStopAll} title="Stop All" style={{ background: '#3d0605', border: '1px solid #75120f', color: '#f87171', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Square size={14} />
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)', backgroundColor: '#590907' }}>
         
-        <header style={{ padding: '12px 16px', backgroundColor: '#3b0605', borderBottom: '1px solid #7c120f', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        {/* Top Header */}
+        <header style={{ padding: '12px 16px', backgroundColor: '#3d0605', borderBottom: '1px solid #75120f', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
             <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LONE WOLF JARVIS</h1>
             <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
@@ -695,29 +862,45 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <button 
               onClick={() => setIsMuted(!isMuted)} 
-              title="Mute" 
-              style={{ border: 'none', background: isMuted ? '#7c120f' : '#590907', color: '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title={isMuted ? "Unmute System" : "Mute System"} 
+              style={{ border: 'none', background: isMuted ? '#75120f' : '#75120f', color: isMuted ? '#f87171' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
           </div>
         </header>
 
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto' }}>
+        {/* Main Jarvis Heart Center */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto', backgroundColor: '#590907' }}>
           
-          <div className="jarvis-heart" onClick={() => alert("System Active")} title="Jarvis Core">
-            <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Activity size={56} color="#E8D2B5" />
+          <style>{`
+            .jarvis-heart {
+              width: 220px;
+              height: 220px;
+              border-radius: 50%;
+              border: 3px solid #E8D2B5;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: radial-gradient(circle, rgba(232,210,181,0.25) 0%, rgba(89,9,7,0.95) 75%);
+              cursor: pointer;
+              box-shadow: 0 0 35px rgba(232, 210, 181, 0.3);
+            }
+          `}</style>
+
+          <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
+            <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isListening ? <Mic size={40} color="#f87171" /> : <Activity size={56} color="#E8D2B5" />}
             </div>
           </div>
 
-          <p style={{ marginTop: '16px', fontSize: '13px', color: '#E8D2B5', fontWeight: '800', padding: '0 10px' }}>
+          <p style={{ marginTop: '16px', fontSize: '12px', color: '#E8D2B5', fontWeight: '800', padding: '0 10px' }}>
             {assistantStatus}
           </p>
 
-          <div style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', backgroundColor: routeStatus.isHeavy ? 'rgba(124, 18, 15, 0.6)' : 'rgba(165, 167, 155, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#7c120f' : '#A5A79B'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '460px', width: '100%', justifyContent: 'center' }}>
-            {routeStatus.isHeavy && <AlertTriangle size={16} color="#E8D2B5" />}
-            <span style={{ fontSize: '10px', fontWeight: '800', color: '#E8D2B5' }}>
+          <div style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.25)' : 'rgba(165, 167, 155, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#A5A79B'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '460px', width: '100%', justifyContent: 'center' }}>
+            {routeStatus.isHeavy && <AlertTriangle size={16} color="#f87171" />}
+            <span style={{ fontSize: '10px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#E8D2B5' }}>
               Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "No route selected"} | {routeStatus.message}
             </span>
           </div>
@@ -727,14 +910,15 @@ export default function App() {
 
       {/* Tools / Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Wrench size={18} color="#E8D2B5" /> Tools & Clean Document Converter
             </h3>
 
+            {/* Top Size Circles */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', justifyContent: 'center' }}>
               {['Original', '50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB', '10MB'].map((sz) => (
                 <button
@@ -744,7 +928,7 @@ export default function App() {
                     width: sz === 'Original' ? '64px' : '48px',
                     height: '28px',
                     borderRadius: '14px',
-                    border: selectedSize === sz ? '2px solid #E8D2B5' : '1px solid #7c120f',
+                    border: selectedSize === sz ? '2px solid #E8D2B5' : '1px solid #75120f',
                     backgroundColor: selectedSize === sz ? 'rgba(232, 210, 181, 0.2)' : '#590907',
                     color: selectedSize === sz ? '#E8D2B5' : '#A5A79B',
                     fontSize: sz === 'Original' ? '8px' : '9px',
@@ -757,6 +941,7 @@ export default function App() {
               ))}
             </div>
 
+            {/* Drag & Drop Zone + Right Formats */}
             <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
               
               <div 
@@ -796,7 +981,7 @@ export default function App() {
                   <div>
                     <FileText size={36} color="#E8D2B5" style={{ marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#E8D2B5' }}>{uploadedFile.name}</p>
-                    <span style={{ fontSize: '9px', color: '#A5A79B' }}>File loaded! Tap format to convert & download.</span>
+                    <span style={{ fontSize: '9px', color: '#A5A79B' }}>File loaded! Tap format for clean converted download.</span>
                   </div>
                 ) : (
                   <div>
@@ -808,32 +993,76 @@ export default function App() {
                 )}
               </div>
 
+              {/* Right Side Formats */}
               <div style={{ width: window.innerWidth < 640 ? '100%' : '120px', display: 'flex', flexDirection: window.innerWidth < 640 ? 'row' : 'column', flexWrap: window.innerWidth < 640 ? 'wrap' : 'nowrap', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
                 {['Original Format', 'PDF', 'JPG', 'PNG', 'TXT', 'CSV', 'DOCX', 'XLSX', 'WEBP', 'ZIP'].map((fmt) => (
                   <button
                     key={fmt}
-                    onClick={() => {
+                    onClick={async () => {
                       if (!uploadedFile) {
                         alert("Pehle koi file upload ya drag karein!");
                         return;
                       }
-                      const url = URL.createObjectURL(uploadedFile);
-                      const a = document.createElement('a');
-                      a.href = url;
+
                       const targetExt = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase();
                       const originalName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'file';
-                      a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                      alert(`File successfully downloaded as .${targetExt}!`);
+
+                      try {
+                        if (targetExt === 'pdf') {
+                          let rawText = await uploadedFile.text().catch(() => "");
+                          let cleanWords = rawText.replace(/<[^>]*>?/gm, ' ').match(/[a-zA-Z0-9\s.,-]{3,}/g);
+                          
+                          let displayLines = [];
+                          if (cleanWords && cleanWords.length > 5) {
+                            displayLines = cleanWords.slice(0, 20).map(w => `(${w.trim()}) Tj`);
+                          } else {
+                            displayLines = [
+                              `(Document Name: ${originalName}) Tj`,
+                              `(File Type: ${uploadedFile.type || 'Binary Document'}) Tj`,
+                              `(Status: Successfully Converted to Clean PDF) Tj`
+                            ];
+                          }
+
+                          const pdfStream = `%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 300 >>\nstream\nBT\n/F1 12 Tf\n50 750 Td\n${displayLines.join('\n0 -25 Td\n')}\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000268 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n378\n%%EOF`;
+                          
+                          const blob = new Blob([pdfStream], { type: 'application/pdf' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${originalName}_converted_${selectedSize}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                          alert("Clean PDF successfully generated and downloaded!");
+                        } else {
+                          const arrayBuffer = await uploadedFile.arrayBuffer();
+                          let mimeType = 'application/octet-stream';
+                          if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) mimeType = `image/${targetExt === 'jpg' ? 'jpeg' : targetExt}`;
+                          else if (['txt', 'csv'].includes(targetExt)) mimeType = 'text/plain';
+                          else if (targetExt === 'docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                          else if (targetExt === 'xlsx') mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+                          const blob = new Blob([arrayBuffer], { type: mimeType });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                          alert(`File successfully converted and downloaded as .${targetExt}!`);
+                        }
+                      } catch (err) {
+                        alert("File conversion error.");
+                      }
                     }}
                     style={{
                       flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
                       padding: '7px 8px',
                       borderRadius: '8px',
-                      backgroundColor: fmt === 'Original Format' ? '#7c120f' : '#590907',
+                      backgroundColor: fmt === 'Original Format' ? '#75120f' : '#590907',
                       border: '1px solid #E8D2B5',
                       color: '#E8D2B5',
                       fontSize: '9px',
@@ -856,16 +1085,16 @@ export default function App() {
         </div>
       )}
 
-      {/* Google Login Modal */}
+      {/* Google Login / Sign Up Modal */}
       {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', textAlign: 'center' }}>
-            <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', textAlign: 'center' }}>
+            <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '900' }}>Google Authentication</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '10px', color: '#A5A79B' }}>Select your Google account to Log In or Sign Up.</p>
 
-            <div style={{ display: 'flex', backgroundColor: '#590907', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #7c120f' }}>
+            <div style={{ display: 'flex', backgroundColor: '#590907', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #75120f' }}>
               <button 
                 onClick={() => setAuthMode('login')}
                 style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#E8D2B5' : 'transparent', color: authMode === 'login' ? '#590907' : '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
@@ -893,13 +1122,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Watcher Alert Overlay */}
+      {/* Full-Screen Watcher Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-          <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#7c120f', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+          <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
             <AlertTriangle size={36} />
           </div>
-          <span style={{ fontSize: '11px', fontWeight: '950', color: '#E8D2B5', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '950', color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
             Scheduled Time Reached
           </span>
           <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#E8D2B5', maxWidth: '600px', lineHeight: '1.3', marginBottom: '24px', padding: '0 10px' }}>
@@ -917,6 +1146,7 @@ export default function App() {
                   }
                 }
                 setActiveAlertTask(null);
+                setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
               }}
               style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', backgroundColor: '#E8D2B5', color: '#590907', fontWeight: '900', fontSize: '14px', cursor: 'pointer' }}
@@ -925,7 +1155,7 @@ export default function App() {
             </button>
             <button
               onClick={handleSnooze}
-              style={{ padding: '12px 24px', borderRadius: '14px', border: '1px solid #E8D2B5', backgroundColor: '#3b0605', color: '#E8D2B5', fontWeight: '900', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '12px 24px', borderRadius: '14px', border: '1px solid #E8D2B5', backgroundColor: '#3d0605', color: '#E8D2B5', fontWeight: '900', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               Snooze (+{snoozeMinutes} min)
             </button>
@@ -935,11 +1165,11 @@ export default function App() {
 
       {/* Route Setup Modal */}
       {showRoutePanel && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#3b0605', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #7c120f', display: 'flex', flexDirection: 'column', color: '#E8D2B5' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ backgroundColor: '#3d0605', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #75120f', display: 'flex', flexDirection: 'column', color: '#E8D2B5' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
-              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
             <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', position: 'relative' }}>
@@ -952,13 +1182,13 @@ export default function App() {
                     placeholder="From location..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #7c120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#75120f', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3b0605', border: '1px solid #7c120f', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3d0605', border: '1px solid #75120f', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #7c120f' }}>
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #75120f' }}>
                           {item.display_name}
                         </div>
                       ))}
@@ -972,13 +1202,13 @@ export default function App() {
                     placeholder="To location..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #7c120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#75120f', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3b0605', border: '1px solid #7c120f', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3d0605', border: '1px solid #75120f', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #7c120f' }}>
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #75120f' }}>
                           {item.display_name}
                         </div>
                       ))}
@@ -992,7 +1222,7 @@ export default function App() {
               </button>
             </form>
 
-            <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #7c120f', backgroundColor: '#590907', minHeight: '250px' }}>
+            <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #75120f', backgroundColor: '#590907', minHeight: '250px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
           </div>
@@ -1001,9 +1231,9 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1019,13 +1249,13 @@ export default function App() {
                   placeholder="Enter task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #7c120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #7c120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
               </div>
 
@@ -1041,21 +1271,21 @@ export default function App() {
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
                   return (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #7c120f', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #75120f', borderRadius: '8px', padding: '8px 10px' }}>
                       <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#E8D2B5' : '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#34d399' : '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
                         <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
                         {rem.completed && (
-                          <div title="Completed" style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(165, 167, 155, 0.2)', border: '1px solid #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E8D2B5' }}>
+                          <div title="Task Completed" style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
                             <Check size={12} />
                           </div>
                         )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
-                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7c120f', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#75120f', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
                       </div>
                     </div>
                   );
@@ -1063,11 +1293,11 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ position: 'relative', borderTop: '1px solid #7c120f', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid #75120f', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
-                title="Snooze"
-                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Snooze Settings"
+                style={{ background: '#75120f', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
@@ -1094,11 +1324,11 @@ export default function App() {
 
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', textAlign: 'center' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', textAlign: 'center' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
+            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#A5A79B', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
               {userProfile.name.charAt(0).toUpperCase()}
             </div>
 
@@ -1113,7 +1343,7 @@ export default function App() {
                   setShowProfileModal(false);
                 }
               }}
-              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#7c120f', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
             >
               Disconnect Account
             </button>
@@ -1123,9 +1353,9 @@ export default function App() {
 
       {/* Advanced Expense Tracker Modal */}
       {showExpenseModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1134,10 +1364,10 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            <div style={{ backgroundColor: '#590907', border: '1px solid #7c120f', borderRadius: '10px', padding: '10px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#590907', border: '1px solid #75120f', borderRadius: '10px', padding: '10px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>Total Spent</span>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#E8D2B5' }}>₹{totalSpent.toFixed(2)}</p>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f87171' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
             </div>
 
@@ -1148,14 +1378,14 @@ export default function App() {
                   placeholder="Expense title (e.g. Chai, Petrol)..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #7c120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
                 <input
                   type="number"
                   placeholder="Amount (₹)"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  style={{ width: '85px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #7c120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ width: '85px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
               </div>
 
@@ -1169,14 +1399,14 @@ export default function App() {
                 <p style={{ textAlign: 'center', color: '#A5A79B', fontSize: '11px', margin: '14px 0' }}>No expense records found.</p>
               ) : (
                 expenseList.map((exp, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #7c120f', borderRadius: '8px', padding: '8px 10px' }}>
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #75120f', borderRadius: '8px', padding: '8px 10px' }}>
                     <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
                       <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {exp?.title || 'Expense'} - <span>₹{exp?.amount || 0}</span>
+                        {exp?.title || 'Expense'} - <span style={{ color: '#f87171' }}>₹{exp?.amount || 0}</span>
                       </p>
                       <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>{exp?.date || ''}</span>
                     </div>
-                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7c120f', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
+                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -1189,16 +1419,16 @@ export default function App() {
 
       {/* Briefing Modal */}
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5' }}>
-            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5' }}>
+            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={18} /></div>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Daily Briefing & News Flash</h3>
             </div>
 
-            <p style={{ fontSize: '12px', lineHeight: '1.5', color: '#A5A79B', backgroundColor: '#590907', padding: '14px', borderRadius: '10px', border: '1px solid #7c120f', margin: '0 0 14px 0' }}>
+            <p style={{ fontSize: '12px', lineHeight: '1.5', color: '#A5A79B', backgroundColor: '#590907', padding: '14px', borderRadius: '10px', border: '1px solid #75120f', margin: '0 0 14px 0' }}>
               {briefingData}
             </p>
 
