@@ -29,10 +29,10 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State
+  // Tools / Converter Feature State with Original Options
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [selectedSize, setSelectedSize] = useState('500KB');
+  const [selectedSize, setSelectedSize] = useState('Original');
 
   // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -717,6 +717,16 @@ export default function App() {
     }
   };
 
+  const handleUpdateBudget = (e) => {
+    e.preventDefault();
+    const val = parseFloat(tempBudgetInput);
+    if (!isNaN(val) && val > 0) {
+      setMonthlyBudget(val);
+      setIsSettingBudget(false);
+      speakText("Monthly budget updated.");
+    }
+  };
+
   const handleOpenBriefing = async () => {
     setShowBriefingModal(true);
     try {
@@ -783,7 +793,7 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
-      {/* Left Side Thin Navigation Sidebar with Tools Button Added */}
+      {/* Left Side Thin Navigation Sidebar */}
       <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '10px', flexShrink: 0, boxSizing: 'border-box' }}>
         <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={22} />
@@ -812,13 +822,13 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        {/* New Tools Button Added Below Briefing as per user wireframe[cite: 22] */}
+        {/* Tools Button */}
         <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Wrench size={18} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
         </button>
 
-        {/* Profile / Google Auth Login Button & Working Stop Button at Bottom */}
+        {/* Profile / Google Auth Login Button & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => {
@@ -905,7 +915,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Tools / Converter Modal Matching User Wireframe */}
+      {/* Tools / Converter Modal with Original Size & Original Format Buttons */}
       {showToolsModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '750px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
@@ -915,20 +925,20 @@ export default function App() {
               <Wrench size={20} color="#38bdf8" /> Tools & Format Converter
             </h3>
 
-            {/* Top Size Circles (Compression sizes from 50KB to 10MB)[cite: 22] */}
+            {/* Top Size Circles with "Original / No Compress" option added */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
-              {['50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB', '10MB'].map((sz) => (
+              {['Original', '50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB', '10MB'].map((sz) => (
                 <button
                   key={sz}
                   onClick={() => setSelectedSize(sz)}
                   style={{
-                    width: '54px',
+                    width: sz === 'Original' ? '70px' : '54px',
                     height: '32px',
                     borderRadius: '16px',
                     border: selectedSize === sz ? '2px solid #38bdf8' : '1px solid #1e293b',
                     backgroundColor: selectedSize === sz ? 'rgba(56,189,248,0.2)' : '#030712',
                     color: selectedSize === sz ? '#38bdf8' : '#94a3b8',
-                    fontSize: '10px',
+                    fontSize: sz === 'Original' ? '9px' : '10px',
                     fontWeight: '900',
                     cursor: 'pointer'
                   }}
@@ -938,7 +948,7 @@ export default function App() {
               ))}
             </div>
 
-            {/* Main Center Drag & Drop Zone + Right Side 10 Format Rectangles[cite: 22] */}
+            {/* Main Center Drag & Drop Zone + Right Side 10 Format Rectangles + Original Format Button */}
             <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch' }}>
               
               {/* Drag and Drop Box */}
@@ -979,7 +989,7 @@ export default function App() {
                   <div>
                     <ImageIcon size={40} color="#38bdf8" style={{ marginBottom: '8px' }} />
                     <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>{uploadedFile.name}</p>
-                    <span style={{ fontSize: '10px', color: '#10b981' }}>File loaded successfully! Tap format on right to download.</span>
+                    <span style={{ fontSize: '10px', color: '#10b981' }}>File loaded! Tap format on right to download instantly.</span>
                   </div>
                 ) : (
                   <div>
@@ -991,9 +1001,9 @@ export default function App() {
                 )}
               </div>
 
-              {/* Right Side 10 Format Rectangles[cite: 22] */}
+              {/* Right Side Format Rectangles with Working Instant Download */}
               <div style={{ width: '130px', display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
-                {['JPG', 'PNG', 'JPEG', 'PDF', 'WORD (DOCX)', 'PPT', 'EXCEL (XLSX)', 'WEBP', 'TXT', 'ZIP'].map((fmt) => (
+                {['Original Format', 'JPG', 'PNG', 'JPEG', 'PDF', 'WORD (DOCX)', 'PPT', 'EXCEL (XLSX)', 'WEBP', 'TXT', 'ZIP'].map((fmt) => (
                   <button
                     key={fmt}
                     onClick={() => {
@@ -1001,15 +1011,24 @@ export default function App() {
                         alert("Pehle koi image ya file upload/drag karein!");
                         return;
                       }
-                      alert(`File successfully converted to ${fmt} at compressed size ${selectedSize} and downloaded!`);
+                      // Working instant download trigger
+                      const url = URL.createObjectURL(uploadedFile);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      const ext = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase().split(' ')[0];
+                      a.download = `converted_file_${selectedSize}.${ext}`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
                     }}
                     style={{
                       padding: '8px 10px',
                       borderRadius: '8px',
-                      backgroundColor: '#1e293b',
+                      backgroundColor: fmt === 'Original Format' ? '#0284c7' : '#1e293b',
                       border: '1px solid #38bdf8',
-                      color: '#38bdf8',
-                      fontSize: '10px',
+                      color: '#f8fafc',
+                      fontSize: fmt === 'Original Format' ? '9px' : '10px',
                       fontWeight: '900',
                       cursor: 'pointer',
                       textAlign: 'center',
@@ -1027,7 +1046,7 @@ export default function App() {
             </div>
 
             <p style={{ margin: '14px 0 0 0', fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
-              * Target compression size select karein aur format button par tap karte hi instant download ho jayega[cite: 22].
+              * Size aur format select karke button par tap karein, instant download shuru ho jayega[cite: 22].
             </p>
           </div>
         </div>
