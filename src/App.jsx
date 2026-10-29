@@ -29,7 +29,7 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State with Clean Document Sanitizer
+  // Tools / Converter Feature State with Clean Text Cleaning Engine
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
@@ -391,7 +391,7 @@ export default function App() {
                 const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
                 const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4;
 
-                const lineColor = isHeavy ? '#dc2626' : '#E8D2B5';
+                const lineColor = isHeavy ? '#590907' : '#E8D2B5';
 
                 const polyline = window.L.polyline(coords, { color: lineColor, weight: 6, opacity: 0.85 }).addTo(map);
                 polylineRef.current = polyline;
@@ -573,7 +573,6 @@ export default function App() {
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
-      // Check snoozed alerts triggers
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
@@ -794,7 +793,7 @@ export default function App() {
       `}</style>
 
       {/* Left Side Thin Navigation Sidebar */}
-      <aside style={{ width: '64px', backgroundColor: '#3d0605', borderRight: '1px solid #75120f', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+      <aside style={{ width: '64px', backgroundColor: '#3d0605', borderRight: '1px solid #590907', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
         <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
         </div>
@@ -838,22 +837,22 @@ export default function App() {
               }
             }} 
             title={userProfile ? `Connected: ${userProfile.email}` : "Google Login / Sign Up"} 
-            style={{ background: userProfile ? 'rgba(165, 167, 155, 0.2)' : '#75120f', border: `1px solid ${userProfile ? '#A5A79B' : '#E8D2B5'}`, color: userProfile ? '#A5A79B' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ background: userProfile ? 'rgba(232, 210, 181, 0.2)' : '#3d0605', border: `1px solid ${userProfile ? '#E8D2B5' : '#A5A79B'}`, color: userProfile ? '#E8D2B5' : '#A5A79B', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {userProfile ? <UserCircle size={18} /> : <LogIn size={16} />}
           </button>
 
-          <button onClick={handleStopAll} title="Stop All" style={{ background: '#3d0605', border: '1px solid #75120f', color: '#f87171', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={handleStopAll} title="Stop All" style={{ background: '#3d0605', border: '1px solid #590907', color: '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Square size={14} />
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)', backgroundColor: '#590907' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
         {/* Top Header */}
-        <header style={{ padding: '12px 16px', backgroundColor: '#3d0605', borderBottom: '1px solid #75120f', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <header style={{ padding: '12px 16px', backgroundColor: '#3d0605', borderBottom: '1px solid #590907', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
             <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LONE WOLF JARVIS</h1>
             <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
@@ -863,7 +862,7 @@ export default function App() {
             <button 
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute System" : "Mute System"} 
-              style={{ border: 'none', background: isMuted ? '#75120f' : '#75120f', color: isMuted ? '#f87171' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ border: 'none', background: isMuted ? '#7f1d1d' : '#590907', color: isMuted ? '#fecaca' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
@@ -882,15 +881,16 @@ export default function App() {
               display: flex;
               align-items: center;
               justify-content: center;
-              background: radial-gradient(circle, rgba(232,210,181,0.25) 0%, rgba(89,9,7,0.95) 75%);
+              background: radial-gradient(circle, rgba(232,210,181,0.2) 0%, rgba(89,9,7,0.95) 70%);
               cursor: pointer;
-              box-shadow: 0 0 35px rgba(232, 210, 181, 0.3);
+              position: relative;
+              box-shadow: 0 0 40px rgba(232, 210, 181, 0.25);
             }
           `}</style>
 
           <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
             <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isListening ? <Mic size={40} color="#f87171" /> : <Activity size={56} color="#E8D2B5" />}
+              {isListening ? <Mic size={40} color="#E8D2B5" /> : <Activity size={56} color="#E8D2B5" />}
             </div>
           </div>
 
@@ -898,9 +898,9 @@ export default function App() {
             {assistantStatus}
           </p>
 
-          <div style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.25)' : 'rgba(165, 167, 155, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#A5A79B'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '460px', width: '100%', justifyContent: 'center' }}>
-            {routeStatus.isHeavy && <AlertTriangle size={16} color="#f87171" />}
-            <span style={{ fontSize: '10px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#E8D2B5' }}>
+          <div style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', backgroundColor: routeStatus.isHeavy ? 'rgba(232, 210, 181, 0.2)' : 'rgba(165, 167, 155, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#E8D2B5' : '#A5A79B'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '460px', width: '100%', justifyContent: 'center' }}>
+            {routeStatus.isHeavy && <AlertTriangle size={16} color="#E8D2B5" />}
+            <span style={{ fontSize: '10px', fontWeight: '800', color: '#E8D2B5' }}>
               Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "No route selected"} | {routeStatus.message}
             </span>
           </div>
@@ -910,11 +910,11 @@ export default function App() {
 
       {/* Tools / Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.85)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #590907', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#E8D2B5' }}>
               <Wrench size={18} color="#E8D2B5" /> Tools & Clean Document Converter
             </h3>
 
@@ -928,8 +928,8 @@ export default function App() {
                     width: sz === 'Original' ? '64px' : '48px',
                     height: '28px',
                     borderRadius: '14px',
-                    border: selectedSize === sz ? '2px solid #E8D2B5' : '1px solid #75120f',
-                    backgroundColor: selectedSize === sz ? 'rgba(232, 210, 181, 0.2)' : '#590907',
+                    border: selectedSize === sz ? '2px solid #E8D2B5' : '1px solid #590907',
+                    backgroundColor: selectedSize === sz ? 'rgba(232,210,181,0.2)' : '#590907',
                     color: selectedSize === sz ? '#E8D2B5' : '#A5A79B',
                     fontSize: sz === 'Original' ? '8px' : '9px',
                     fontWeight: '900',
@@ -1062,9 +1062,9 @@ export default function App() {
                       flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
                       padding: '7px 8px',
                       borderRadius: '8px',
-                      backgroundColor: fmt === 'Original Format' ? '#75120f' : '#590907',
+                      backgroundColor: fmt === 'Original Format' ? '#E8D2B5' : '#590907',
                       border: '1px solid #E8D2B5',
-                      color: '#E8D2B5',
+                      color: fmt === 'Original Format' ? '#590907' : '#E8D2B5',
                       fontSize: '9px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -1087,14 +1087,14 @@ export default function App() {
 
       {/* Google Login / Sign Up Modal */}
       {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', textAlign: 'center' }}>
-            <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #590907', color: '#E8D2B5', textAlign: 'center' }}>
+            <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '900' }}>Google Authentication</h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '10px', color: '#A5A79B' }}>Select your Google account to Log In or Sign Up.</p>
 
-            <div style={{ display: 'flex', backgroundColor: '#590907', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #75120f' }}>
+            <div style={{ display: 'flex', backgroundColor: '#590907', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #3d0605' }}>
               <button 
                 onClick={() => setAuthMode('login')}
                 style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#E8D2B5' : 'transparent', color: authMode === 'login' ? '#590907' : '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
@@ -1125,10 +1125,10 @@ export default function App() {
       {/* Full-Screen Watcher Alert Overlay */}
       {activeAlertTask && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-          <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+          <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#3d0605', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid #E8D2B5' }}>
             <AlertTriangle size={36} />
           </div>
-          <span style={{ fontSize: '11px', fontWeight: '950', color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '950', color: '#E8D2B5', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
             Scheduled Time Reached
           </span>
           <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#E8D2B5', maxWidth: '600px', lineHeight: '1.3', marginBottom: '24px', padding: '0 10px' }}>
@@ -1165,11 +1165,11 @@ export default function App() {
 
       {/* Route Setup Modal */}
       {showRoutePanel && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#3d0605', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #75120f', display: 'flex', flexDirection: 'column', color: '#E8D2B5' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ backgroundColor: '#3d0605', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #590907', display: 'flex', flexDirection: 'column', color: '#E8D2B5' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
-              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
             <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', position: 'relative' }}>
@@ -1182,13 +1182,13 @@ export default function App() {
                     placeholder="From location..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#75120f', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3d0605', border: '1px solid #75120f', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3d0605', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #75120f' }}>
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907' }}>
                           {item.display_name}
                         </div>
                       ))}
@@ -1202,13 +1202,13 @@ export default function App() {
                     placeholder="To location..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#75120f', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3d0605', border: '1px solid #75120f', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#3d0605', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #75120f' }}>
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907' }}>
                           {item.display_name}
                         </div>
                       ))}
@@ -1222,7 +1222,7 @@ export default function App() {
               </button>
             </form>
 
-            <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #75120f', backgroundColor: '#590907', minHeight: '250px' }}>
+            <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#590907', minHeight: '250px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
           </div>
@@ -1231,9 +1231,9 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #590907', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1249,13 +1249,13 @@ export default function App() {
                   placeholder="Enter task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
               </div>
 
@@ -1271,20 +1271,20 @@ export default function App() {
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
                   return (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #75120f', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #3d0605', borderRadius: '8px', padding: '8px 10px' }}>
                       <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#34d399' : '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#A5A79B' : '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
-                        <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
+                        <span style={{ fontSize: '9px', color: '#E8D2B5', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
                         {rem.completed && (
-                          <div title="Task Completed" style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                          <div title="Task Completed" style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(165, 167, 155, 0.2)', border: '1px solid #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E8D2B5' }}>
                             <Check size={12} />
                           </div>
                         )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#75120f', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
                         <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
                       </div>
                     </div>
@@ -1293,11 +1293,11 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ position: 'relative', borderTop: '1px solid #75120f', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid #590907', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
-                style={{ background: '#75120f', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
@@ -1324,11 +1324,11 @@ export default function App() {
 
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', textAlign: 'center' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #590907', color: '#E8D2B5', textAlign: 'center' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#A5A79B', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
+            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
               {userProfile.name.charAt(0).toUpperCase()}
             </div>
 
@@ -1343,7 +1343,7 @@ export default function App() {
                   setShowProfileModal(false);
                 }
               }}
-              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer', border: '1px solid #E8D2B5' }}
             >
               Disconnect Account
             </button>
@@ -1353,9 +1353,9 @@ export default function App() {
 
       {/* Advanced Expense Tracker Modal */}
       {showExpenseModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #590907', color: '#E8D2B5', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1364,10 +1364,10 @@ export default function App() {
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            <div style={{ backgroundColor: '#590907', border: '1px solid #75120f', borderRadius: '10px', padding: '10px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#590907', border: '1px solid #3d0605', borderRadius: '10px', padding: '10px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>Total Spent</span>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f87171' }}>₹{totalSpent.toFixed(2)}</p>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#E8D2B5' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
             </div>
 
@@ -1378,14 +1378,14 @@ export default function App() {
                   placeholder="Expense title (e.g. Chai, Petrol)..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
                 <input
                   type="number"
                   placeholder="Amount (₹)"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  style={{ width: '85px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #75120f', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
+                  style={{ width: '85px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', outline: 'none' }}
                 />
               </div>
 
@@ -1399,14 +1399,14 @@ export default function App() {
                 <p style={{ textAlign: 'center', color: '#A5A79B', fontSize: '11px', margin: '14px 0' }}>No expense records found.</p>
               ) : (
                 expenseList.map((exp, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #75120f', borderRadius: '8px', padding: '8px 10px' }}>
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #3d0605', borderRadius: '8px', padding: '8px 10px' }}>
                     <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
                       <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {exp?.title || 'Expense'} - <span style={{ color: '#f87171' }}>₹{exp?.amount || 0}</span>
+                        {exp?.title || 'Expense'} - <span style={{ color: '#E8D2B5' }}>₹{exp?.amount || 0}</span>
                       </p>
                       <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>{exp?.date || ''}</span>
                     </div>
-                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
+                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#3d0605', border: '1px solid #590907', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -1419,16 +1419,16 @@ export default function App() {
 
       {/* Briefing Modal */}
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #75120f', color: '#E8D2B5' }}>
-            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#75120f', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89,9,7,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3d0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #590907', color: '#E8D2B5' }}>
+            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={18} /></div>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Daily Briefing & News Flash</h3>
             </div>
 
-            <p style={{ fontSize: '12px', lineHeight: '1.5', color: '#A5A79B', backgroundColor: '#590907', padding: '14px', borderRadius: '10px', border: '1px solid #75120f', margin: '0 0 14px 0' }}>
+            <p style={{ fontSize: '12px', lineHeight: '1.5', color: '#E8D2B5', backgroundColor: '#590907', padding: '14px', borderRadius: '10px', border: '1px solid #3d0605', margin: '0 0 14px 0' }}>
               {briefingData}
             </p>
 
