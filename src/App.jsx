@@ -189,7 +189,7 @@ export default function App() {
   };
 
   const startRiderAppGoogleAuth = () => {
-    const emailInput = prompt("Apni real Gmail ID enter karein (Account login/signup ke liye):", "commander.spct@gmail.com");
+    const emailInput = prompt("Apni real Gmail ID enter karein:", "commander.spct@gmail.com");
     if (emailInput && emailInput.includes('@')) {
       handleRealDatabaseAuth(emailInput.trim());
     }
@@ -639,7 +639,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* Left Side Navigation Sidebar - Luxury Burgundy Theme */}
+      {/* Left Side Navigation Sidebar - 3 Color Luxury Palette */}
       <aside style={{ width: '64px', backgroundColor: '#3b0605', borderRight: '1px solid #7c120f', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
         <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
@@ -718,9 +718,29 @@ export default function App() {
         {/* Main Jarvis Heart Center */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto' }}>
           
-          <div className="jarvis-heart" onClick={() => {}} title="Jarvis Active">
+          <style>{`
+            @keyframes pulseCore {
+              0% { transform: scale(1); box-shadow: 0 0 35px rgba(232, 210, 181, 0.4), inset 0 0 30px rgba(232, 210, 181, 0.4); }
+              50% { transform: scale(1.1); box-shadow: 0 0 70px rgba(232, 210, 181, 0.8), inset 0 0 50px rgba(232, 210, 181, 0.8); }
+              100% { transform: scale(1); box-shadow: 0 0 35px rgba(232, 210, 181, 0.4), inset 0 0 30px rgba(232, 210, 181, 0.4); }
+            }
+            .jarvis-heart {
+              width: 220px;
+              height: 220px;
+              border-radius: 50%;
+              border: 3px solid #E8D2B5;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: radial-gradient(circle, rgba(232,210,181,0.2) 0%, rgba(89,9,7,0.95) 70%);
+              animation: pulseCore 2s infinite ease-in-out;
+              cursor: pointer;
+            }
+          `}</style>
+
+          <div className="jarvis-heart" onClick={startListening} title="Click to speak">
             <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Activity size={56} color="#E8D2B5" />
+              {isListening ? <Mic size={40} color="#E8D2B5" /> : <Activity size={56} color="#E8D2B5" />}
             </div>
           </div>
 
@@ -1110,6 +1130,32 @@ export default function App() {
                 })
               )}
             </div>
+
+            <div style={{ position: 'relative', borderTop: '1px solid #7c120f', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
+                title="Snooze"
+                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Moon size={12} /> ZZZ ({snoozeMinutes}m)
+              </button>
+
+              {showSnoozeDropdown && (
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#590907', border: '1px solid #E8D2B5', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#A5A79B', paddingLeft: '3px' }}>Select Snooze:</span>
+                  {[1, 5, 10, 15, 30].map((m) => (
+                    <button 
+                      key={m} 
+                      onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
+                      style={{ background: snoozeMinutes === m ? '#E8D2B5' : 'transparent', color: snoozeMinutes === m ? '#590907' : '#E8D2B5', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      {m} Minute{m > 1 ? 's' : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
