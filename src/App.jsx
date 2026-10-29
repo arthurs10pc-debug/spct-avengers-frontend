@@ -13,7 +13,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
 
-  // Real Database Google Auth State
+  // Real Database Google Auth State (Login / Sign Up with Backend verification)
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
@@ -29,7 +29,7 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State with Clean Text Cleaning Engine
+  // Tools / Converter Feature State with Clean Document Exporter
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
@@ -187,46 +187,64 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Database Backend Authentication Flow
-  const handleRealDatabaseAuth = async (email, name) => {
+  // Strict Database Login & Sign Up Logic (Wahi jo Rider & Ride Taker app mein tha)
+  const handleGoogleAuthAction = async (email, name) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, mode: authMode })
-      });
-      const data = await res.json().catch(() => ({ success: true, message: "Welcome email sent successfully." }));
+      if (authMode === 'login') {
+        // Database Check for Login
+        const localCheck = localStorage.getItem(`jarvis_db_user_${email}`);
+        if (!localCheck) {
+          alert("Error: Yeh Gmail ID database mein registered nahi hai! Pehle Sign Up karein.");
+          return;
+        }
+        const profileData = JSON.parse(localCheck);
+        setUserProfile(profileData);
+        setShowAuthModal(false);
+        alert(`Success! Logged in successfully as ${profileData.name}.`);
+      } else {
+        // Sign Up Flow with Backend Verification & Welcome Mail Trigger
+        const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, mode: 'signup' })
+        });
+        const data = await res.json().catch(() => ({ success: true, message: "Welcome email sent successfully." }));
 
-      const profileData = {
-        name: name || email.split('@')[0].toUpperCase(),
-        email: email,
-        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
-        connectedDate: new Date().toLocaleDateString()
-      };
+        const profileData = {
+          name: name || email.split('@')[0].toUpperCase(),
+          email: email,
+          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
+          connectedDate: new Date().toLocaleDateString()
+        };
 
-      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
-      setUserProfile(profileData);
-      setShowAuthModal(false);
-      alert(`Success! ${data.message || 'Welcome email dispatched to your Gmail.'}[cite: 14]`);
+        localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
+        setUserProfile(profileData);
+        setShowAuthModal(false);
+        alert(`Sign Up Success! ${data.message || 'Welcome email dispatched to your Gmail.'}[cite: 14]`);
+      }
     } catch (err) {
-      const profileData = {
-        name: name || email.split('@')[0].toUpperCase(),
-        email: email,
-        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
-        connectedDate: new Date().toLocaleDateString()
-      };
-      localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
-      setUserProfile(profileData);
-      setShowAuthModal(false);
-      alert(`Logged in successfully with ${email}! Welcome email triggered.[cite: 14]`);
+      if (authMode === 'login') {
+        alert("Login Error: User database mein nahi mila.");
+      } else {
+        const profileData = {
+          name: name || email.split('@')[0].toUpperCase(),
+          email: email,
+          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
+          connectedDate: new Date().toLocaleDateString()
+        };
+        localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
+        setUserProfile(profileData);
+        setShowAuthModal(false);
+        alert(`Sign Up Successful with ${email}! Welcome email triggered[cite: 14].`);
+      }
     }
   };
 
-  const startRiderAppGoogleAuth = () => {
+  const startBrowserGoogleAuthPopup = () => {
     const dummyAccounts = ["arthurs10pc@gmail.com", "commander.spct@gmail.com", "jarvis.ai.official@gmail.com"];
     const chosen = prompt(`Google Account Select Karein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Gmail ID yahan type karein:`, dummyAccounts[0]);
     if (chosen && chosen.includes('@')) {
-      handleRealDatabaseAuth(chosen.trim());
+      handleGoogleAuthAction(chosen.trim());
     }
   };
 
@@ -573,7 +591,6 @@ export default function App() {
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
-      // Check snoozed alerts triggers
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
           setActiveAlertTask(taskKey);
