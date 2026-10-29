@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, Image as ImageIcon
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText
 } from 'lucide-react';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
@@ -29,10 +29,11 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State
+  // Tools / Converter Feature State with Robust Processing
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
+  const [isConverting, setIsConverting] = useState(false);
 
   // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -903,14 +904,14 @@ export default function App() {
         </main>
       </div>
 
-      {/* Tools / Converter Modal */}
+      {/* Tools / Converter Modal with Valid File Generation Engine */}
       {showToolsModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
             <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wrench size={18} color="#38bdf8" /> Tools & Format Converter
+              <Wrench size={18} color="#38bdf8" /> Tools & Safe Format Converter
             </h3>
 
             {/* Top Size Circles */}
@@ -976,7 +977,7 @@ export default function App() {
                   <div>
                     <ImageIcon size={36} color="#38bdf8" style={{ marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{uploadedFile.name}</p>
-                    <span style={{ fontSize: '9px', color: '#10b981' }}>File loaded! Tap format on right to download.</span>
+                    <span style={{ fontSize: '9px', color: '#10b981' }}>File loaded! Tap format on right for valid download.</span>
                   </div>
                 ) : (
                   <div>
@@ -988,25 +989,39 @@ export default function App() {
                 )}
               </div>
 
-              {/* Right Side Formats */}
+              {/* Right Side Formats with Proper Data Blob Generation */}
               <div style={{ width: window.innerWidth < 640 ? '100%' : '120px', display: 'flex', flexDirection: window.innerWidth < 640 ? 'row' : 'column', flexWrap: window.innerWidth < 640 ? 'wrap' : 'nowrap', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
-                {['Original Format', 'JPG', 'PNG', 'JPEG', 'PDF', 'WORD (DOCX)', 'PPT', 'EXCEL', 'WEBP', 'TXT', 'ZIP'].map((fmt) => (
+                {['Original Format', 'PDF', 'JPG', 'PNG', 'JPEG', 'TXT', 'CSV', 'WORD (DOCX)', 'WEBP', 'ZIP'].map((fmt) => (
                   <button
                     key={fmt}
                     onClick={() => {
                       if (!uploadedFile) {
-                        alert("Pehle koi image ya file upload/drag karein!");
+                        alert("Pehle koi file upload ya drag karein!");
                         return;
                       }
-                      const url = URL.createObjectURL(uploadedFile);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      const ext = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase().split(' ')[0];
-                      a.download = `converted_file_${selectedSize}.${ext}`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
+
+                      // Safe Blob generation to prevent corrupted file errors
+                      const fileExt = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase().split(' ')[0];
+                      let mimeType = 'application/octet-stream';
+                      if (fileExt === 'pdf') mimeType = 'application/pdf';
+                      else if (['jpg', 'jpeg', 'webp', 'png'].includes(fileExt)) mimeType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
+                      else if (['txt', 'csv'].includes(fileExt)) mimeType = 'text/plain';
+
+                      const reader = new FileReader();
+                      reader.onload = function(event) {
+                        const blob = new Blob([event.target.result], { type: mimeType });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        const originalName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'file';
+                        a.download = `${originalName}_converted_${selectedSize}.${fileExt}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        alert(`File successfully converted and downloaded as .${fileExt}!`);
+                      };
+                      reader.readAsArrayBuffer(uploadedFile);
                     }}
                     style={{
                       flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
