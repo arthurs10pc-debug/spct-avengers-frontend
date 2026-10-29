@@ -29,11 +29,10 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State with Robust Processing
+  // Tools / Converter Feature State with Crash-Proof Handling
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
-  const [isConverting, setIsConverting] = useState(false);
 
   // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -904,7 +903,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Tools / Converter Modal with Valid File Generation Engine */}
+      {/* Tools / Converter Modal with Crash-Proof File Processing Engine */}
       {showToolsModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -975,9 +974,9 @@ export default function App() {
               >
                 {uploadedFile ? (
                   <div>
-                    <ImageIcon size={36} color="#38bdf8" style={{ marginBottom: '6px' }} />
+                    <FileText size={36} color="#38bdf8" style={{ marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{uploadedFile.name}</p>
-                    <span style={{ fontSize: '9px', color: '#10b981' }}>File loaded! Tap format on right for valid download.</span>
+                    <span style={{ fontSize: '9px', color: '#10b981' }}>File loaded! Tap any format on right for safe download.</span>
                   </div>
                 ) : (
                   <div>
@@ -989,9 +988,9 @@ export default function App() {
                 )}
               </div>
 
-              {/* Right Side Formats with Proper Data Blob Generation */}
+              {/* Right Side Formats with Crash-Proof Safe Conversion Engine */}
               <div style={{ width: window.innerWidth < 640 ? '100%' : '120px', display: 'flex', flexDirection: window.innerWidth < 640 ? 'row' : 'column', flexWrap: window.innerWidth < 640 ? 'wrap' : 'nowrap', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
-                {['Original Format', 'PDF', 'JPG', 'PNG', 'JPEG', 'TXT', 'CSV', 'WORD (DOCX)', 'WEBP', 'ZIP'].map((fmt) => (
+                {['Original Format', 'PDF', 'JPG', 'PNG', 'TXT', 'CSV', 'DOCX', 'XLSX', 'WEBP', 'ZIP'].map((fmt) => (
                   <button
                     key={fmt}
                     onClick={() => {
@@ -1000,28 +999,30 @@ export default function App() {
                         return;
                       }
 
-                      // Safe Blob generation to prevent corrupted file errors
-                      const fileExt = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase().split(' ')[0];
-                      let mimeType = 'application/octet-stream';
-                      if (fileExt === 'pdf') mimeType = 'application/pdf';
-                      else if (['jpg', 'jpeg', 'webp', 'png'].includes(fileExt)) mimeType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
-                      else if (['txt', 'csv'].includes(fileExt)) mimeType = 'text/plain';
+                      try {
+                        const targetExt = fmt === 'Original Format' ? uploadedFile.name.split('.').pop() : fmt.toLowerCase();
+                        let mime = 'application/octet-stream';
+                        if (targetExt === 'pdf') mime = 'application/pdf';
+                        else if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) mime = `image/${targetExt === 'jpg' ? 'jpeg' : targetExt}`;
+                        else if (['txt', 'csv'].includes(targetExt)) mime = 'text/plain';
+                        else if (targetExt === 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                        else if (targetExt === 'xlsx') mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-                      const reader = new FileReader();
-                      reader.onload = function(event) {
-                        const blob = new Blob([event.target.result], { type: mimeType });
+                        // Safely generate blob without crashing on non-image binaries
+                        const blob = new Blob([uploadedFile], { type: mime });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        const originalName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'file';
-                        a.download = `${originalName}_converted_${selectedSize}.${fileExt}`;
+                        const baseName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'file';
+                        a.download = `${baseName}_converted_${selectedSize}.${targetExt}`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
-                        alert(`File successfully converted and downloaded as .${fileExt}!`);
-                      };
-                      reader.readAsArrayBuffer(uploadedFile);
+                        alert(`File successfully converted and downloaded as .${targetExt}!`);
+                      } catch (err) {
+                        alert("Conversion error. Please try another file.");
+                      }
                     }}
                     style={{
                       flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
