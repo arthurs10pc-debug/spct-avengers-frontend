@@ -86,7 +86,6 @@ export default function App() {
 
   // Advanced Expense Tracker State per User
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [monthlyBudget, setMonthlyBudget] = useState(5000);
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem(`jarvis_expenses${userKey}`);
@@ -115,7 +114,6 @@ export default function App() {
   const polylineRef = useRef(null);
   const clickStepRef = useRef(0);
 
-  // Sync user data to localStorage based on active user email
   useEffect(() => {
     try {
       localStorage.setItem(`jarvis_permanent_reminders${userKey}`, JSON.stringify(remindersList));
@@ -138,7 +136,6 @@ export default function App() {
     } catch (e) {}
   }, [userProfile]);
 
-  // Live Header Clock, Date & Day Updater
   useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
@@ -152,7 +149,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Multi-User Google Authentication Flow
   const handleRealDatabaseAuth = async (email, name) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
@@ -172,7 +168,6 @@ export default function App() {
       setUserProfile(profileData);
       setShowAuthModal(false);
 
-      // Load specific user data if exists
       const savedReminders = localStorage.getItem(`jarvis_permanent_reminders_${email}`);
       setRemindersList(savedReminders ? JSON.parse(savedReminders) : []);
 
@@ -200,7 +195,6 @@ export default function App() {
     }
   };
 
-  // Master Mute Handler
   useEffect(() => {
     if (isMuted) {
       if (alarmIntervalRef.current) {
@@ -210,7 +204,6 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Pure Music / Sound Alarm Only (No Voice Speech)
   const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
@@ -293,7 +286,6 @@ export default function App() {
     );
   };
 
-  // Leaflet Interactive Map Loader
   useEffect(() => {
     if (!showRoutePanel) return;
 
@@ -398,7 +390,6 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute]);
 
-  // Autocomplete Restricted to India & Gujarat Region
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -429,7 +420,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toInput]);
 
-  // Watcher Time-Hit Checker & Live Countdown Timer with Fixed Snooze Logic
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -498,7 +488,6 @@ export default function App() {
     };
   }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted, activeAlertTask]);
 
-  // Fixed Snooze Handler: Immediately clears active alert and schedules future trigger
   const handleSnooze = () => {
     stopAlarmSound();
     if (activeAlertTask) {
@@ -729,9 +718,9 @@ export default function App() {
         {/* Main Jarvis Heart Center */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto' }}>
           
-          <div className="jarvis-heart" onClick={startListening} title="Click to speak">
+          <div className="jarvis-heart" onClick={() => {}} title="Jarvis Active">
             <div style={{ width: '130px', height: '130px', borderRadius: '50%', border: '2px dashed #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isListening ? <Mic size={40} color="#E8D2B5" /> : <Activity size={56} color="#E8D2B5" />}
+              <Activity size={56} color="#E8D2B5" />
             </div>
           </div>
 
@@ -1102,7 +1091,7 @@ export default function App() {
                   return (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#590907', border: '1px solid #7c120f', borderRadius: '8px', padding: '8px 10px' }}>
                       <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#E8D2B5' : '#E8D2B5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
                         <span style={{ fontSize: '9px', color: '#A5A79B', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
@@ -1121,32 +1110,35 @@ export default function App() {
                 })
               )}
             </div>
+          </div>
+        </div>
+      )}
 
-            <div style={{ position: 'relative', borderTop: '1px solid #7c120f', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
-                title="Snooze"
-                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <Moon size={12} /> ZZZ ({snoozeMinutes}m)
-              </button>
+      {/* Google Profile Modal */}
+      {showProfileModal && userProfile && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(59,6,5,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#3b0605', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #7c120f', color: '#E8D2B5', textAlign: 'center' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-              {showSnoozeDropdown && (
-                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#590907', border: '1px solid #E8D2B5', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#A5A79B', paddingLeft: '3px' }}>Select Snooze:</span>
-                  {[1, 5, 10, 15, 30].map((m) => (
-                    <button 
-                      key={m} 
-                      onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
-                      style={{ background: snoozeMinutes === m ? '#E8D2B5' : 'transparent', color: snoozeMinutes === m ? '#590907' : '#E8D2B5', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      {m} Minute{m > 1 ? 's' : ''}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
+              {userProfile.name.charAt(0).toUpperCase()}
             </div>
 
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#E8D2B5' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 14px 0', fontSize: '10px', color: '#A5A79B' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '9px', color: '#A5A79B', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate}</span>
+
+            <button 
+              onClick={() => {
+                if (window.confirm("Are you sure you want to disconnect your Google account?")) {
+                  setUserProfile(null);
+                  setShowProfileModal(false);
+                }
+              }}
+              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#7c120f', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+            >
+              Disconnect Account
+            </button>
           </div>
         </div>
       )}
