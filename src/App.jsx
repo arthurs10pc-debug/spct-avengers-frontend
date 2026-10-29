@@ -29,7 +29,7 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State with Original Options
+  // Tools / Converter Feature State
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
@@ -692,7 +692,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Prepend new expense to top)[cite: 21]
+  // Safe Expense Handlers (Prepend new expense to top)
   const handleAddExpense = (e) => {
     e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -793,42 +793,51 @@ export default function App() {
   return (
     <div style={{ height: '100vh', width: '100vw', backgroundColor: '#030712', color: '#38bdf8', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
+      <style>{`
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #030712; }
+        @media (max-width: 768px) {
+          aside { width: 56px !important; }
+          header h1 { font-size: 13px !important; }
+          .jarvis-heart { width: 180px !important; height: 180px !important; }
+        }
+      `}</style>
+
       {/* Left Side Thin Navigation Sidebar */}
-      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '10px', flexShrink: 0, boxSizing: 'border-box' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
-          <Shield size={22} />
+      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
+          <Shield size={20} />
         </div>
 
         <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Navigation size={18} />
+          <Navigation size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
         <button onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Clock size={18} />
-          <span style={{ fontSize: '9px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 3px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
+          <Clock size={17} />
+          <span style={{ fontSize: '8px', fontWeight: '900', color: '#38bdf8', background: '#1e293b', padding: '1px 3px', borderRadius: '4px', border: '1px solid #38bdf8', whiteSpace: 'nowrap' }}>
             {nextCountdownStr}
           </span>
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
         <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <DollarSign size={18} />
+          <DollarSign size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
         <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Newspaper size={18} />
+          <Newspaper size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        {/* Tools Button */}
         <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Wrench size={18} />
+          <Wrench size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
         </button>
 
-        {/* Profile / Google Auth Login Button & Stop Button at Bottom */}
+        {/* Profile & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => {
@@ -841,73 +850,52 @@ export default function App() {
             title={userProfile ? `Connected: ${userProfile.email}` : "Google Login / Sign Up"} 
             style={{ background: userProfile ? 'rgba(16, 185, 129, 0.2)' : '#1e293b', border: `1px solid ${userProfile ? '#10b981' : '#38bdf8'}`, color: userProfile ? '#34d399' : '#38bdf8', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            {userProfile ? <UserCircle size={20} /> : <LogIn size={18} />}
+            {userProfile ? <UserCircle size={18} /> : <LogIn size={16} />}
           </button>
 
-          <button onClick={handleStopAll} title="Stop All" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Square size={16} />
+          <button onClick={handleStopAll} title="Stop All" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Square size={14} />
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
-        {/* Top Header with Date, Day & Time Line */}
-        <header style={{ padding: '14px 20px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: '0', boxSizing: 'border-box' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc' }}>LONE WOLF JARVIS</h1>
-            <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+        {/* Top Header */}
+        <header style={{ padding: '12px 16px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ overflow: 'hidden' }}>
+            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LONE WOLF JARVIS</h1>
+            <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <button 
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute System" : "Mute System"} 
-              style={{ border: 'none', background: isMuted ? '#7f1d1d' : '#1e293b', color: isMuted ? '#fecaca' : '#38bdf8', padding: '10px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ border: 'none', background: isMuted ? '#7f1d1d' : '#1e293b', color: isMuted ? '#fecaca' : '#38bdf8', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
           </div>
         </header>
 
-        {/* Main Jarvis Heart / Arc Reactor UI Center */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
+        {/* Main Jarvis Heart Center */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto' }}>
           
-          <style>{`
-            @keyframes pulseCore {
-              0% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
-              50% { transform: scale(1.1); box-shadow: 0 0 80px rgba(56, 189, 248, 0.95), inset 0 0 65px rgba(56, 189, 248, 0.95); }
-              100% { transform: scale(1); box-shadow: 0 0 35px rgba(56, 189, 248, 0.5), inset 0 0 30px rgba(56, 189, 248, 0.5); }
-            }
-            .jarvis-heart {
-              width: 240px;
-              height: 240px;
-              border-radius: 50%;
-              border: 3px solid #38bdf8;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(3,7,18,0.95) 70%);
-              animation: pulseCore 2s infinite ease-in-out;
-              cursor: pointer;
-              position: relative;
-            }
-          `}</style>
-
           <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
-            <div style={{ width: '140px', height: '140px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isListening ? <Mic size={48} color="#ef4444" /> : <Activity size={70} color="#38bdf8" />}
+            <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px dashed #0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isListening ? <Mic size={40} color="#ef4444" /> : <Activity size={56} color="#38bdf8" />}
             </div>
           </div>
 
-          <p style={{ marginTop: '20px', fontSize: '13px', color: '#f8fafc', fontWeight: '800' }}>
+          <p style={{ marginTop: '16px', fontSize: '12px', color: '#f8fafc', fontWeight: '800', padding: '0 10px' }}>
             {assistantStatus}
           </p>
 
-          <div style={{ marginTop: '12px', padding: '10px 18px', borderRadius: '12px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '500px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
-            {routeStatus.isHeavy && <AlertTriangle size={18} color="#ef4444" />}
-            <span style={{ fontSize: '11px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
+          <div style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', backgroundColor: routeStatus.isHeavy ? 'rgba(220, 38, 38, 0.2)' : 'rgba(5, 150, 105, 0.2)', border: `1px solid ${routeStatus.isHeavy ? '#dc2626' : '#059669'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '460px', width: '100%', justifyContent: 'center' }}>
+            {routeStatus.isHeavy && <AlertTriangle size={16} color="#ef4444" />}
+            <span style={{ fontSize: '10px', fontWeight: '800', color: routeStatus.isHeavy ? '#fca5a5' : '#6ee7b7' }}>
               Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "No route selected"} | {routeStatus.message}
             </span>
           </div>
@@ -915,30 +903,30 @@ export default function App() {
         </main>
       </div>
 
-      {/* Tools / Converter Modal with Original Size & Original Format Buttons */}
+      {/* Tools / Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '750px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
-            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.9)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wrench size={20} color="#38bdf8" /> Tools & Format Converter
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Wrench size={18} color="#38bdf8" /> Tools & Format Converter
             </h3>
 
-            {/* Top Size Circles with "Original / No Compress" option added */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
+            {/* Top Size Circles */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', justifyContent: 'center' }}>
               {['Original', '50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB', '10MB'].map((sz) => (
                 <button
                   key={sz}
                   onClick={() => setSelectedSize(sz)}
                   style={{
-                    width: sz === 'Original' ? '70px' : '54px',
-                    height: '32px',
-                    borderRadius: '16px',
+                    width: sz === 'Original' ? '64px' : '48px',
+                    height: '28px',
+                    borderRadius: '14px',
                     border: selectedSize === sz ? '2px solid #38bdf8' : '1px solid #1e293b',
                     backgroundColor: selectedSize === sz ? 'rgba(56,189,248,0.2)' : '#030712',
                     color: selectedSize === sz ? '#38bdf8' : '#94a3b8',
-                    fontSize: sz === 'Original' ? '9px' : '10px',
+                    fontSize: sz === 'Original' ? '8px' : '9px',
                     fontWeight: '900',
                     cursor: 'pointer'
                   }}
@@ -948,10 +936,9 @@ export default function App() {
               ))}
             </div>
 
-            {/* Main Center Drag & Drop Zone + Right Side 10 Format Rectangles + Original Format Button */}
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch' }}>
+            {/* Drag & Drop Zone + Right Formats */}
+            <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
               
-              {/* Drag and Drop Box */}
               <div 
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
@@ -962,15 +949,15 @@ export default function App() {
                 }}
                 style={{ 
                   flex: 1, 
-                  height: '240px', 
+                  minHeight: '200px', 
                   border: '2px dashed #38bdf8', 
-                  borderRadius: '16px', 
+                  borderRadius: '14px', 
                   backgroundColor: '#030712', 
                   display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
                   justifyContent: 'center', 
-                  padding: '20px', 
+                  padding: '16px', 
                   textAlign: 'center',
                   cursor: 'pointer'
                 }}
@@ -987,23 +974,23 @@ export default function App() {
               >
                 {uploadedFile ? (
                   <div>
-                    <ImageIcon size={40} color="#38bdf8" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>{uploadedFile.name}</p>
-                    <span style={{ fontSize: '10px', color: '#10b981' }}>File loaded! Tap format on right to download instantly.</span>
+                    <ImageIcon size={36} color="#38bdf8" style={{ marginBottom: '6px' }} />
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{uploadedFile.name}</p>
+                    <span style={{ fontSize: '9px', color: '#10b981' }}>File loaded! Tap format on right to download.</span>
                   </div>
                 ) : (
                   <div>
-                    <Upload size={36} color="#38bdf8" style={{ marginBottom: '10px' }} />
-                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Drag and Drop</p>
-                    <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#94a3b8' }}>or</p>
-                    <span style={{ fontSize: '11px', color: '#38bdf8', textDecoration: 'underline' }}>Browse from Device</span>
+                    <Upload size={32} color="#38bdf8" style={{ marginBottom: '8px' }} />
+                    <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>Drag and Drop</p>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '10px', color: '#94a3b8' }}>or</p>
+                    <span style={{ fontSize: '10px', color: '#38bdf8', textDecoration: 'underline' }}>Browse from Device</span>
                   </div>
                 )}
               </div>
 
-              {/* Right Side Format Rectangles with Working Instant Download */}
-              <div style={{ width: '130px', display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
-                {['Original Format', 'JPG', 'PNG', 'JPEG', 'PDF', 'WORD (DOCX)', 'PPT', 'EXCEL (XLSX)', 'WEBP', 'TXT', 'ZIP'].map((fmt) => (
+              {/* Right Side Formats */}
+              <div style={{ width: window.innerWidth < 640 ? '100%' : '120px', display: 'flex', flexDirection: window.innerWidth < 640 ? 'row' : 'column', flexWrap: window.innerWidth < 640 ? 'wrap' : 'nowrap', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                {['Original Format', 'JPG', 'PNG', 'JPEG', 'PDF', 'WORD (DOCX)', 'PPT', 'EXCEL', 'WEBP', 'TXT', 'ZIP'].map((fmt) => (
                   <button
                     key={fmt}
                     onClick={() => {
@@ -1011,7 +998,6 @@ export default function App() {
                         alert("Pehle koi image ya file upload/drag karein!");
                         return;
                       }
-                      // Working instant download trigger
                       const url = URL.createObjectURL(uploadedFile);
                       const a = document.createElement('a');
                       a.href = url;
@@ -1023,12 +1009,13 @@ export default function App() {
                       URL.revokeObjectURL(url);
                     }}
                     style={{
-                      padding: '8px 10px',
+                      flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
+                      padding: '7px 8px',
                       borderRadius: '8px',
                       backgroundColor: fmt === 'Original Format' ? '#0284c7' : '#1e293b',
                       border: '1px solid #38bdf8',
                       color: '#f8fafc',
-                      fontSize: fmt === 'Original Format' ? '9px' : '10px',
+                      fontSize: '9px',
                       fontWeight: '900',
                       cursor: 'pointer',
                       textAlign: 'center',
@@ -1038,39 +1025,35 @@ export default function App() {
                       gap: '4px'
                     }}
                   >
-                    <Download size={12} /> {fmt}
+                    <Download size={11} /> {fmt}
                   </button>
                 ))}
               </div>
 
             </div>
-
-            <p style={{ margin: '14px 0 0 0', fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
-              * Size aur format select karke button par tap karein, instant download shuru ho jayega[cite: 22].
-            </p>
           </div>
         </div>
       )}
 
       {/* Google Login / Sign Up Modal */}
       {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
             <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900' }}>Google Authentication</h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '11px', color: '#94a3b8' }}>Select your Google account to Log In or Sign Up.</p>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '900' }}>Google Authentication</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '10px', color: '#94a3b8' }}>Select your Google account to Log In or Sign Up.</p>
 
-            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '20px', border: '1px solid #1e293b' }}>
+            <div style={{ display: 'flex', backgroundColor: '#030712', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #1e293b' }}>
               <button 
                 onClick={() => setAuthMode('login')}
-                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#38bdf8' : 'transparent', color: authMode === 'login' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#38bdf8' : 'transparent', color: authMode === 'login' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
               >
                 Log In
               </button>
               <button 
                 onClick={() => setAuthMode('signup')}
-                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'signup' ? '#38bdf8' : 'transparent', color: authMode === 'signup' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: authMode === 'signup' ? '#38bdf8' : 'transparent', color: authMode === 'signup' ? '#030712' : '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
               >
                 Sign Up
               </button>
@@ -1081,27 +1064,27 @@ export default function App() {
                 setShowAuthModal(false);
                 startRiderAppGoogleAuth();
               }}
-              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }}
+              style={{ width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#f8fafc', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              <LogIn size={16} color="#38bdf8" /> Continue with Google
+              <LogIn size={15} color="#38bdf8" /> Continue with Google
             </button>
           </div>
         </div>
       )}
 
-      {/* Full-Screen Watcher / Traffic Alert Overlay */}
+      {/* Full-Screen Watcher Alert Overlay */}
       {activeAlertTask && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', boxSizing: 'border-box', textAlign: 'center' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', boxShadow: '0 0 40px rgba(220,38,38,0.8)' }}>
-            <AlertTriangle size={40} />
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
+          <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+            <AlertTriangle size={36} />
           </div>
-          <span style={{ fontSize: '12px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '950', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
             Scheduled Time Reached
           </span>
-          <h1 style={{ fontSize: '30px', fontWeight: '900', color: '#f8fafc', maxWidth: '700px', lineHeight: '1.3', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', maxWidth: '600px', lineHeight: '1.3', marginBottom: '24px', padding: '0 10px' }}>
             "{activeAlertTask}"
           </h1>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               onClick={() => {
                 stopAlarmSound();
@@ -1116,13 +1099,13 @@ export default function App() {
                 setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
               }}
-              style={{ padding: '14px 28px', borderRadius: '14px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '15px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(56,189,248,0.5)' }}
+              style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '14px', cursor: 'pointer' }}
             >
               Got It
             </button>
             <button
               onClick={handleSnooze}
-              style={{ padding: '14px 28px', borderRadius: '14px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#38bdf8', fontWeight: '900', fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '12px 24px', borderRadius: '12px', border: '1px solid #38bdf8', backgroundColor: '#1e293b', color: '#38bdf8', fontWeight: '900', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               Snooze (+{snoozeMinutes} min)
             </button>
@@ -1132,32 +1115,30 @@ export default function App() {
 
       {/* Route Setup Modal */}
       {showRoutePanel && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '540px', height: '100%', padding: '20px', boxSizing: 'border-box', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
-              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={16} />
-              </button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ backgroundColor: '#0b0f19', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
+              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
-            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', position: 'relative' }}>
-              <p style={{ margin: 0, fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>* First click for 'From', second click for 'To'.</p>
+            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', position: 'relative' }}>
+              <p style={{ margin: 0, fontSize: '9px', color: '#38bdf8', fontWeight: '700' }}>* First click for 'From', second click for 'To'.</p>
               
-              <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+              <div style={{ display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', gap: '6px', position: 'relative' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
                     placeholder="From location..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS Current Location" style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '150px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
                           {item.display_name}
                         </div>
                       ))}
@@ -1171,13 +1152,13 @@ export default function App() {
                     placeholder="To location..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
-                    style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS Current Location" style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '150px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#0b0f19', border: '1px solid #1e293b', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #1e293b' }}>
                           {item.display_name}
                         </div>
                       ))}
@@ -1186,12 +1167,12 @@ export default function App() {
                 </div>
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
+              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
                 Load Route
               </button>
             </form>
 
-            <div style={{ flex: 1, borderRadius: '14px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712' }}>
+            <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', backgroundColor: '#030712', minHeight: '250px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
           </div>
@@ -1200,64 +1181,61 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={15} />
-            </button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Clock size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={18} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
             </div>
 
-            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
                   placeholder="Enter task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '110px', padding: '10px 6px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none' }}
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                <Plus size={16} /> {editingIndex !== null ? "Update Reminder" : "Add Permanent Reminder"}
+              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <Plus size={15} /> {editingIndex !== null ? "Update Reminder" : "Add Permanent Reminder"}
               </button>
             </form>
 
-            {/* Smart Sorted Reminders List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto', paddingRight: '4px', marginBottom: '10px' }}>
               {sortedReminders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No reminders set.</p>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', margin: '14px 0' }}>No reminders set.</p>
               ) : (
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
                   return (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
-                      <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
-                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: rem.completed ? '#6ee7b7' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '8px', padding: '8px 10px' }}>
+                      <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#6ee7b7' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
-                        <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
+                        <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
                         {rem.completed && (
-                          <div title="Task Completed" style={{ width: '24px', height: '24px', borderRadius: '6px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                            <Check size={14} />
+                          <div title="Task Completed" style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(5, 150, 105, 0.2)', border: '1px solid #059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                            <Check size={12} />
                           </div>
                         )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Edit2 size={13} /></button>
-                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#1e293b', border: 'none', color: '#38bdf8', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
                       </div>
                     </div>
                   );
@@ -1265,24 +1243,23 @@ export default function App() {
               )}
             </div>
 
-            {/* Bottom Horizontal ZZZ Snooze Button & Dropdown */}
-            <div style={{ position: 'relative', borderTop: '1px solid #1e293b', paddingTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid #1e293b', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
-                style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ background: '#1e293b', border: '1px solid #38bdf8', color: '#38bdf8', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
-                <Moon size={14} /> ZZZ ({snoozeMinutes}m)
+                <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
 
               {showSnoozeDropdown && (
-                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#030712', border: '1px solid #38bdf8', borderRadius: '10px', padding: '8px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                  <span style={{ fontSize: '9px', fontWeight: '700', color: '#94a3b8', paddingLeft: '4px' }}>Select Snooze Time:</span>
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#030712', border: '1px solid #38bdf8', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#94a3b8', paddingLeft: '3px' }}>Select Snooze:</span>
                   {[1, 5, 10, 15, 30].map((m) => (
                     <button 
                       key={m} 
                       onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
-                      style={{ background: snoozeMinutes === m ? '#38bdf8' : 'transparent', color: snoozeMinutes === m ? '#030712' : '#f8fafc', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
+                      style={{ background: snoozeMinutes === m ? '#38bdf8' : 'transparent', color: snoozeMinutes === m ? '#030712' : '#f8fafc', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
                     >
                       {m} Minute{m > 1 ? 's' : ''}
                     </button>
@@ -1297,17 +1274,17 @@ export default function App() {
 
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', textAlign: 'center' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#10b981', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto', fontSize: '24px', fontWeight: '900' }}>
+            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#10b981', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
               {userProfile.name.charAt(0).toUpperCase()}
             </div>
 
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>{userProfile.name}</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '11px', color: '#38bdf8' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '20px' }}>Connected since: {userProfile.connectedDate}</span>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 14px 0', fontSize: '10px', color: '#38bdf8' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate}</span>
 
             <button 
               onClick={() => {
@@ -1316,7 +1293,7 @@ export default function App() {
                   setShowProfileModal(false);
                 }
               }}
-              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
             >
               Disconnect Account
             </button>
@@ -1324,66 +1301,63 @@ export default function App() {
         </div>
       )}
 
-      {/* Advanced Expense Tracker Modal with Top-First Order[cite: 21] */}
+      {/* Advanced Expense Tracker Modal */}
       {showExpenseModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={15} />
-            </button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <DollarSign size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarSign size={18} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
             </div>
 
-            {/* Total Spent Summary Banner */}
-            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '12px', padding: '12px', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Total Spent</span>
-                <p style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
+                <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>Total Spent</span>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#ef4444' }}>₹{totalSpent.toFixed(2)}</p>
               </div>
             </div>
 
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
                   placeholder="Expense title (e.g. Chai, Petrol)..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
                 />
                 <input
                   type="number"
                   placeholder="Amount (₹)"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  style={{ width: '90px', padding: '10px 8px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '85px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #1e293b', backgroundColor: '#030712', color: '#38bdf8', fontSize: '11px', outline: 'none' }}
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>
+              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
                 Add Expense
               </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
               {expenseList.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', margin: '16px 0' }}>No expense records found.</p>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', margin: '14px 0' }}>No expense records found.</p>
               ) : (
                 expenseList.map((exp, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '10px', padding: '10px 12px' }}>
-                    <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#030712', border: '1px solid #1e293b', borderRadius: '8px', padding: '8px 10px' }}>
+                    <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
+                      <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {exp?.title || 'Expense'} - <span style={{ color: '#ef4444' }}>₹{exp?.amount || 0}</span>
                       </p>
                       <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>{exp?.date || ''}</span>
                     </div>
-                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}>
-                      <Trash2 size={13} />
+                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 ))
@@ -1395,20 +1369,20 @@ export default function App() {
 
       {/* Briefing Modal */}
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0b0f19', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0b0f19', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #1e293b', color: '#f8fafc' }}>
             <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={20} /></div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>Daily Briefing & News Flash</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#38bdf8', color: '#030712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={18} /></div>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Daily Briefing & News Flash</h3>
             </div>
 
-            <p style={{ fontSize: '13px', lineHeight: '1.6', color: '#cbd5e1', backgroundColor: '#030712', padding: '16px', borderRadius: '12px', border: '1px solid #1e293b', margin: '0 0 16px 0' }}>
+            <p style={{ fontSize: '12px', lineHeight: '1.5', color: '#cbd5e1', backgroundColor: '#030712', padding: '14px', borderRadius: '10px', border: '1px solid #1e293b', margin: '0 0 14px 0' }}>
               {briefingData}
             </p>
 
-            <button onClick={() => setShowBriefingModal(false)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '13px', cursor: 'pointer' }}>Close</button>
+            <button onClick={() => setShowBriefingModal(false)} style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#38bdf8', color: '#030712', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}
