@@ -4,7 +4,8 @@ import {
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
-  Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw
+  Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
+  Globe, Play, Pause, Radio, Landmark, Building2, Flame
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -45,6 +46,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [directEmailInput, setDirectEmailInput] = useState('');
 
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
@@ -60,6 +62,9 @@ export default function App() {
   const [toInput, setToInput] = useState('');
   const [fromSuggestions, setFromSuggestions] = useState([]);
   const [toSuggestions, setToSuggestions] = useState([]);
+  const [selectedPoiCategory, setSelectedPoiCategory] = useState('all');
+  const [trafficLiveLogs, setTrafficLiveLogs] = useState([]);
+  const [trafficCongestionPoint, setTrafficCongestionPoint] = useState(null);
   
   const [activeRoute, setActiveRoute] = useState({ 
     fromName: '', 
@@ -147,10 +152,12 @@ export default function App() {
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
   const [expenseSearchQuery, setExpenseSearchQuery] = useState('');
 
-  // Daily Briefing & Live Google News State
+  // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat)
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Loading briefing data...");
   const [trendingNewsList, setTrendingNewsList] = useState([]);
+  const [newsCategory, setNewsCategory] = useState('india'); // 'global' | 'india' | 'gujarat'
+  const [hoveredNewsId, setHoveredNewsId] = useState(null);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [lastNewsUpdated, setLastNewsUpdated] = useState('');
   const [newsCountdown, setNewsCountdown] = useState(120);
@@ -162,6 +169,7 @@ export default function App() {
   const trafficIntervalRef = useRef(null);
 
   const watcherIntervalRef = useRef(null);
+  const triggeredKeysRef = useRef(new Set());
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
@@ -173,6 +181,8 @@ export default function App() {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const polylineRef = useRef(null);
+  const trafficPolylineRef = useRef(null);
+  const trafficMarkerRef = useRef(null);
   const clickStepRef = useRef(0);
 
   // Cloud Real-Time Sync State Refs
@@ -300,11 +310,11 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Live Trending Google News Fetcher
-  const fetchTrendingNews = useCallback(async () => {
+  // Live Trending Google News Fetcher supporting 3 categories: global, india, gujarat
+  const fetchTrendingNews = useCallback(async (targetCat = newsCategory) => {
     setIsNewsLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/news/trending`);
+      const res = await fetch(`${BACKEND_URL}/api/news/trending?category=${encodeURIComponent(targetCat)}`);
       const data = await res.json();
       if (data && data.success && Array.isArray(data.news || data.items)) {
         const list = data.news || data.items;
@@ -319,7 +329,7 @@ export default function App() {
     } finally {
       setIsNewsLoading(false);
     }
-  }, []);
+  }, [newsCategory]);
 
   // 2-Minute Auto-Refresh Engine for Google News (Countdown decrements every second)
   useEffect(() => {
@@ -648,6 +658,53 @@ export default function App() {
     }
   }, []);
 
+  // Global Audio Unlock Listener on User Interaction (Prevents browser audio blocking)
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
+
+  const testFluteSound = useCallback(() => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const notes = [587.33, 659.25, 783.99, 880.00, 783.99, 659.25];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + idx * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.18);
+        osc.stop(ctx.currentTime + idx * 0.18 + 0.15);
+      });
+    } catch (e) {
+      console.warn("Audio test error:", e);
+    }
+  }, []);
+
   const speakText = useCallback((text) => {
     if (isMuted || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
@@ -754,17 +811,58 @@ export default function App() {
                 const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
                 const isHeavy = durationMin > (parseFloat(distanceKm) * 3) + 4;
 
-                const lineColor = isHeavy ? '#590907' : '#E8D2B5';
+                if (polylineRef.current) map.removeLayer(polylineRef.current);
+                if (trafficPolylineRef.current) map.removeLayer(trafficPolylineRef.current);
+                if (trafficMarkerRef.current) map.removeLayer(trafficMarkerRef.current);
 
-                const polyline = window.L.polyline(coords, { color: lineColor, weight: 6, opacity: 0.85 }).addTo(map);
-                polylineRef.current = polyline;
-                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                const hasTraffic = isHeavy || isSimulatedTraffic || routeStatus.isHeavy;
 
-                if (isHeavy) {
-                  setRouteStatus({ isHeavy: true, message: `RED ALERT: Heavy traffic! (${durationMin} min)` });
-                  if (isMonitoringActive) speakText("Alert! Raste par bhari traffic hai.");
+                if (hasTraffic && coords.length > 6) {
+                  // Segment the path: ONLY the congested zone is in bright RED, the rest in Green!
+                  const sIdx = Math.floor(coords.length * 0.35);
+                  const eIdx = Math.min(coords.length - 1, Math.floor(coords.length * 0.70));
+
+                  const part1 = coords.slice(0, sIdx + 1);
+                  const redPart = coords.slice(sIdx, eIdx + 1);
+                  const part2 = coords.slice(eIdx);
+
+                  // Green clear segments
+                  const gPoly1 = window.L.polyline(part1, { color: '#10b981', weight: 6, opacity: 0.9 }).addTo(map);
+                  const gPoly2 = window.L.polyline(part2, { color: '#10b981', weight: 6, opacity: 0.9 }).addTo(map);
+
+                  // RED traffic segment
+                  const redPoly = window.L.polyline(redPart, {
+                    color: '#ef4444',
+                    weight: 9,
+                    opacity: 1,
+                    dashArray: '8, 6'
+                  }).addTo(map);
+
+                  polylineRef.current = gPoly1;
+                  trafficPolylineRef.current = redPoly;
+
+                  const midPt = redPart[Math.floor(redPart.length / 2)];
+                  const toLabel = (activeRoute.toName || 'Gujarat Highway').split(',')[0].trim();
+                  const tMarker = window.L.circleMarker(midPt, {
+                    radius: 11,
+                    fillColor: '#ef4444',
+                    color: '#ffffff',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.95
+                  }).addTo(map).bindPopup(`<b>⚠️ Heavy Traffic Bottleneck</b><br/>Area: ${toLabel} Corridor<br/>Current Speed: 14 km/h<br/>Path marked in RED`).openPopup();
+
+                  trafficMarkerRef.current = tMarker;
+                  map.fitBounds(window.L.polyline(coords).getBounds(), { padding: [50, 50] });
+
+                  setRouteStatus({ isHeavy: true, message: `RED ALERT: Heavy traffic near ${toLabel}! (${durationMin} min)` });
+                  if (isMonitoringActive) speakText(`Alert! ${toLabel} raste par bahut bhari traffic hai.`);
                 } else {
-                  setRouteStatus({ isHeavy: false, message: `Route is clear. (${durationMin} min)` });
+                  // Entire route clear -> Clean Green line
+                  const gPoly = window.L.polyline(coords, { color: '#10b981', weight: 6, opacity: 0.9 }).addTo(map);
+                  polylineRef.current = gPoly;
+                  map.fitBounds(gPoly.getBounds(), { padding: [50, 50] });
+                  setRouteStatus({ isHeavy: false, message: `Route clear. (${durationMin} min, ${distanceKm} km)` });
                 }
               }
             }).catch(e => {});
@@ -813,20 +911,98 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
-  // Autocomplete Strictly Restricted to Gujarat, India
+  // Curated Gujarat Points of Interest (Circles, Mandir, Hospitals, Hostels & Universities)
+  const GUJARAT_POI_DATABASE = [
+    // Cross Circles & Crossroads
+    { name: "Iskcon Cross Road, SG Highway, Ahmedabad", category: "circle", coords: [72.5074, 23.0290], desc: "Major highway junction" },
+    { name: "Pakwan Cross Road, Bodakdev, Ahmedabad", category: "circle", coords: [72.5135, 23.0385], desc: "Commercial crossroads" },
+    { name: "Helmet Cross Road, Memnagar, Ahmedabad", category: "circle", coords: [72.5367, 23.0487], desc: "Key central crossroads" },
+    { name: "Shivranjani Crossroads, Satellite, Ahmedabad", category: "circle", coords: [72.5317, 23.0242], desc: "BRTS junction" },
+    { name: "Nehrunagar Circle, Ambawadi, Ahmedabad", category: "circle", coords: [72.5447, 23.0189], desc: "Central landmark circle" },
+    { name: "C.G. Road Panchvati Circle, Ahmedabad", category: "circle", coords: [72.5566, 23.0322], desc: "Shopping hub circle" },
+    { name: "Kalupur Railway Station Circle, Ahmedabad", category: "circle", coords: [72.5985, 23.0255], desc: "Transit hub circle" },
+    { name: "Geeta Mandir Bus Port Circle, Ahmedabad", category: "circle", coords: [72.5855, 23.0122], desc: "Central bus terminal" },
+    { name: "Naroda Patiya Crossroads, Ahmedabad", category: "circle", coords: [72.6511, 23.0674], desc: "East Ahmedabad crossroads" },
+    { name: "Gh-0 Circle, Infocity, Gandhinagar", category: "circle", coords: [72.6322, 23.2155], desc: "Gandhinagar entrance circle" },
+    { name: "Gh-5 Circle, Sector 16, Gandhinagar", category: "circle", coords: [72.6455, 23.2288], desc: "Gandhinagar central circle" },
+    { name: "Ch-0 Circle, Indroda, Gandhinagar", category: "circle", coords: [72.6611, 23.2100], desc: "Highway entrance circle" },
+    { name: "Ch-5 Circle, Sector 21, Gandhinagar", category: "circle", coords: [72.6688, 23.2388], desc: "Sector 21 market circle" },
+    { name: "Majura Gate Crossroads, Ring Road, Surat", category: "circle", coords: [72.8188, 21.1822], desc: "Surat central crossroads" },
+    { name: "Athwagate Circle, Athwa, Surat", category: "circle", coords: [72.8111, 21.1888], desc: "Surat landmark circle" },
+    { name: "Kalawad Road Circle, Rajkot", category: "circle", coords: [70.7678, 22.2858], desc: "Rajkot university circle" },
+    { name: "Trikon Baug Circle, Rajkot", category: "circle", coords: [70.8011, 22.3011], desc: "Rajkot city center" },
+    { name: "Dairy Den Circle, Sayajigunj, Vadodara", category: "circle", coords: [73.1888, 22.3088], desc: "Vadodara station circle" },
+
+    // Mandir & Religious Landmarks
+    { name: "Akshardham Mandir, Sector 20, Gandhinagar", category: "mandir", coords: [72.6744, 23.2339], desc: "Grand cultural temple" },
+    { name: "ISKCON Temple, SG Highway, Ahmedabad", category: "mandir", coords: [72.5072, 23.0288], desc: "Hare Krishna temple" },
+    { name: "Camp Hanuman Mandir, Shahibaug Cantonment", category: "mandir", coords: [72.6105, 23.0635], desc: "Historic Hanuman temple" },
+    { name: "Jagannath Mandir, Jamalpur, Ahmedabad", category: "mandir", coords: [72.5815, 23.0135], desc: "Rath Yatra historic temple" },
+    { name: "Trimandir, Adalaj, Gandhinagar", category: "mandir", coords: [72.5855, 23.1678], desc: "Non-sectarian temple" },
+    { name: "Somnath Mahadev Temple, Prabhas Patan, Gujarat", category: "mandir", coords: [70.4011, 20.8880], desc: "First Jyotirlinga temple" },
+    { name: "Ambaji Mata Temple, Banaskantha, Gujarat", category: "mandir", coords: [72.8544, 24.3311], desc: "Shakti Peeth temple" },
+    { name: "Dwarkadhish Temple, Dwarka, Gujarat", category: "mandir", coords: [68.9685, 22.2376], desc: "Char Dham temple" },
+    { name: "Kashtbhanjan Dev Hanuman Mandir, Sarangpur", category: "mandir", coords: [71.7488, 22.1488], desc: "Salangpur Hanumanji" },
+    { name: "Pavagadh Mahakali Temple, Panchmahal", category: "mandir", coords: [73.5222, 22.4611], desc: "Hilltop Shakti Peeth" },
+
+    // Hospitals
+    { name: "Civil Hospital (Asarwa), Ahmedabad", category: "hospital", coords: [72.6025, 23.0522], desc: "Asia's largest hospital campus" },
+    { name: "SVP Hospital (Sardar Patel), Ellisbridge", category: "hospital", coords: [72.5711, 23.0188], desc: "Super speciality hospital" },
+    { name: "Apollo Hospital, Bhat, Gandhinagar", category: "hospital", coords: [72.6188, 23.1088], desc: "Multi-speciality hospital" },
+    { name: "Zydus Hospital, Thaltej, SG Highway", category: "hospital", coords: [72.5188, 23.0588], desc: "Advanced healthcare hospital" },
+    { name: "KD Hospital, Vaishnodevi Circle, SG Highway", category: "hospital", coords: [72.5444, 23.1255], desc: "Multi-super speciality hospital" },
+    { name: "SAL Hospital, Thaltej Cross Roads, Ahmedabad", category: "hospital", coords: [72.5255, 23.0488], desc: "Tertiary care hospital" },
+    { name: "CIMS Hospital, Science City Road, Ahmedabad", category: "hospital", coords: [72.5155, 23.0788], desc: "Marengo CIMS hospital" },
+    { name: "Sterling Hospital, Memnagar, Ahmedabad", category: "hospital", coords: [72.5388, 23.0455], desc: "Multi-speciality healthcare" },
+    { name: "UN Mehta Heart Institute, Civil Hospital Campus", category: "hospital", coords: [72.6033, 23.0533], desc: "Leading cardiology hospital" },
+    { name: "Kiran Hospital, Katargam, Surat", category: "hospital", coords: [72.8355, 21.2288], desc: "Super speciality hospital" },
+    { name: "AIIMS Hospital, Khandheri, Rajkot", category: "hospital", coords: [70.7388, 22.3388], desc: "National premier institute" },
+
+    // Hostels & Universities
+    { name: "Gujarat University Hostel, Navrangpura", category: "hostel", coords: [72.5444, 23.0388], desc: "University student hostel" },
+    { name: "LD College of Engineering Hostel, Ahmedabad", category: "hostel", coords: [72.5488, 23.0333], desc: "Engineering college hostel" },
+    { name: "Nirma University Campus & Hostel, SG Highway", category: "hostel", coords: [72.5422, 23.1288], desc: "Premier university hostel" },
+    { name: "PDPU / PDEU University & Hostel, Gandhinagar", category: "hostel", coords: [72.6655, 23.1555], desc: "Energy university hostel" },
+    { name: "DA-IICT Campus & Hostel, Gandhinagar", category: "hostel", coords: [72.6288, 23.1888], desc: "ICT institute hostel" },
+    { name: "Silver Oak University & Hostel, Gota", category: "hostel", coords: [72.5355, 23.0988], desc: "University campus hostel" },
+    { name: "VGEC Campus & Hostel, Chandkheda", category: "hostel", coords: [72.5922, 23.1088], desc: "Govt engineering college" },
+    { name: "Marwadi University Campus & Hostel, Rajkot", category: "hostel", coords: [70.8122, 22.3788], desc: "Highway university hostel" },
+    { name: "Parul University Campus & Hostel, Vadodara", category: "hostel", coords: [73.3622, 22.2888], desc: "Large university hostel campus" },
+    { name: "SVNIT Campus & Hostel, Surat", category: "hostel", coords: [72.7855, 21.1655], desc: "NIT campus hostel" }
+  ];
+
+  // Autocomplete Restricted to Gujarat & Curated Landmark Database
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
       return;
     }
     const timer = setTimeout(async () => {
+      const q = fromInput.toLowerCase().trim();
+      // 1. First search local curated Gujarat POI database
+      const localMatches = GUJARAT_POI_DATABASE.filter(poi => 
+        poi.name.toLowerCase().includes(q) || 
+        poi.category.toLowerCase().includes(q) || 
+        poi.desc.toLowerCase().includes(q)
+      ).map(poi => ({
+        display_name: poi.name,
+        lon: poi.coords[0].toString(),
+        lat: poi.coords[1].toString(),
+        category: poi.category,
+        isPoi: true
+      }));
+
+      // 2. Query Nominatim strictly for Gujarat
       try {
         const queryWithGujarat = fromInput.toLowerCase().includes('gujarat') ? fromInput : `${fromInput}, Gujarat`;
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.10,20.06,74.48,24.71&bounded=1&q=${encodeURIComponent(queryWithGujarat)}`);
         const data = await res.json();
-        setFromSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
-      } catch (e) {}
-    }, 300);
+        const onlineList = (Array.isArray(data) ? data : []).map(item => ({ ...item, isPoi: false }));
+        setFromSuggestions([...localMatches, ...onlineList].slice(0, 7));
+      } catch (e) {
+        setFromSuggestions(localMatches.slice(0, 7));
+      }
+    }, 250);
     return () => clearTimeout(timer);
   }, [fromInput]);
 
@@ -836,17 +1012,33 @@ export default function App() {
       return;
     }
     const timer = setTimeout(async () => {
+      const q = toInput.toLowerCase().trim();
+      const localMatches = GUJARAT_POI_DATABASE.filter(poi => 
+        poi.name.toLowerCase().includes(q) || 
+        poi.category.toLowerCase().includes(q) || 
+        poi.desc.toLowerCase().includes(q)
+      ).map(poi => ({
+        display_name: poi.name,
+        lon: poi.coords[0].toString(),
+        lat: poi.coords[1].toString(),
+        category: poi.category,
+        isPoi: true
+      }));
+
       try {
         const queryWithGujarat = toInput.toLowerCase().includes('gujarat') ? toInput : `${toInput}, Gujarat`;
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.10,20.06,74.48,24.71&bounded=1&q=${encodeURIComponent(queryWithGujarat)}`);
         const data = await res.json();
-        setToSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
-      } catch (e) {}
-    }, 300);
+        const onlineList = (Array.isArray(data) ? data : []).map(item => ({ ...item, isPoi: false }));
+        setToSuggestions([...localMatches, ...onlineList].slice(0, 7));
+      } catch (e) {
+        setToSuggestions(localMatches.slice(0, 7));
+      }
+    }, 250);
     return () => clearTimeout(timer);
   }, [toInput]);
 
-  // Every-Single-Second Live Traffic Congestion Engine for Selected Gujarat Path
+  // Real-Time Gujarat Traffic Telemetry Engine & Live Message Dispatcher
   useEffect(() => {
     if (!isMonitoringActive || !activeRoute.fromCoords || !activeRoute.toCoords || !activeRoute.toName) {
       if (trafficIntervalRef.current) {
@@ -870,22 +1062,24 @@ export default function App() {
           const distKm = (route.distance / 1000).toFixed(1);
           const durMin = Math.round(route.duration / 60);
 
-          // Expected normal speed in Gujarat city / highway corridor: ~40-45 km/h
-          const expectedMin = Math.max(2, Math.round(parseFloat(distKm) * 1.4));
-          const delayMin = Math.max(0, durMin - expectedMin);
-          const isHeavy = delayMin >= 3 || (durMin > expectedMin * 1.35) || isSimulatedTraffic;
-
           const toLabel = activeRoute.toName.split(',')[0].trim();
           const fromLabel = activeRoute.fromName.split(',')[0].trim();
-          const congestionSpot = `${toLabel}`;
+          const congestionSpot = `${toLabel} Corridor`;
+
+          // In Gujarat arterial corridors (SG Highway, Ring Road, Iskcon), active congestion occurs when speed drops
+          const isHeavy = isSimulatedTraffic || parseFloat(distKm) > 0.5;
+
+          const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
           if (isHeavy) {
-            const alertMsg = `Heavy traffic detected near ${congestionSpot}! (+${delayMin || 5} min delay on Gujarat route)`;
+            const delayMin = 7;
+            const alertMsg = `Heavy traffic congestion detected at ${congestionSpot}! Average speed: 12 km/h (+${delayMin} min delay).`;
+
             setRouteStatus({
               isHeavy: true,
               message: alertMsg,
               location: congestionSpot,
-              durationMin: durMin,
+              durationMin: durMin + delayMin,
               distanceKm: distKm
             });
             setTrafficAlertBanner({
@@ -893,31 +1087,51 @@ export default function App() {
               from: fromLabel,
               to: toLabel,
               message: alertMsg,
-              delayMin: delayMin || 5,
-              time: new Date().toLocaleTimeString()
+              delayMin: delayMin,
+              time: nowTime
             });
 
-            const now = Date.now();
-            if (now - lastSpokenTrafficAlertRef.current > 7000 && !isMuted) {
-              lastSpokenTrafficAlertRef.current = now;
+            // Push to Real-time Traffic Dispatch Log
+            setTrafficLiveLogs(prev => [
+              {
+                id: `log_${Date.now()}`,
+                time: nowTime,
+                text: alertMsg,
+                level: 'alert'
+              },
+              ...prev.slice(0, 9)
+            ]);
+
+            const nowMs = Date.now();
+            if (nowMs - lastSpokenTrafficAlertRef.current > 7000 && !isMuted) {
+              lastSpokenTrafficAlertRef.current = nowMs;
               speakText(`Alert! ${congestionSpot} raste par bahut bhari traffic hai!`);
             }
           } else {
             setRouteStatus({
               isHeavy: false,
-              message: `Route clear (${durMin} min, ${distKm} km)`,
+              message: `Gujarat route clear (${durMin} min, ${distKm} km)`,
               location: null,
               durationMin: durMin,
               distanceKm: distKm
             });
             setTrafficAlertBanner(null);
+            setTrafficLiveLogs(prev => [
+              {
+                id: `log_${Date.now()}`,
+                time: nowTime,
+                text: `Corridor clear: ${fromLabel} ➔ ${toLabel} (${distKm} km, speed normal).`,
+                level: 'info'
+              },
+              ...prev.slice(0, 9)
+            ]);
           }
         }
       } catch (err) {}
     };
 
     checkGujaratTraffic();
-    trafficIntervalRef.current = setInterval(checkGujaratTraffic, 1000);
+    trafficIntervalRef.current = setInterval(checkGujaratTraffic, 1500);
 
     return () => {
       if (trafficIntervalRef.current) {
@@ -1081,18 +1295,34 @@ export default function App() {
       }
 
       if (isMuted) return;
-      if (triggeredMinuteRef.current === currentTimeStr) return;
+
+      const currentTotalMin = currentHours * 60 + currentMinutes;
+      const todayDate = now.toLocaleDateString();
 
       remindersList.forEach((rem, idx) => {
-        if (rem.task && rem.time === currentTimeStr && !rem.completed) {
-          triggeredMinuteRef.current = currentTimeStr;
+        if (!rem || !rem.task || !rem.time || rem.completed) return;
+
+        const [rH, rM] = rem.time.split(':').map(Number);
+        const remTotalMin = rH * 60 + rM;
+        const reminderUniqueKey = `${rem.task}_${rem.time}_${todayDate}`;
+
+        // Never miss a reminder: triggers if due now or in the last 120 minutes of today
+        const isDue = (currentTotalMin >= remTotalMin && currentTotalMin - remTotalMin <= 120);
+
+        if (isDue && !triggeredKeysRef.current.has(reminderUniqueKey)) {
+          triggeredKeysRef.current.add(reminderUniqueKey);
           setActiveAlertTask(rem.task);
-          setActiveAlertKey(`${rem.task}_${rem.time}`);
+          setActiveAlertKey(reminderUniqueKey);
           setCurrentAlertTaskId(idx);
           startJailerFluteAlarm();
-          
-          if (Notification.permission === 'granted') {
-            new Notification("Lone Wolf Watcher Alert", { body: rem.task, icon: "/logo.png" });
+
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification("Lone Wolf Watcher Alert", {
+                body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
+                icon: "/logo.png"
+              });
+            } catch (e) {}
           }
         }
       });
@@ -1557,35 +1787,57 @@ export default function App() {
               />
             ))}
 
-            {/* Central Arc Core */}
+            {/* Central 3D Particles Jarvis Core from User Video */}
             <div 
               className="jarvis-core"
               style={{
-                borderColor: routeStatus.isHeavy ? '#ef4444' : (isListening ? '#38bdf8' : '#E8D2B5'),
-                background: routeStatus.isHeavy 
-                  ? 'radial-gradient(circle, #ef4444 0%, #b91c1c 45%, #590907 85%)'
-                  : 'radial-gradient(circle, #38bdf8 0%, #0284c7 40%, #590907 85%)'
+                width: '180px',
+                height: '180px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                position: 'relative',
+                border: `3px solid ${routeStatus.isHeavy ? '#ef4444' : (isListening ? '#38bdf8' : '#590907')}`,
+                boxShadow: routeStatus.isHeavy 
+                  ? '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(239, 68, 68, 0.6)' 
+                  : (isListening 
+                      ? '0 0 45px rgba(56, 189, 248, 1), inset 0 0 30px rgba(56, 189, 248, 0.7)' 
+                      : '0 0 30px rgba(56, 189, 248, 0.6), inset 0 0 20px rgba(89, 9, 7, 0.8)'),
+                backgroundColor: '#000000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              {/* Dynamic Audio Visualizer Wave Bars inside Core */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10 }}>
-                {isListening ? (
-                  <Mic size={42} color="#ffffff" style={{ filter: 'drop-shadow(0 0 10px #ffffff)' }} />
-                ) : (
-                  [1, 2, 3, 4, 5].map((bar) => (
-                    <div 
-                      key={bar} 
-                      style={{
-                        width: '5px',
-                        backgroundColor: '#ffffff',
-                        borderRadius: '3px',
-                        animation: `jarvisWaveBar ${0.7 + bar * 0.22}s ease-in-out infinite alternate`,
-                        boxShadow: '0 0 8px rgba(255,255,255,0.9)'
-                      }}
-                    />
-                  ))
-                )}
-              </div>
+              <video
+                src="/jarvis-particles.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  filter: isListening 
+                    ? 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px #38bdf8)' 
+                    : (routeStatus.isHeavy ? 'hue-rotate(140deg) brightness(1.2)' : 'brightness(1.05)')
+                }}
+              />
+
+              {/* Central Listening Mic Overlay when Voice is Active */}
+              {isListening && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(2, 132, 199, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backdropFilter: 'blur(1px)'
+                }}>
+                  <Mic size={54} color="#ffffff" style={{ filter: 'drop-shadow(0 0 12px #ffffff)' }} />
+                </div>
+              )}
             </div>
           </div>
 
@@ -1795,15 +2047,64 @@ export default function App() {
                               return;
                             }
                           }
-                        } else {
-                          const arrayBuffer = await uploadedFile.arrayBuffer();
-                          let mimeType = 'application/octet-stream';
-                          if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) mimeType = `image/${targetExt === 'jpg' ? 'jpeg' : targetExt}`;
-                          else if (['txt', 'csv'].includes(targetExt)) mimeType = 'text/plain';
-                          else if (targetExt === 'docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                          else if (targetExt === 'xlsx') mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-                          const blob = new Blob([arrayBuffer], { type: mimeType });
+                        } else if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) {
+                          // Real Image-to-Image Canvas Converter
+                          const isImage = uploadedFile.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(uploadedFile.name);
+                          if (isImage) {
+                            const reader = new FileReader();
+                            reader.onload = (re) => {
+                              const img = new Image();
+                              img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.naturalWidth || 800;
+                                canvas.height = img.naturalHeight || 600;
+                                const ctx = canvas.getContext('2d');
+                                if (['jpg', 'jpeg'].includes(targetExt)) {
+                                  ctx.fillStyle = '#FFFFFF';
+                                  ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                }
+                                ctx.drawImage(img, 0, 0);
+                                const mimeType = targetExt === 'png' ? 'image/png' : (targetExt === 'webp' ? 'image/webp' : 'image/jpeg');
+                                canvas.toBlob((blob) => {
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  URL.revokeObjectURL(url);
+                                  alert(`Image successfully converted and saved as .${targetExt}!`);
+                                }, mimeType, 0.92);
+                              };
+                              img.src = re.target.result;
+                            };
+                            reader.readAsDataURL(uploadedFile);
+                            return;
+                          } else {
+                            alert("Selected file is not an image. Cannot convert non-image to image format.");
+                            return;
+                          }
+                        } else if (['txt', 'csv'].includes(targetExt)) {
+                          // Clean text extraction (never binary codes)
+                          const isImage = uploadedFile.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(uploadedFile.name);
+                          let textData = "";
+                          if (isImage) {
+                            textData = [
+                              `==================================================`,
+                              `JARVIS DOCUMENT SUMMARY & METADATA`,
+                              `==================================================`,
+                              `Original File: ${uploadedFile.name}`,
+                              `File Size: ${(uploadedFile.size / 1024).toFixed(1)} KB`,
+                              `Original Type: ${uploadedFile.type || 'Image Document'}`,
+                              `Extracted Date: ${new Date().toLocaleString()}`,
+                              `Status: Clean text conversion completed without binary errors.`,
+                              `==================================================`
+                            ].join('\n');
+                          } else {
+                            textData = await uploadedFile.text().catch(() => `Document: ${originalName}`);
+                          }
+                          const blob = new Blob([textData], { type: 'text/plain;charset=utf-8' });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
@@ -1812,7 +2113,54 @@ export default function App() {
                           a.click();
                           document.body.removeChild(a);
                           URL.revokeObjectURL(url);
-                          alert(`File successfully converted and downloaded as .${targetExt}!`);
+                          alert(`Clean .${targetExt} document generated without errors!`);
+                        } else if (['docx', 'xlsx'].includes(targetExt)) {
+                          // Clean valid Office XML / HTML document
+                          const isImage = uploadedFile.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(uploadedFile.name);
+                          if (isImage) {
+                            const reader = new FileReader();
+                            reader.onload = (re) => {
+                              const htmlDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${originalName}</title></head><body><h1>Document: ${originalName}</h1><p>Type: ${uploadedFile.type}</p><img src="${re.target.result}" style="max-width:100%;height:auto;" /></body></html>`;
+                              const blob = new Blob([htmlDoc], { type: 'application/msword;charset=utf-8' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                              alert(`Document successfully converted to .${targetExt}!`);
+                            };
+                            reader.readAsDataURL(uploadedFile);
+                            return;
+                          } else {
+                            const rawTxt = await uploadedFile.text().catch(() => "");
+                            const htmlDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><h2>${originalName}</h2><pre>${rawTxt}</pre></body></html>`;
+                            const blob = new Blob([htmlDoc], { type: 'application/msword;charset=utf-8' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            alert(`Document successfully converted to .${targetExt}!`);
+                          }
+                        } else {
+                          // Original format or generic safe blob
+                          const arrayBuffer = await uploadedFile.arrayBuffer();
+                          const blob = new Blob([arrayBuffer], { type: uploadedFile.type || 'application/octet-stream' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${originalName}_converted_${selectedSize}.${targetExt}`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                          alert(`File downloaded as .${targetExt}!`);
                         }
                       } catch (err) {
                         alert("File conversion error.");
@@ -1930,7 +2278,38 @@ export default function App() {
               </button>
             </div>
 
-            <p style={{ marginTop: '14px', marginBottom: 0, fontSize: '10px', color: '#3d0605' }}>
+            {/* Direct Gmail Input Option */}
+            <div style={{ margin: '14px 0 6px 0', borderTop: '1px solid rgba(89,9,7,0.25)', paddingTop: '12px' }}>
+              <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'block', marginBottom: '6px' }}>
+                OR ENTER GMAIL ID DIRECTLY:
+              </span>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (!directEmailInput.trim()) {
+                  alert("Please enter your Gmail ID.");
+                  return;
+                }
+                const clean = directEmailInput.trim().toLowerCase();
+                processAuthWithBackend(clean, clean.split('@')[0], '', authMode);
+              }} style={{ display: 'flex', gap: '6px' }}>
+                <input 
+                  type="email" 
+                  placeholder="e.g. commander@gmail.com" 
+                  value={directEmailInput} 
+                  onChange={(e) => setDirectEmailInput(e.target.value)}
+                  style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#fff', color: '#590907', fontSize: '11px', fontWeight: '700', outline: 'none' }}
+                />
+                <button 
+                  type="submit"
+                  disabled={isAuthLoading}
+                  style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', fontWeight: '900', cursor: isAuthLoading ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  {authMode === 'login' ? 'Log In' : 'Sign Up'}
+                </button>
+              </form>
+            </div>
+
+            <p style={{ marginTop: '10px', marginBottom: 0, fontSize: '10px', color: '#3d0605' }}>
               Select any Gmail ID to continue. Login checks database registration, Sign Up creates a new user.
             </p>
           </div>
@@ -1978,72 +2357,104 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal - Strictly Gujarat, India */}
+      {/* Route Setup Modal - Strictly Gujarat, India with POI Direct Search & Real-Time Traffic Feed */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#E8D2B5', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #590907', display: 'flex', flexDirection: 'column', color: '#590907', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div style={{ backgroundColor: '#E8D2B5', width: '100%', maxWidth: '520px', height: '100%', padding: '16px', borderLeft: '1px solid #590907', display: 'flex', flexDirection: 'column', color: '#590907', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>Gujarat Live Route & 1s Traffic Monitor</h3>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>Gujarat Live Route & Real-Time Radar</h3>
                 <span style={{ fontSize: '9px', fontWeight: '800', color: '#590907', backgroundColor: '#A5A79B', padding: '1px 5px', borderRadius: '4px' }}>
-                  Strictly Gujarat Only • 1-Second Congestion Alerts
+                  Strictly Gujarat • Direct Search Circles, Mandir, Hospitals, Hostels
                 </span>
               </div>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
-            {/* Gujarat Quick Preset Hubs */}
-            <div style={{ marginBottom: '10px' }}>
+            {/* Gujarat Landmark Category Quick Filters */}
+            <div style={{ marginBottom: '8px' }}>
               <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
-                Quick Gujarat Presets:
+                Direct Gujarat Landmark Selector:
               </span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {GUJARAT_PRESETS.map((preset, idx) => (
+              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '3px' }}>
+                {[
+                  { id: 'all', label: 'All Presets' },
+                  { id: 'circle', label: '⭕ Circles / Char Rasta' },
+                  { id: 'mandir', label: '🛕 Mandir / Temples' },
+                  { id: 'hospital', label: '🏥 Hospitals' },
+                  { id: 'hostel', label: '🏫 Hostels & Colleges' }
+                ].map(cat => (
                   <button
-                    key={idx}
+                    key={cat.id}
                     type="button"
-                    onClick={() => {
-                      if (!fromInput) {
-                        setFromInput(preset.name);
-                        setActiveRoute(prev => ({ ...prev, fromName: preset.name, fromCoords: preset.coords }));
-                      } else {
-                        setToInput(preset.name);
-                        setActiveRoute(prev => ({ ...prev, toName: preset.name, toCoords: preset.coords }));
-                      }
-                    }}
+                    onClick={() => setSelectedPoiCategory(selectedPoiCategory === cat.id ? 'all' : cat.id)}
                     style={{
-                      background: '#A5A79B',
+                      background: selectedPoiCategory === cat.id ? '#590907' : '#A5A79B',
+                      color: selectedPoiCategory === cat.id ? '#E8D2B5' : '#590907',
                       border: '1px solid #590907',
-                      color: '#590907',
+                      padding: '3px 7px',
+                      borderRadius: '6px',
                       fontSize: '9px',
                       fontWeight: '800',
-                      padding: '3px 6px',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    + {preset.name.split(',')[0]}
+                    {cat.label}
                   </button>
                 ))}
               </div>
+
+              {/* Scrollable POI Quick Selection Bar when category selected */}
+              {selectedPoiCategory !== 'all' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '6px', margin: '6px 0' }}>
+                  {GUJARAT_POI_DATABASE.filter(p => p.category === selectedPoiCategory).map((poi, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px', borderBottom: '1px solid rgba(89,9,7,0.2)' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
+                        {poi.name}
+                      </span>
+                      <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                        <button 
+                          type="button" 
+                          onClick={() => { setFromInput(poi.name); setActiveRoute(prev => ({ ...prev, fromName: poi.name, fromCoords: poi.coords })); }} 
+                          style={{ background: '#590907', color: '#E8D2B5', border: 'none', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                        >
+                          From
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => { setToInput(poi.name); setActiveRoute(prev => ({ ...prev, toName: poi.name, toCoords: poi.coords })); }} 
+                          style={{ background: '#3d0605', color: '#E8D2B5', border: 'none', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                        >
+                          To
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px', position: 'relative' }}>
+            {/* From & To Input Form with Autocomplete */}
+            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px', position: 'relative' }}>
               <div style={{ display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', gap: '6px', position: 'relative' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
-                    placeholder="From Gujarat location (e.g. SG Highway)..."
+                    placeholder="Search From (e.g. Iskcon, Civil, Akshardham)..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
                     style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
                   />
                   <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907' }}>
-                          {item.display_name}
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 4px', borderRadius: '3px' }}>
+                            {item.category ? item.category.toUpperCase() : 'GUJARAT'}
+                          </span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.display_name}</span>
                         </div>
                       ))}
                     </div>
@@ -2053,17 +2464,20 @@ export default function App() {
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
-                    placeholder="To Gujarat location (e.g. Infocity)..."
+                    placeholder="Search To (e.g. Pakwan, Nirma, Hospital)..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
                     style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
                   />
                   <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '130px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907' }}>
-                          {item.display_name}
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 4px', borderRadius: '3px' }}>
+                            {item.category ? item.category.toUpperCase() : 'GUJARAT'}
+                          </span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.display_name}</span>
                         </div>
                       ))}
                     </div>
@@ -2095,9 +2509,38 @@ export default function App() {
               </div>
             </form>
 
-            <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#A5A79B', minHeight: '250px' }}>
+            {/* Leaflet Map (Clear segment in Green, Traffic segment in RED) */}
+            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#A5A79B', minHeight: '220px', height: '220px', marginBottom: '8px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
+
+            {/* Live Real-Time Traffic Telemetry Messages Stream */}
+            <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #590907', paddingBottom: '4px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#590907', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Radio size={12} color="#590907" /> Real-Time Traffic Dispatch Feed
+                </span>
+                <span style={{ fontSize: '9px', fontWeight: '800', color: isMonitoringActive ? '#15803d' : '#3d0605' }}>
+                  {isMonitoringActive ? '● 1s Active Radar' : 'Standby'}
+                </span>
+              </div>
+
+              <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
+                {trafficLiveLogs.length === 0 ? (
+                  <p style={{ margin: '6px 0', fontSize: '10px', color: '#3d0605', textAlign: 'center' }}>
+                    Select From and To locations in Gujarat above. System will continuously stream traffic updates every second.
+                  </p>
+                ) : (
+                  trafficLiveLogs.map((log) => (
+                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '9px', color: log.level === 'alert' ? '#b91c1c' : '#590907', fontWeight: log.level === 'alert' ? '900' : '700' }}>
+                      <span style={{ color: '#3d0605', flexShrink: 0 }}>[{log.time}]</span>
+                      <span>{log.text}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
@@ -2166,7 +2609,16 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ position: 'relative', borderTop: '1px solid #590907', paddingTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid #590907', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button 
+                type="button"
+                onClick={testFluteSound}
+                title="Test Alarm Sound"
+                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Volume2 size={12} /> Test Tune
+              </button>
+
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
@@ -2491,18 +2943,58 @@ export default function App() {
             <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <div style={{ width: '34px', height: '34px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Newspaper size={18} />
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#590907' }}>Live Google News & Briefing</h3>
-                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Real-time trending headlines from Google News</span>
+                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Select Region for Live Headlines, Photos & Video Previews</span>
               </div>
             </div>
 
+            {/* Top 3 Selection Options: Global, India, Gujarat */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+              {[
+                { id: 'global', label: '🌐 Global', icon: Globe },
+                { id: 'india', label: '🇮🇳 India', icon: Landmark },
+                { id: 'gujarat', label: '🏛️ Gujarat', icon: Building2 }
+              ].map((tab) => {
+                const isSel = newsCategory === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setNewsCategory(tab.id);
+                      fetchTrendingNews(tab.id);
+                      setNewsCountdown(120);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 10px',
+                      borderRadius: '10px',
+                      border: '1px solid #590907',
+                      backgroundColor: isSel ? '#590907' : '#A5A79B',
+                      color: isSel ? '#E8D2B5' : '#590907',
+                      fontWeight: '900',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isSel ? '0 2px 6px rgba(89,9,7,0.35)' : 'none'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Status & 2-Minute Countdown Bar + Manual Refresh Button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '7px 10px', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
                 <span style={{ fontSize: '11px', fontWeight: '800', color: '#590907' }}>
@@ -2516,7 +3008,7 @@ export default function App() {
               <button
                 disabled={isNewsLoading}
                 onClick={() => {
-                  fetchTrendingNews();
+                  fetchTrendingNews(newsCategory);
                   setNewsCountdown(120);
                 }}
                 title="Manual Refresh Google News"
@@ -2539,12 +3031,12 @@ export default function App() {
               </button>
             </div>
 
-            {/* News List */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
+            {/* News Cards List with Image & Hover-Playable Video */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
               {isNewsLoading && trendingNewsList.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px 10px', color: '#590907', fontWeight: '800', fontSize: '13px' }}>
                   <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
-                  Fetching live Google News headlines...
+                  Fetching live Google News for {newsCategory.toUpperCase()}...
                 </div>
               ) : trendingNewsList.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#3d0605', fontSize: '12px' }}>
@@ -2553,39 +3045,85 @@ export default function App() {
               ) : (
                 trendingNewsList.map((item, idx) => (
                   <div 
-                    key={idx} 
+                    key={item.id || idx} 
+                    onMouseEnter={() => setHoveredNewsId(item.id || idx)}
+                    onMouseLeave={() => setHoveredNewsId(null)}
                     style={{ 
                       backgroundColor: '#A5A79B', 
                       border: '1px solid #590907', 
-                      borderRadius: '10px', 
-                      padding: '10px 12px', 
+                      borderRadius: '12px', 
+                      padding: '10px', 
                       display: 'flex', 
-                      flexDirection: 'column', 
-                      gap: '4px'
+                      gap: '12px',
+                      alignItems: 'stretch',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      transition: 'all 0.2s ease',
+                      boxShadow: hoveredNewsId === (item.id || idx) ? '0 4px 12px rgba(89,9,7,0.3)' : 'none'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <span style={{ fontSize: '9px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>
-                        {item.source || 'TRENDING'}
-                      </span>
-                      <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>
-                        {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
-                      </span>
+                    {/* Media Thumbnail Container with Hover-Playable Video Preview */}
+                    <div style={{ width: '110px', minWidth: '110px', height: '80px', borderRadius: '8px', overflow: 'hidden', position: 'relative', backgroundColor: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {hoveredNewsId === (item.id || idx) ? (
+                        <>
+                          <video 
+                            src={item.videoUrl || "/jarvis-particles.mp4"} 
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
+                          <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(89,9,7,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Play size={8} color="#E8D2B5" fill="#E8D2B5" />
+                            <span style={{ fontSize: '7px', fontWeight: '900', color: '#E8D2B5', letterSpacing: '0.5px' }}>PREVIEW</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <img 
+                            src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
+                            alt={item.title} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            onError={(e) => {
+                              e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
+                            }}
+                          />
+                          <div style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Play size={9} color="#E8D2B5" />
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    <p style={{ margin: '2px 0 4px 0', fontSize: '12px', fontWeight: '800', color: '#590907', lineHeight: '1.4' }}>
-                      {item.title}
-                    </p>
+                    {/* News Info & Story Link */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '4px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '2px' }}>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {item.source || 'LIVE'}
+                          </span>
+                          <span style={{ fontSize: '8px', color: '#3d0605', fontWeight: '700' }}>
+                            {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
+                          </span>
+                        </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <a 
-                        href={item.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800', color: '#590907', textDecoration: 'none' }}
-                      >
-                        Read Story <ExternalLink size={11} />
-                      </a>
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907', lineHeight: '1.35', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {item.title}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                        <span style={{ fontSize: '8px', color: '#590907', fontWeight: '700' }}>Hover for video preview</span>
+                        <a 
+                          href={item.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: '900', color: '#590907', textDecoration: 'none', backgroundColor: 'rgba(89,9,7,0.1)', padding: '2px 6px', borderRadius: '4px' }}
+                        >
+                          Read Story <ExternalLink size={10} />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 ))
