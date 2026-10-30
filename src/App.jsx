@@ -3,8 +3,9 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus
 } from 'lucide-react';
+import { auth, googleProvider, signInWithPopup, signOut } from './firebase';
 
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
 
@@ -25,6 +26,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
@@ -187,65 +189,130 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Strict Database Login & Sign Up Logic (Wahi jo Rider & Ride Taker app mein tha)
-  const handleGoogleAuthAction = async (email, name) => {
+  // Real Database Google Auth & Verification (Chrome & Mobile Account Chooser)
+  const triggerGoogleAuth = async (targetMode = authMode) => {
+    setIsAuthLoading(true);
     try {
-      if (authMode === 'login') {
-        // Database Check for Login
-        const localCheck = localStorage.getItem(`jarvis_db_user_${email}`);
-        if (!localCheck) {
-          alert("Error: Yeh Gmail ID database mein registered nahi hai! Pehle Sign Up karein.");
-          return;
+      // Prompt user to select from all available Gmail accounts in browser/device
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleUser = result.user;
+
+      if (!googleUser || !googleUser.email) {
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const email = googleUser.email.trim().toLowerCase();
+      const fullName = googleUser.displayName || email.split('@')[0];
+      const photo = googleUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=E8D2B5&color=590907`;
+
+      const payload = {
+        email,
+        fullName,
+        avatar: photo,
+        mode: targetMode
+      };
+
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const endpoints = isLocal
+        ? ['http://localhost:5001', BACKEND_URL]
+        : [BACKEND_URL, 'http://localhost:5001'];
+
+      let resData = null;
+      let resOk = false;
+      let resStatus = 0;
+
+      for (const base of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const res = await fetch(`${base}/api/auth/google-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          resStatus = res.status;
+          resOk = res.ok;
+          resData = await res.json().catch(() => null);
+          if (resData) break;
+        } catch (e) {
+          // Fall through to next candidate endpoint
         }
-        const profileData = JSON.parse(localCheck);
-        setUserProfile(profileData);
-        setShowAuthModal(false);
-        alert(`Success! Logged in successfully as ${profileData.name}.`);
+      }
+
+      if (targetMode === 'login') {
+        if (resOk && resData && resData.success && resData.user) {
+          const profileData = {
+            _id: resData.user._id,
+            name: resData.user.fullName || fullName,
+            email: resData.user.email || email,
+            photo: resData.user.avatar || photo,
+            role: resData.user.role || 'commander',
+            connectedDate: new Date(resData.user.createdAt || Date.now()).toLocaleDateString()
+          };
+          setUserProfile(profileData);
+          localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
+          setShowAuthModal(false);
+          alert(`Success! Logged in successfully as ${profileData.name}. Welcome back!`);
+        } else if (resStatus === 404 || (resData && resData.success === false)) {
+          alert(`Error: Yeh Gmail ID (${email}) database mein registered nahi hai! Pehle Sign Up karein.`);
+          setAuthMode('signup');
+        } else {
+          // Emergency local cache check if backend endpoint couldn't be reached
+          const localCheck = localStorage.getItem(`jarvis_db_user_${email}`);
+          if (localCheck) {
+            const profileData = JSON.parse(localCheck);
+            setUserProfile(profileData);
+            setShowAuthModal(false);
+            alert(`Success! Logged in successfully as ${profileData.name}.`);
+          } else {
+            alert(`Error: Yeh Gmail ID (${email}) database mein registered nahi hai! Pehle Sign Up karein.`);
+            setAuthMode('signup');
+          }
+        }
       } else {
-        // Sign Up Flow with Backend Verification & Welcome Mail Trigger
-        const res = await fetch(`${BACKEND_URL}/api/auth/google-login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, mode: 'signup' })
-        });
-        const data = await res.json().catch(() => ({ success: true, message: "Welcome email sent successfully." }));
-
+        // Sign Up Flow
+        let dbUser = resData?.user;
         const profileData = {
-          name: name || email.split('@')[0].toUpperCase(),
-          email: email,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
-          connectedDate: new Date().toLocaleDateString()
+          _id: dbUser?._id || `usr_${Date.now()}`,
+          name: dbUser?.fullName || fullName,
+          email: dbUser?.email || email,
+          photo: dbUser?.avatar || photo,
+          role: dbUser?.role || 'commander',
+          connectedDate: new Date(dbUser?.createdAt || Date.now()).toLocaleDateString()
         };
-
         localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
         setUserProfile(profileData);
         setShowAuthModal(false);
-        alert(`Sign Up Success! ${data.message || 'Welcome email dispatched to your Gmail.'}[cite: 14]`);
+        alert(`Sign Up Success! Welcome ${profileData.name}. Your account has been registered.`);
       }
     } catch (err) {
-      if (authMode === 'login') {
-        alert("Login Error: User database mein nahi mila.");
-      } else {
-        const profileData = {
-          name: name || email.split('@')[0].toUpperCase(),
-          email: email,
-          photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=E8D2B5&color=590907`,
-          connectedDate: new Date().toLocaleDateString()
-        };
-        localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
-        setUserProfile(profileData);
-        setShowAuthModal(false);
-        alert(`Sign Up Successful with ${email}! Welcome email triggered[cite: 14].`);
+      if (err.code === 'auth/popup-closed-by-user') {
+        return;
       }
+      if (err.code === 'auth/popup-blocked') {
+        alert("Google Sign-In popup was blocked by your browser. Please allow popups for this site.");
+        return;
+      }
+      alert(`Authentication Error: ${err.message || 'Google Sign-In failed.'}`);
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
+  const handleGoogleAuthAction = () => {
+    triggerGoogleAuth(authMode);
+  };
+
   const startBrowserGoogleAuthPopup = () => {
-    const dummyAccounts = ["arthurs10pc@gmail.com", "commander.spct@gmail.com", "jarvis.ai.official@gmail.com"];
-    const chosen = prompt(`Google Account Select Karein:\n1. ${dummyAccounts[0]}\n2. ${dummyAccounts[1]}\n3. ${dummyAccounts[2]}\n\nAapki Gmail ID yahan type karein:`, dummyAccounts[0]);
-    if (chosen && chosen.includes('@')) {
-      handleGoogleAuthAction(chosen.trim());
-    }
+    triggerGoogleAuth(authMode);
+  };
+
+  const startRiderAppGoogleAuth = () => {
+    triggerGoogleAuth(authMode);
   };
 
   // Master Mute Handler
@@ -861,13 +928,39 @@ export default function App() {
               if (userProfile) {
                 setShowProfileModal(true);
               } else {
+                setAuthMode('login');
                 setShowAuthModal(true);
               }
             }} 
-            title={userProfile ? `Connected: ${userProfile.email}` : "Google Login / Sign Up"} 
-            style={{ background: userProfile ? 'rgba(232, 210, 181, 0.2)' : '#3d0605', border: `1px solid ${userProfile ? '#E8D2B5' : '#E8D2B5'}`, color: userProfile ? '#E8D2B5' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
+            style={{ 
+              position: 'relative',
+              background: userProfile ? '#E8D2B5' : '#3d0605', 
+              border: '1px solid #E8D2B5', 
+              color: userProfile ? '#590907' : '#E8D2B5', 
+              padding: userProfile && userProfile.photo ? '2px' : '8px', 
+              borderRadius: '10px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: '38px',
+              height: '38px',
+              overflow: 'hidden'
+            }}
           >
-            {userProfile ? <UserCircle size={18} /> : <LogIn size={16} />}
+            {userProfile ? (
+              userProfile.photo ? (
+                <img src={userProfile.photo} alt={userProfile.name} style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+              ) : (
+                <span style={{ fontSize: '13px', fontWeight: '900' }}>{(userProfile.name || 'U').charAt(0).toUpperCase()}</span>
+              )
+            ) : (
+              <UserCircle size={20} />
+            )}
+            {userProfile && (
+              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', border: '1px solid #590907' }} />
+            )}
           </button>
 
           <button onClick={handleStopAll} title="Stop All" style={{ background: '#3d0605', border: '1px solid #590907', color: '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1116,36 +1209,86 @@ export default function App() {
       {/* Google Login / Sign Up Modal */}
       {showAuthModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #590907', color: '#590907', textAlign: 'center' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #590907', color: '#590907', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
             <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '900' }}>Google Authentication</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '10px', color: '#3d0605' }}>Select your Google account to Log In or Sign Up.</p>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: '900', letterSpacing: '0.3px' }}>Google Authentication</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '11px', color: '#3d0605' }}>
+              Select your Gmail ID to {authMode === 'login' ? 'Log In to your dashboard' : 'create your account'}.
+            </p>
 
+            {/* 2 Buttons: Log In and Sign Up */}
             <div style={{ display: 'flex', backgroundColor: '#A5A79B', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #590907' }}>
               <button 
                 onClick={() => setAuthMode('login')}
-                style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#590907' : 'transparent', color: authMode === 'login' ? '#E8D2B5' : '#590907', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#590907' : 'transparent', color: authMode === 'login' ? '#E8D2B5' : '#590907', fontWeight: '900', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
               >
                 Log In
               </button>
               <button 
                 onClick={() => setAuthMode('signup')}
-                style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: authMode === 'signup' ? '#590907' : 'transparent', color: authMode === 'signup' ? '#E8D2B5' : '#590907', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'signup' ? '#590907' : 'transparent', color: authMode === 'signup' ? '#E8D2B5' : '#590907', fontWeight: '900', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
               >
                 Sign Up
               </button>
             </div>
 
-            <button 
-              onClick={() => {
-                setShowAuthModal(false);
-                startRiderAppGoogleAuth();
-              }}
-              style={{ width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <LogIn size={15} color="#E8D2B5" /> Continue with Google
-            </button>
+            {/* Action Buttons for Log In and Sign Up */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                disabled={isAuthLoading}
+                onClick={() => triggerGoogleAuth('login')}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '12px', 
+                  border: '1px solid #590907', 
+                  backgroundColor: authMode === 'login' ? '#590907' : 'transparent', 
+                  color: authMode === 'login' ? '#E8D2B5' : '#590907', 
+                  fontWeight: '900', 
+                  fontSize: '12px', 
+                  cursor: isAuthLoading ? 'wait' : 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px',
+                  boxShadow: authMode === 'login' ? '0 2px 8px rgba(89,9,7,0.3)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <LogIn size={15} color={authMode === 'login' ? '#E8D2B5' : '#590907'} />
+                {isAuthLoading && authMode === 'login' ? 'Connecting Google...' : 'Log In with Google'}
+              </button>
+
+              <button 
+                disabled={isAuthLoading}
+                onClick={() => triggerGoogleAuth('signup')}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '12px', 
+                  border: '1px solid #590907', 
+                  backgroundColor: authMode === 'signup' ? '#590907' : 'transparent', 
+                  color: authMode === 'signup' ? '#E8D2B5' : '#590907', 
+                  fontWeight: '900', 
+                  fontSize: '12px', 
+                  cursor: isAuthLoading ? 'wait' : 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px',
+                  boxShadow: authMode === 'signup' ? '0 2px 8px rgba(89,9,7,0.3)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <UserPlus size={15} color={authMode === 'signup' ? '#E8D2B5' : '#590907'} />
+                {isAuthLoading && authMode === 'signup' ? 'Creating Account...' : 'Sign Up with Google'}
+              </button>
+            </div>
+
+            <p style={{ marginTop: '14px', marginBottom: 0, fontSize: '10px', color: '#3d0605' }}>
+              Select any Gmail ID to continue. Login checks database registration, Sign Up creates a new user.
+            </p>
           </div>
         </div>
       )}
@@ -1353,28 +1496,54 @@ export default function App() {
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #590907', color: '#590907', textAlign: 'center' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #590907', color: '#590907', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
             <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '22px', fontWeight: '900' }}>
-              {userProfile.name.charAt(0).toUpperCase()}
-            </div>
+            {userProfile.photo ? (
+              <img 
+                src={userProfile.photo} 
+                alt={userProfile.name} 
+                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid #590907', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            ) : (
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
+                {(userProfile.name || 'U').charAt(0).toUpperCase()}
+              </div>
+            )}
 
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '900', color: '#590907' }}>{userProfile.name}</h3>
-            <p style={{ margin: '0 0 14px 0', fontSize: '10px', color: '#3d0605' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '9px', color: '#3d0605', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate}</span>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#590907' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#3d0605', fontWeight: '600' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '10px', color: '#3d0605', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate || 'Active'}</span>
 
-            <button 
-              onClick={() => {
-                if (window.confirm("Are you sure you want to disconnect your Google account?")) {
-                  setUserProfile(null);
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button 
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to disconnect / log out?")) {
+                    try {
+                      await signOut(auth);
+                    } catch (e) {}
+                    setUserProfile(null);
+                    localStorage.removeItem('jarvis_user_profile');
+                    setShowProfileModal(false);
+                  }
+                }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+              >
+                Disconnect / Log Out
+              </button>
+
+              <button 
+                onClick={() => {
                   setShowProfileModal(false);
-                }
-              }}
-              style={{ width: '100%', padding: '9px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
-            >
-              Disconnect Account
-            </button>
+                  setAuthMode('login');
+                  setShowAuthModal(true);
+                }}
+                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: 'transparent', color: '#590907', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+              >
+                Switch Account
+              </button>
+            </div>
           </div>
         </div>
       )}
