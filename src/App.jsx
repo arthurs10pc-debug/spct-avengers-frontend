@@ -102,6 +102,7 @@ export default function App() {
   const [newNotePinned, setNewNotePinned] = useState(false);
   const [isSendingNotesEmail, setIsSendingNotesEmail] = useState(false);
   const [notesEmailFeedback, setNotesEmailFeedback] = useState('');
+  const [notesTargetEmail, setNotesTargetEmail] = useState('');
 
   // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -121,6 +122,8 @@ export default function App() {
   });
   const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
   const [isMonitoringActive, setIsMonitoringActive] = useState(false);
+  const navVehicleMarkerRef = useRef(null);
+  const navAnimationTimerRef = useRef(null);
 
   // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
@@ -198,6 +201,47 @@ export default function App() {
   const [expenseCategory, setExpenseCategory] = useState('Food & Snacks');
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
   const [expenseSearchQuery, setExpenseSearchQuery] = useState('');
+  const [expenseTabMode, setExpenseTabMode] = useState('tracker'); // 'tracker' | 'monthly_report'
+  const [transactionType, setTransactionType] = useState('expense'); // 'expense' | 'income'
+  const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const formatExpenseMonthLabel = (monthStr) => {
+    if (!monthStr) return '';
+    try {
+      const [year, month] = monthStr.split('-');
+      const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+      return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    } catch (e) {
+      return monthStr;
+    }
+  };
+
+  const handlePrevExpenseMonth = () => {
+    setSelectedExpenseMonth(prev => {
+      try {
+        const [year, month] = prev.split('-').map(Number);
+        const d = new Date(year, month - 2, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      } catch (e) {
+        return prev;
+      }
+    });
+  };
+
+  const handleNextExpenseMonth = () => {
+    setSelectedExpenseMonth(prev => {
+      try {
+        const [year, month] = prev.split('-').map(Number);
+        const d = new Date(year, month, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      } catch (e) {
+        return prev;
+      }
+    });
+  };
 
   // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat)
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -853,7 +897,15 @@ export default function App() {
         const centerLat = activeRoute.fromCoords ? activeRoute.fromCoords[1] : 23.0225;
         const centerLon = activeRoute.fromCoords ? activeRoute.fromCoords[0] : 72.5714;
 
-        const map = window.L.map(mapContainerRef.current).setView([centerLat, centerLon], 12);
+        if (mapContainerRef.current._leaflet_id) {
+          mapContainerRef.current._leaflet_id = null;
+        }
+        let map;
+        try {
+          map = window.L.map(mapContainerRef.current).setView([centerLat, centerLon], 12);
+        } catch (e) {
+          return;
+        }
         mapInstanceRef.current = map;
 
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1624,11 +1676,15 @@ export default function App() {
       alert("Please enter both title and amount.");
       return;
     }
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const newExp = {
+      id: 'tx_' + Date.now(),
+      type: transactionType || 'expense',
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
-      category: expenseCategory || 'Food & Snacks',
-      date: new Date().toLocaleDateString()
+      category: transactionType === 'income' ? (expenseCategory || 'Salary & Wages') : (expenseCategory || 'Food & Snacks'),
+      date: `${ym}-${String(now.getDate()).padStart(2, '0')}`
     };
     setExpenseList(prev => [newExp, ...prev]);
     setExpenseTitle('');
@@ -1717,6 +1773,37 @@ export default function App() {
     setToInput(item.display_name);
     setActiveRoute(prev => ({ ...prev, toName: item.display_name, toCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
     setToSuggestions([]);
+  };
+
+  const handleStopRouteNavigation = () => {
+    setIsMonitoringActive(false);
+    setTrafficAlertBanner(null);
+    if (trafficIntervalRef.current) {
+      clearInterval(trafficIntervalRef.current);
+      trafficIntervalRef.current = null;
+    }
+    if (navAnimationTimerRef.current) {
+      clearInterval(navAnimationTimerRef.current);
+      navAnimationTimerRef.current = null;
+    }
+    if (navVehicleMarkerRef.current && mapInstanceRef.current) {
+      try { mapInstanceRef.current.removeLayer(navVehicleMarkerRef.current); } catch (e) {}
+      navVehicleMarkerRef.current = null;
+    }
+    if (polylineRef.current && mapInstanceRef.current) {
+      try { mapInstanceRef.current.removeLayer(polylineRef.current); } catch (e) {}
+      polylineRef.current = null;
+    }
+    if (trafficPolylineRef.current && mapInstanceRef.current) {
+      try { mapInstanceRef.current.removeLayer(trafficPolylineRef.current); } catch (e) {}
+      trafficPolylineRef.current = null;
+    }
+    if (trafficMarkerRef.current && mapInstanceRef.current) {
+      try { mapInstanceRef.current.removeLayer(trafficMarkerRef.current); } catch (e) {}
+      trafficMarkerRef.current = null;
+    }
+    setRouteStatus({ isHeavy: false, message: "Route navigation stopped. Ready for next route." });
+    speakText("Route navigation stopped.");
   };
 
   const handleApplyRoute = (e) => {
