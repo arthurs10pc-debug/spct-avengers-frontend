@@ -5,7 +5,9 @@ import {
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus
 } from 'lucide-react';
-const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
+const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
+  ? `http://${window.location.hostname}:5001`
+  : "https://spct-avengers-backend.onrender.com";
 const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
 
 const parseJwt = (token) => {
@@ -157,6 +159,15 @@ export default function App() {
   const polylineRef = useRef(null);
   const clickStepRef = useRef(0);
 
+  // Cloud Real-Time Sync State Refs
+  const isRemoteSyncRef = useRef(false);
+  const userProfileRef = useRef(userProfile);
+  const syncTimerRef = useRef(null);
+
+  useEffect(() => {
+    userProfileRef.current = userProfile;
+  }, [userProfile]);
+
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(remindersList));
@@ -190,6 +201,74 @@ export default function App() {
       }
     } catch (e) {}
   }, [userProfile]);
+
+  // Fetch Cloud Data on Mount or when User Profile Changes (Sync from DB to Device)
+  useEffect(() => {
+    if (!userProfile?.email) return;
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('join_user_room', userProfile.email);
+    }
+
+    const fetchCloudUserData = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/user/sync-data?email=${encodeURIComponent(userProfile.email)}`);
+        const data = await res.json();
+        if (data && data.success) {
+          isRemoteSyncRef.current = true;
+          if (Array.isArray(data.reminders)) {
+            setRemindersList(data.reminders);
+          }
+          if (typeof data.snoozeMinutes === 'number') {
+            setSnoozeMinutes(data.snoozeMinutes);
+          }
+          if (Array.isArray(data.expenses)) {
+            setExpenseList(data.expenses);
+          }
+          if (typeof data.monthlyBudget === 'number') {
+            setMonthlyBudget(data.monthlyBudget);
+          }
+          setTimeout(() => {
+            isRemoteSyncRef.current = false;
+          }, 400);
+        }
+      } catch (e) {
+        console.warn("Could not fetch user sync data:", e);
+      }
+    };
+
+    fetchCloudUserData();
+  }, [userProfile?.email]);
+
+  // Real-Time Push to Cloud & Other Logged-in Devices whenever Reminders or Expenses change
+  useEffect(() => {
+    if (isRemoteSyncRef.current || !userProfile?.email) return;
+
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      const payload = {
+        email: userProfile.email,
+        reminders: remindersList,
+        snoozeMinutes: snoozeMinutes,
+        expenses: expenseList,
+        monthlyBudget: monthlyBudget
+      };
+
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('sync_user_data_realtime', payload);
+      }
+
+      fetch(`${BACKEND_URL}/api/user/sync-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }, 350);
+
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, [remindersList, snoozeMinutes, expenseList, monthlyBudget, userProfile?.email]);
 
   // Live Header Clock, Date & Day Updater
   useEffect(() => {
@@ -271,6 +350,21 @@ export default function App() {
           role: resData.user.role || 'commander',
           connectedDate: new Date(resData.user.createdAt || Date.now()).toLocaleDateString()
         };
+        isRemoteSyncRef.current = true;
+        if (Array.isArray(resData.user.reminders)) {
+          setRemindersList(resData.user.reminders);
+        }
+        if (typeof resData.user.snoozeMinutes === 'number') {
+          setSnoozeMinutes(resData.user.snoozeMinutes);
+        }
+        if (Array.isArray(resData.user.expenses)) {
+          setExpenseList(resData.user.expenses);
+        }
+        if (typeof resData.user.monthlyBudget === 'number') {
+          setMonthlyBudget(resData.user.monthlyBudget);
+        }
+        setTimeout(() => { isRemoteSyncRef.current = false; }, 400);
+
         setUserProfile(profileData);
         localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
         localStorage.setItem(`jarvis_db_user_${cleanEmail}`, JSON.stringify(profileData));
@@ -303,6 +397,14 @@ export default function App() {
         role: dbUser?.role || 'commander',
         connectedDate: new Date(dbUser?.createdAt || Date.now()).toLocaleDateString()
       };
+      if (dbUser) {
+        isRemoteSyncRef.current = true;
+        if (Array.isArray(dbUser.reminders)) setRemindersList(dbUser.reminders);
+        if (typeof dbUser.snoozeMinutes === 'number') setSnoozeMinutes(dbUser.snoozeMinutes);
+        if (Array.isArray(dbUser.expenses)) setExpenseList(dbUser.expenses);
+        if (typeof dbUser.monthlyBudget === 'number') setMonthlyBudget(dbUser.monthlyBudget);
+        setTimeout(() => { isRemoteSyncRef.current = false; }, 400);
+      }
       localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
       localStorage.setItem(`jarvis_db_user_${cleanEmail}`, JSON.stringify(profileData));
       setUserProfile(profileData);
@@ -716,7 +818,29 @@ export default function App() {
   }, [routeStatus, isMonitoringActive, isMuted, speakText]);
 
   useEffect(() => {
-    socketRef.current = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+    const socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      if (userProfileRef.current?.email) {
+        socket.emit('join_user_room', userProfileRef.current.email);
+      }
+    });
+
+    socket.on('user_data_synced', (data) => {
+      if (!data || !userProfileRef.current?.email) return;
+      if (data.email && data.email.toLowerCase() !== userProfileRef.current.email.toLowerCase()) return;
+
+      isRemoteSyncRef.current = true;
+      if (Array.isArray(data.reminders)) setRemindersList(data.reminders);
+      if (typeof data.snoozeMinutes === 'number') setSnoozeMinutes(data.snoozeMinutes);
+      if (Array.isArray(data.expenses)) setExpenseList(data.expenses);
+      if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
+
+      setTimeout(() => {
+        isRemoteSyncRef.current = false;
+      }, 400);
+    });
     
     if ('speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
