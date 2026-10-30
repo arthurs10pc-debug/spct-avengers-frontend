@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
+import { jsPDF } from 'jspdf';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
-  Globe, Play, Pause, Radio, Landmark, Building2, Flame
+  Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -55,6 +56,51 @@ export default function App() {
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
+
+  // Google Keep Style Notes & 3x Daily Email Reminder State
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [notesList, setNotesList] = useState(() => {
+    try {
+      const email = userProfile?.email ? userProfile.email.trim().toLowerCase() : 'guest';
+      const saved = localStorage.getItem(`jarvis_notes_${email}`);
+      return saved ? JSON.parse(saved) : [
+        {
+          id: 'note_preset_1',
+          title: 'Daily Gujarat Route & Tasks',
+          type: 'task',
+          checklist: [
+            { id: 'c1', text: 'Check SG Highway traffic before leaving', completed: true },
+            { id: 'c2', text: 'Verify morning briefing headlines', completed: true },
+            { id: 'c3', text: 'Review today expense logs & budget', completed: false }
+          ],
+          color: '#38bdf8',
+          pinned: true,
+          createdAt: new Date().toLocaleDateString()
+        },
+        {
+          id: 'note_preset_2',
+          title: 'SPCT Project Guidelines',
+          type: 'text',
+          content: 'Keep real-time traffic active during peak hours. Use the clean tools converter for PDF export.',
+          color: '#f59e0b',
+          pinned: false,
+          createdAt: new Date().toLocaleDateString()
+        }
+      ];
+    } catch {
+      return [];
+    }
+  });
+  const [noteFilterTab, setNoteFilterTab] = useState('all');
+  const [noteSearchQuery, setNoteSearchQuery] = useState('');
+  const [newNoteType, setNewNoteType] = useState('task');
+  const [newNoteTitle, setNewNoteTitle] = useState('');
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [newNoteChecklist, setNewNoteChecklist] = useState([{ id: 'c_1', text: '', completed: false }]);
+  const [newNoteColor, setNewNoteColor] = useState('#38bdf8');
+  const [newNotePinned, setNewNotePinned] = useState(false);
+  const [isSendingNotesEmail, setIsSendingNotesEmail] = useState(false);
+  const [notesEmailFeedback, setNotesEmailFeedback] = useState('');
 
   // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -254,6 +300,9 @@ export default function App() {
           if (typeof data.monthlyBudget === 'number') {
             setMonthlyBudget(data.monthlyBudget);
           }
+          if (Array.isArray(data.notes)) {
+            setNotesList(data.notes);
+          }
           setTimeout(() => {
             isRemoteSyncRef.current = false;
           }, 400);
@@ -266,7 +315,7 @@ export default function App() {
     fetchCloudUserData();
   }, [userProfile?.email]);
 
-  // Real-Time Push to Cloud & Other Logged-in Devices whenever Reminders or Expenses change
+  // Real-Time Push to Cloud & Other Logged-in Devices whenever Reminders, Expenses, or Notes change
   useEffect(() => {
     if (isRemoteSyncRef.current || !userProfile?.email) return;
 
@@ -277,7 +326,8 @@ export default function App() {
         reminders: remindersList,
         snoozeMinutes: snoozeMinutes,
         expenses: expenseList,
-        monthlyBudget: monthlyBudget
+        monthlyBudget: monthlyBudget,
+        notes: notesList
       };
 
       if (socketRef.current?.connected) {
@@ -294,7 +344,7 @@ export default function App() {
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
-  }, [remindersList, snoozeMinutes, expenseList, monthlyBudget, userProfile?.email]);
+  }, [remindersList, snoozeMinutes, expenseList, monthlyBudget, notesList, userProfile?.email]);
 
   // Live Header Clock, Date & Day Updater
   useEffect(() => {
@@ -427,6 +477,9 @@ export default function App() {
         if (typeof resData.user.monthlyBudget === 'number') {
           setMonthlyBudget(resData.user.monthlyBudget);
         }
+        if (Array.isArray(resData.user.notes)) {
+          setNotesList(resData.user.notes);
+        }
         setTimeout(() => { isRemoteSyncRef.current = false; }, 400);
 
         setUserProfile(profileData);
@@ -467,6 +520,7 @@ export default function App() {
         if (typeof dbUser.snoozeMinutes === 'number') setSnoozeMinutes(dbUser.snoozeMinutes);
         if (Array.isArray(dbUser.expenses)) setExpenseList(dbUser.expenses);
         if (typeof dbUser.monthlyBudget === 'number') setMonthlyBudget(dbUser.monthlyBudget);
+        if (Array.isArray(dbUser.notes)) setNotesList(dbUser.notes);
         setTimeout(() => { isRemoteSyncRef.current = false; }, 400);
       }
       localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
@@ -603,12 +657,25 @@ export default function App() {
     triggerGoogleAuth(authMode);
   };
 
-  // Master Mute Handler
+  // Master Mute Handler: Completely mutes whole web application
   useEffect(() => {
     if (isMuted) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
       if (alarmIntervalRef.current) {
         clearInterval(alarmIntervalRef.current);
         alarmIntervalRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'running') {
+        audioCtxRef.current.suspend().catch(() => {});
+      }
+      document.querySelectorAll('audio, video').forEach(el => {
+        el.muted = true;
+      });
+    } else {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
       }
     }
   }, [isMuted]);
@@ -1066,14 +1133,17 @@ export default function App() {
           const fromLabel = activeRoute.fromName.split(',')[0].trim();
           const congestionSpot = `${toLabel} Corridor`;
 
-          // In Gujarat arterial corridors (SG Highway, Ring Road, Iskcon), active congestion occurs when speed drops
-          const isHeavy = isSimulatedTraffic || parseFloat(distKm) > 0.5;
+          // Real speed calculation: speed in km/h based on distance and duration
+          const currentSpeedKmH = route.duration > 0 ? Math.round((route.distance / 1000) / (route.duration / 3600)) : 40;
+
+          // Truly congested when cars/bikes are crawling/stuck (< 20 km/h like Google Maps Red) or simulated
+          const isHeavy = isSimulatedTraffic || (currentSpeedKmH < 20 && parseFloat(distKm) > 0.5);
 
           const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
           if (isHeavy) {
-            const delayMin = 7;
-            const alertMsg = `Heavy traffic congestion detected at ${congestionSpot}! Average speed: 12 km/h (+${delayMin} min delay).`;
+            const delayMin = Math.max(5, Math.round(durMin * 0.7));
+            const alertMsg = `Heavy traffic congestion detected at ${congestionSpot}! Vehicles crawling at ${currentSpeedKmH} km/h (+${delayMin} min delay).`;
 
             setRouteStatus({
               isHeavy: true,
@@ -1091,40 +1161,47 @@ export default function App() {
               time: nowTime
             });
 
-            // Push to Real-time Traffic Dispatch Log
-            setTrafficLiveLogs(prev => [
-              {
-                id: `log_${Date.now()}`,
-                time: nowTime,
-                text: alertMsg,
-                level: 'alert'
-              },
-              ...prev.slice(0, 9)
-            ]);
+            // Push to Real-time Traffic Dispatch Log (avoid flood)
+            setTrafficLiveLogs(prev => {
+              if (prev.length > 0 && prev[0].level === 'alert' && prev[0].text === alertMsg) return prev;
+              return [
+                {
+                  id: `log_${Date.now()}`,
+                  time: nowTime,
+                  text: alertMsg,
+                  level: 'alert'
+                },
+                ...prev.slice(0, 9)
+              ];
+            });
 
             const nowMs = Date.now();
-            if (nowMs - lastSpokenTrafficAlertRef.current > 7000 && !isMuted) {
+            if (nowMs - lastSpokenTrafficAlertRef.current > 20000 && !isMuted) {
               lastSpokenTrafficAlertRef.current = nowMs;
-              speakText(`Alert! ${congestionSpot} raste par bahut bhari traffic hai!`);
+              speakText(`Alert! ${congestionSpot} raste par bhari traffic jam hai, gaadiyan dheeeme chal rahi hain.`);
             }
           } else {
             setRouteStatus({
               isHeavy: false,
-              message: `Gujarat route clear (${durMin} min, ${distKm} km)`,
+              message: `Corridor clear: ${fromLabel} to ${toLabel} (${distKm} km, ~${currentSpeedKmH} km/h normal flow)`,
               location: null,
               durationMin: durMin,
               distanceKm: distKm
             });
             setTrafficAlertBanner(null);
-            setTrafficLiveLogs(prev => [
-              {
-                id: `log_${Date.now()}`,
-                time: nowTime,
-                text: `Corridor clear: ${fromLabel} ➔ ${toLabel} (${distKm} km, speed normal).`,
-                level: 'info'
-              },
-              ...prev.slice(0, 9)
-            ]);
+            setTrafficLiveLogs(prev => {
+              const clearMsg = `Corridor clear: ${fromLabel} ➔ ${toLabel} (${distKm} km, speed normal).`;
+              if (prev.length > 0 && prev[0].level === 'info' && prev[0].text === clearMsg) return prev;
+              return [
+                {
+                  id: `log_${Date.now()}`,
+                  time: nowTime,
+                  text: clearMsg,
+                  level: 'info'
+                },
+                ...prev.slice(0, 9)
+              ];
+            });
           }
         }
       } catch (err) {}
@@ -1187,6 +1264,7 @@ export default function App() {
       if (typeof data.snoozeMinutes === 'number') setSnoozeMinutes(data.snoozeMinutes);
       if (Array.isArray(data.expenses)) setExpenseList(data.expenses);
       if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
+      if (Array.isArray(data.notes)) setNotesList(data.notes);
 
       setTimeout(() => {
         isRemoteSyncRef.current = false;
@@ -1392,6 +1470,113 @@ export default function App() {
   // Expense Categories Constant
   const EXPENSE_CATEGORIES = ['Food & Snacks', 'Travel & Fuel', 'Study & Books', 'Shopping', 'Bills & Recharge', 'Entertainment', 'Other'];
 
+
+  // Google Keep Style Notes Handlers with Gmail ID Multi-Device Sync & Email Dispatch
+  const syncNotesToCloud = (newNotes) => {
+    setNotesList(newNotes);
+    const email = userProfile?.email ? userProfile.email.trim().toLowerCase() : 'guest';
+    localStorage.setItem(`jarvis_notes_${email}`, JSON.stringify(newNotes));
+
+    if (userProfile?.email) {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('sync_user_data_realtime', {
+          email: userProfile.email,
+          notes: newNotes
+        });
+      }
+      fetch(`${BACKEND_URL}/api/notes/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userProfile.email, notes: newNotes })
+      }).catch(() => {});
+    }
+  };
+
+  const handleSaveNote = () => {
+    const hasText = newNoteTitle.trim() || newNoteContent.trim();
+    const hasChecklist = newNoteChecklist.some(c => c.text.trim() !== '');
+    if (!hasText && !hasChecklist) {
+      alert("Please enter a note title or task item.");
+      return;
+    }
+
+    const cleanChecklist = newNoteChecklist
+      .filter(item => item.text.trim() !== '')
+      .map((item, idx) => ({ id: item.id || `c_${Date.now()}_${idx}`, text: item.text.trim(), completed: !!item.completed }));
+
+    const newNote = {
+      id: `note_${Date.now()}`,
+      title: newNoteTitle.trim() || (newNoteType === 'task' ? 'Task Checklist' : 'Quick Note'),
+      type: newNoteType,
+      content: newNoteType === 'text' ? newNoteContent.trim() : '',
+      checklist: newNoteType === 'task' ? cleanChecklist : [],
+      color: newNoteColor || '#38bdf8',
+      pinned: newNotePinned,
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+
+    const updated = [newNote, ...notesList];
+    syncNotesToCloud(updated);
+    setNewNoteTitle('');
+    setNewNoteContent('');
+    setNewNoteChecklist([{ id: 'c_1', text: '', completed: false }]);
+    setNewNotePinned(false);
+  };
+
+  const handleToggleChecklistItem = (noteId, itemId) => {
+    const updated = notesList.map(n => {
+      if (n.id === noteId && Array.isArray(n.checklist)) {
+        return {
+          ...n,
+          checklist: n.checklist.map(c => c.id === itemId ? { ...c, completed: !c.completed } : c)
+        };
+      }
+      return n;
+    });
+    syncNotesToCloud(updated);
+  };
+
+  const handleDeleteNote = (noteId) => {
+    const updated = notesList.filter(n => n.id !== noteId);
+    syncNotesToCloud(updated);
+  };
+
+  const handleTogglePinNote = (noteId) => {
+    const updated = notesList.map(n => n.id === noteId ? { ...n, pinned: !n.pinned } : n);
+    syncNotesToCloud(updated);
+  };
+
+  const handleSendNotesEmailNow = async () => {
+    if (!userProfile?.email) {
+      alert("Please Log In with your Gmail ID first so we can send notes to your registered mailbox!");
+      setShowNotesModal(false);
+      setAuthMode('login');
+      setShowAuthModal(true);
+      return;
+    }
+
+    setIsSendingNotesEmail(true);
+    setNotesEmailFeedback("Delivering notes reminder to registered Gmail...");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userProfile.email, slotLabel: 'Manual Instant Reminder' })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNotesEmailFeedback(`Delivered successfully to ${userProfile.email}!`);
+      } else {
+        setNotesEmailFeedback(data.message || 'Check spam or connection.');
+      }
+    } catch (e) {
+      setNotesEmailFeedback("Failed to send email. Check connection.");
+    } finally {
+      setIsSendingNotesEmail(false);
+      setTimeout(() => setNotesEmailFeedback(""), 6000);
+    }
+  };
+
   // Safe Expense Handlers (Prepend new expense to top)
   const handleAddExpense = (e) => {
     if (e) e.preventDefault();
@@ -1589,6 +1774,47 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
         </button>
 
+        <button 
+          onClick={() => setShowNotesModal(true)} 
+          title="Google Keep Style Notes & Task Reminders" 
+          style={{ 
+            background: showNotesModal ? '#590907' : 'transparent', 
+            border: 'none', 
+            color: '#E8D2B5', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '2px', 
+            cursor: 'pointer', 
+            padding: '4px', 
+            borderRadius: '8px', 
+            width: '48px',
+            position: 'relative'
+          }}
+        >
+          <CheckSquare size={17} />
+          <span style={{ fontSize: '9px', fontWeight: '700' }}>Notes</span>
+          {notesList.length > 0 && (
+            <span style={{ 
+              position: 'absolute', 
+              top: '2px', 
+              right: '4px', 
+              backgroundColor: '#38bdf8', 
+              color: '#000000', 
+              fontSize: '8px', 
+              fontWeight: '900', 
+              borderRadius: '50%', 
+              width: '13px', 
+              height: '13px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              {notesList.length}
+            </span>
+          )}
+        </button>
+
         {/* Profile & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
@@ -1650,195 +1876,95 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <button 
               onClick={() => setIsMuted(!isMuted)} 
-              title={isMuted ? "Unmute System" : "Mute System"} 
-              style={{ border: 'none', background: isMuted ? '#7f1d1d' : '#590907', color: isMuted ? '#fecaca' : '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
+              style={{
+                border: isMuted ? '2px solid #ef4444' : '1px solid #590907',
+                background: isMuted ? '#991b1b' : '#590907',
+                color: isMuted ? '#ffffff' : '#E8D2B5',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '900',
+                fontSize: '11px',
+                letterSpacing: '0.5px',
+                boxShadow: isMuted ? '0 0 10px rgba(239, 68, 68, 0.6)' : 'none',
+                transition: 'all 0.2s'
+              }}
             >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              <span>{isMuted ? "MUTED" : "SOUND ON"}</span>
             </button>
           </div>
         </header>
 
-        {/* Main Jarvis Heart Center - Marvel Avengers Jarvis Arc Reactor AI Interface (No written text) */}
+        {/* Main Jarvis Heart Center - Only moving middle particle dots animation video (No spinning circles or perimeter rings) */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative', overflow: 'hidden', backgroundColor: '#A5A79B' }}>
           
           <style>{`
-            @keyframes jarvisSpinClockwise {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-            @keyframes jarvisSpinCounter {
-              0% { transform: rotate(360deg); }
-              100% { transform: rotate(0deg); }
-            }
             @keyframes jarvisPulseCore {
-              0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.8)); }
-              50% { transform: scale(1.08); filter: drop-shadow(0 0 32px rgba(56, 189, 248, 1)) drop-shadow(0 0 50px rgba(89, 9, 7, 0.6)); }
-            }
-            @keyframes jarvisRippleRing {
-              0% { transform: scale(0.85); opacity: 0.85; }
-              100% { transform: scale(1.45); opacity: 0; }
-            }
-            @keyframes jarvisWaveBar {
-              0%, 100% { height: 10px; }
-              50% { height: 36px; }
-            }
-            @keyframes jarvisAlertPulse {
-              0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
-              50% { transform: scale(1.02); box-shadow: 0 0 45px rgba(239, 68, 68, 0.95); }
-            }
-            .jarvis-reactor-stage {
-              position: relative;
-              width: 280px;
-              height: 280px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              cursor: pointer;
-              user-select: none;
-            }
-            .jarvis-outer-ring {
-              position: absolute;
-              width: 270px;
-              height: 270px;
-              border-radius: 50%;
-              border: 2px dashed #590907;
-              animation: jarvisSpinClockwise 20s linear infinite;
-            }
-            .jarvis-tech-ring {
-              position: absolute;
-              width: 235px;
-              height: 235px;
-              border-radius: 50%;
-              border: 3px solid transparent;
-              border-top-color: #38bdf8;
-              border-bottom-color: #38bdf8;
-              border-left-color: #590907;
-              border-right-color: #590907;
-              animation: jarvisSpinCounter 12s linear infinite;
-            }
-            .jarvis-segmented-ring {
-              position: absolute;
-              width: 195px;
-              height: 195px;
-              border-radius: 50%;
-              border: 3px dotted #E8D2B5;
-              animation: jarvisSpinClockwise 8s linear infinite;
-            }
-            .jarvis-ripple-1 {
-              position: absolute;
-              width: 180px;
-              height: 180px;
-              border-radius: 50%;
-              border: 2px solid rgba(56, 189, 248, 0.6);
-              animation: jarvisRippleRing 3s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-            }
-            .jarvis-ripple-2 {
-              position: absolute;
-              width: 180px;
-              height: 180px;
-              border-radius: 50%;
-              border: 2px solid rgba(232, 210, 181, 0.7);
-              animation: jarvisRippleRing 3s cubic-bezier(0, 0.2, 0.8, 1) infinite 1.5s;
-            }
-            .jarvis-core {
-              position: absolute;
-              width: 130px;
-              height: 130px;
-              border-radius: 50%;
-              background: radial-gradient(circle, #38bdf8 0%, #0284c7 40%, #590907 85%, #1e1b4b 100%);
-              border: 3px solid #38bdf8;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              animation: jarvisPulseCore 2s ease-in-out infinite;
-              box-shadow: 0 0 35px rgba(56, 189, 248, 0.85);
+              0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.7)); }
+              50% { transform: scale(1.04); filter: drop-shadow(0 0 28px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 40px rgba(89, 9, 7, 0.5)); }
             }
           `}</style>
 
-          {/* Concentric Avengers Jarvis Arc Reactor */}
+          {/* Clean Central Jarvis Particle Video Core without any outer rotating rings or coils */}
           <div 
-            className="jarvis-reactor-stage" 
             onClick={startListening} 
-            title="Avengers Jarvis Arc Reactor - Click to Speak"
+            title="Jarvis 3D Particle AI - Click to Speak"
+            style={{
+              position: 'relative',
+              width: '240px',
+              height: '240px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: `3px solid ${routeStatus.isHeavy ? '#ef4444' : (isListening ? '#38bdf8' : '#38bdf8')}`,
+              boxShadow: routeStatus.isHeavy 
+                ? '0 0 35px rgba(239, 68, 68, 0.8), inset 0 0 20px rgba(239, 68, 68, 0.4)' 
+                : (isListening 
+                    ? '0 0 45px rgba(56, 189, 248, 1), inset 0 0 30px rgba(56, 189, 248, 0.6)' 
+                    : '0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 20px rgba(56, 189, 248, 0.3)'),
+              backgroundColor: '#000000',
+              animation: 'jarvisPulseCore 3s ease-in-out infinite',
+              transition: 'all 0.3s ease'
+            }}
           >
-            {/* Glowing Concentric Ripples */}
-            <div className="jarvis-ripple-1"></div>
-            <div className="jarvis-ripple-2"></div>
-
-            {/* Rotating Tech HUD Rings */}
-            <div className="jarvis-outer-ring"></div>
-            <div className="jarvis-tech-ring"></div>
-            <div className="jarvis-segmented-ring"></div>
-
-            {/* 10 Arc Reactor Energy Coils radiating around perimeter */}
-            {[0, 36, 72, 108, 144, 180, 216, 252, 288, 324].map((deg) => (
-              <div 
-                key={deg} 
-                style={{
-                  position: 'absolute',
-                  width: '8px',
-                  height: '24px',
-                  backgroundColor: isListening ? '#38bdf8' : (routeStatus.isHeavy ? '#ef4444' : '#E8D2B5'),
-                  borderRadius: '3px',
-                  transform: `rotate(${deg}deg) translateY(-88px)`,
-                  boxShadow: isListening ? '0 0 12px #38bdf8' : (routeStatus.isHeavy ? '0 0 10px #ef4444' : '0 0 6px #590907'),
-                  transition: 'all 0.3s'
-                }}
-              />
-            ))}
-
-            {/* Central 3D Particles Jarvis Core from User Video */}
-            <div 
-              className="jarvis-core"
+            <video
+              src="/jarvis-particles.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
               style={{
-                width: '180px',
-                height: '180px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                position: 'relative',
-                border: `3px solid ${routeStatus.isHeavy ? '#ef4444' : (isListening ? '#38bdf8' : '#590907')}`,
-                boxShadow: routeStatus.isHeavy 
-                  ? '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(239, 68, 68, 0.6)' 
-                  : (isListening 
-                      ? '0 0 45px rgba(56, 189, 248, 1), inset 0 0 30px rgba(56, 189, 248, 0.7)' 
-                      : '0 0 30px rgba(56, 189, 248, 0.6), inset 0 0 20px rgba(89, 9, 7, 0.8)'),
-                backgroundColor: '#000000',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                filter: isListening 
+                  ? 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px #38bdf8)' 
+                  : (routeStatus.isHeavy ? 'hue-rotate(140deg) brightness(1.2)' : 'brightness(1.05)')
+              }}
+            />
+
+            {/* Central Listening Mic Overlay when Voice is Active */}
+            {isListening && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: 'rgba(2, 132, 199, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <video
-                src="/jarvis-particles.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  filter: isListening 
-                    ? 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px #38bdf8)' 
-                    : (routeStatus.isHeavy ? 'hue-rotate(140deg) brightness(1.2)' : 'brightness(1.05)')
-                }}
-              />
-
-              {/* Central Listening Mic Overlay when Voice is Active */}
-              {isListening && (
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundColor: 'rgba(2, 132, 199, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backdropFilter: 'blur(1px)'
-                }}>
-                  <Mic size={54} color="#ffffff" style={{ filter: 'drop-shadow(0 0 12px #ffffff)' }} />
-                </div>
-              )}
-            </div>
+                justifyContent: 'center',
+                backdropFilter: 'blur(1px)'
+              }}>
+                <Mic size={54} color="#ffffff" style={{ filter: 'drop-shadow(0 0 12px #ffffff)' }} />
+              </div>
+            )}
           </div>
 
           {/* Real-time 1-Second Gujarat Traffic Alert Pill (Appears automatically when traffic happens) */}
@@ -1974,7 +2100,7 @@ export default function App() {
                       try {
                         if (targetExt === 'pdf') {
                           const isImage = uploadedFile.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(uploadedFile.name);
-                          const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+                          const PDFConstructor = typeof jsPDF !== 'undefined' ? jsPDF : (window.jspdf?.jsPDF || window.jsPDF);
 
                           if (isImage) {
                             const reader = new FileReader();
@@ -1983,50 +2109,31 @@ export default function App() {
                               const img = new Image();
                               img.onload = () => {
                                 try {
-                                  if (jsPDFClass) {
-                                    const imgW = img.naturalWidth || img.width;
-                                    const imgH = img.naturalHeight || img.height;
-                                    const isLandscape = imgW > imgH;
-                                    
-                                    const doc = new jsPDFClass({
-                                      orientation: isLandscape ? 'l' : 'p',
-                                      unit: 'pt',
-                                      format: 'a4'
-                                    });
+                                  const imgW = img.naturalWidth || 800;
+                                  const imgH = img.naturalHeight || 600;
+                                  const isLandscape = imgW > imgH;
+                                  
+                                  const doc = new PDFConstructor({
+                                    orientation: isLandscape ? 'l' : 'p',
+                                    unit: 'pt',
+                                    format: 'a4'
+                                  });
 
-                                    const pageW = doc.internal.pageSize.getWidth();
-                                    const pageH = doc.internal.pageSize.getHeight();
-                                    const margin = 20;
-                                    const availW = pageW - margin * 2;
-                                    const availH = pageH - margin * 2;
-                                    const ratio = Math.min(availW / imgW, availH / imgH, 1);
-                                    const w = imgW * ratio;
-                                    const h = imgH * ratio;
-                                    const x = (pageW - w) / 2;
-                                    const y = (pageH - h) / 2;
+                                  const pageW = doc.internal.pageSize.getWidth();
+                                  const pageH = doc.internal.pageSize.getHeight();
+                                  const margin = 20;
+                                  const availW = pageW - margin * 2;
+                                  const availH = pageH - margin * 2;
+                                  const ratio = Math.min(availW / imgW, availH / imgH, 1);
+                                  const w = imgW * ratio;
+                                  const h = imgH * ratio;
+                                  const x = (pageW - w) / 2;
+                                  const y = (pageH - h) / 2;
 
-                                    const format = uploadedFile.type.includes('png') ? 'PNG' : 'JPEG';
-                                    doc.addImage(dataUrl, format, x, y, w, h, undefined, 'FAST');
-                                    doc.save(`${originalName}_converted_${selectedSize}.pdf`);
-                                    alert("Image successfully converted into PDF with full image clarity!");
-                                  } else {
-                                    const canvas = document.createElement('canvas');
-                                    canvas.width = img.naturalWidth || 800;
-                                    canvas.height = img.naturalHeight || 600;
-                                    const ctx = canvas.getContext('2d');
-                                    ctx.drawImage(img, 0, 0);
-                                    canvas.toBlob((blob) => {
-                                      const url = URL.createObjectURL(blob);
-                                      const a = document.createElement('a');
-                                      a.href = url;
-                                      a.download = `${originalName}_converted_${selectedSize}.pdf`;
-                                      document.body.appendChild(a);
-                                      a.click();
-                                      document.body.removeChild(a);
-                                      URL.revokeObjectURL(url);
-                                    }, 'application/pdf');
-                                    alert("Image successfully exported to PDF!");
-                                  }
+                                  const format = uploadedFile.type.includes('png') ? 'PNG' : 'JPEG';
+                                  doc.addImage(dataUrl, format, x, y, w, h, undefined, 'FAST');
+                                  doc.save(`${originalName}_converted_${selectedSize}.pdf`);
+                                  alert("Image successfully converted into authentic PDF document!");
                                 } catch (e) {
                                   alert("PDF generation error: " + e.message);
                                 }
@@ -2038,14 +2145,12 @@ export default function App() {
                             return;
                           } else {
                             const rawText = await uploadedFile.text().catch(() => "");
-                            if (jsPDFClass) {
-                              const doc = new jsPDFClass();
-                              const lines = doc.splitTextToSize(rawText || `Document: ${originalName}`, 180);
-                              doc.text(lines, 14, 20);
-                              doc.save(`${originalName}_converted_${selectedSize}.pdf`);
-                              alert("Document successfully converted to PDF!");
-                              return;
-                            }
+                            const doc = new PDFConstructor({ unit: 'pt', format: 'a4' });
+                            const lines = doc.splitTextToSize(rawText || `File: ${originalName}`, 540);
+                            doc.text(lines, 30, 40);
+                            doc.save(`${originalName}_converted_${selectedSize}.pdf`);
+                            alert("Document successfully converted into clean PDF!");
+                            return;
                           }
                         } else if (['jpg', 'jpeg', 'png', 'webp'].includes(targetExt)) {
                           // Real Image-to-Image Canvas Converter
@@ -2189,6 +2294,410 @@ export default function App() {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Keep Style Notes Modal */}
+      {showNotesModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(6px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '780px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
+            
+            <button 
+              onClick={() => setShowNotesModal(false)} 
+              style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={16} />
+            </button>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#590907' }}>
+                  <CheckSquare size={19} color="#590907" /> Google Keep Notes & Task Reminders
+                </h3>
+                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '600' }}>
+                  Synced with mobile via registered Gmail ({userProfile?.email || 'Guest Mode - Login to Sync'})
+                </span>
+              </div>
+
+              {/* 3x Daily Email Notification & Instant Test Button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={handleSendNotesEmailNow}
+                  disabled={isSendingNotesEmail}
+                  style={{
+                    backgroundColor: '#590907',
+                    color: '#E8D2B5',
+                    border: 'none',
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    cursor: isSendingNotesEmail ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Delivers current task checklist and notes to your signed Gmail ID right now"
+                >
+                  <Mail size={12} />
+                  {isSendingNotesEmail ? 'Sending...' : 'Send Notes to My Gmail Now'}
+                </button>
+              </div>
+            </div>
+
+            {/* Daily Email Schedule Banner */}
+            <div style={{ padding: '8px 12px', borderRadius: '10px', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '10px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+              <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your registered Gmail.</span>
+              {notesEmailFeedback && (
+                <span style={{ color: '#38bdf8', fontWeight: '900' }}>{notesEmailFeedback}</span>
+              )}
+            </div>
+
+            {/* Create New Note Card */}
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '14px', border: '1px solid #590907', marginBottom: '18px', boxShadow: '0 2px 10px rgba(89,9,7,0.1)' }}>
+              
+              {/* Note Type & Color Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewNoteType('task')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #590907',
+                      backgroundColor: newNoteType === 'task' ? '#590907' : 'transparent',
+                      color: newNoteType === 'task' ? '#E8D2B5' : '#590907',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ☑️ Task Checklist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewNoteType('text')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #590907',
+                      backgroundColor: newNoteType === 'text' ? '#590907' : 'transparent',
+                      color: newNoteType === 'text' ? '#E8D2B5' : '#590907',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📝 Text Note
+                  </button>
+                </div>
+
+                {/* Color Palette */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#590907' }}>Color:</span>
+                  {['#38bdf8', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#590907'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNewNoteColor(c)}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        backgroundColor: c,
+                        border: newNoteColor === c ? '2px solid #000' : '1px solid #ccc',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setNewNotePinned(!newNotePinned)}
+                    title={newNotePinned ? "Pinned to Top" : "Pin Note"}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      color: newNotePinned ? '#e11d48' : '#888'
+                    }}
+                  >
+                    <Pin size={16} fill={newNotePinned ? '#e11d48' : 'none'} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Title Input */}
+              <input
+                type="text"
+                placeholder="Title (e.g. Daily Groceries, Project Deadline...)"
+                value={newNoteTitle}
+                onChange={(e) => setNewNoteTitle(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #ddd',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: '#111827',
+                  marginBottom: '8px',
+                  boxSizing: 'border-box'
+                }}
+              />
+
+              {/* Body: Checklist Items or Freeform Textarea */}
+              {newNoteType === 'task' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                  {newNoteChecklist.map((item, idx) => (
+                    <div key={item.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input
+                        type="checkbox"
+                        checked={item.completed}
+                        onChange={(e) => {
+                          const updated = [...newNoteChecklist];
+                          updated[idx].completed = e.target.checked;
+                          setNewNoteChecklist(updated);
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder={`List item ${idx + 1}...`}
+                        value={item.text}
+                        onChange={(e) => {
+                          const updated = [...newNoteChecklist];
+                          updated[idx].text = e.target.value;
+                          setNewNoteChecklist(updated);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '6px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #eee',
+                          fontSize: '11px',
+                          color: '#111827'
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            setNewNoteChecklist(prev => [...prev, { id: `c_${Date.now()}`, text: '', completed: false }]);
+                          }
+                        }}
+                      />
+                      {newNoteChecklist.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setNewNoteChecklist(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ border: 'none', background: 'transparent', color: '#999', cursor: 'pointer' }}
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setNewNoteChecklist(prev => [...prev, { id: `c_${Date.now()}`, text: '', completed: false }])}
+                    style={{ alignSelf: 'flex-start', padding: '4px 8px', borderRadius: '4px', border: '1px dashed #590907', background: 'transparent', color: '#590907', fontSize: '10px', fontWeight: '700', cursor: 'pointer', marginTop: '4px' }}
+                  >
+                    + Add Task Item
+                  </button>
+                </div>
+              ) : (
+                <textarea
+                  placeholder="Take a note..."
+                  rows={3}
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #ddd',
+                    fontSize: '11px',
+                    color: '#111827',
+                    marginBottom: '8px',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              )}
+
+              {/* Submit Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={handleSaveNote}
+                  style={{
+                    backgroundColor: '#590907',
+                    color: '#E8D2B5',
+                    border: 'none',
+                    padding: '7px 18px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: '900',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save Note
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Tabs & Search */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                {['all', 'task', 'text', 'pinned'].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setNoteFilterTab(t)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #590907',
+                      backgroundColor: noteFilterTab === t ? '#590907' : 'transparent',
+                      color: noteFilterTab === t ? '#E8D2B5' : '#590907',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      cursor: 'pointer',
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {t === 'all' ? 'All Notes' : (t === 'task' ? 'Checklists' : (t === 'text' ? 'Text' : 'Pinned'))}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={noteSearchQuery}
+                onChange={(e) => setNoteSearchQuery(e.target.value)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #590907',
+                  backgroundColor: '#ffffff',
+                  fontSize: '10px',
+                  color: '#590907',
+                  width: '180px'
+                }}
+              />
+            </div>
+
+            {/* Saved Notes Masonry / Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+              {notesList
+                .filter(n => {
+                  if (noteFilterTab === 'task') return n.type === 'task' || Array.isArray(n.checklist);
+                  if (noteFilterTab === 'text') return n.type === 'text';
+                  if (noteFilterTab === 'pinned') return !!n.pinned;
+                  return true;
+                })
+                .filter(n => {
+                  if (!noteSearchQuery.trim()) return true;
+                  const q = noteSearchQuery.toLowerCase();
+                  const matchTitle = (n.title || '').toLowerCase().includes(q);
+                  const matchContent = (n.content || '').toLowerCase().includes(q);
+                  const matchChecklist = (n.checklist || []).some(ci => (ci.text || '').toLowerCase().includes(q));
+                  return matchTitle || matchContent || matchChecklist;
+                })
+                .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+                .map((note) => (
+                  <div
+                    key={note.id}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '10px',
+                      padding: '12px',
+                      border: '1px solid #e5e7eb',
+                      borderLeft: `4px solid ${note.color || '#38bdf8'}`,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      position: 'relative'
+                    }}
+                  >
+                    {/* Note Header */}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#111827', wordBreak: 'break-word', paddingRight: '8px' }}>
+                          {note.title}
+                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePinNote(note.id)}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: note.pinned ? '#e11d48' : '#bbb' }}
+                            title={note.pinned ? "Unpin" : "Pin"}
+                          >
+                            <Pin size={13} fill={note.pinned ? '#e11d48' : 'none'} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNote(note.id)}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: '#ef4444' }}
+                            title="Delete Note"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content: Checklist or Text */}
+                      {note.type === 'task' || Array.isArray(note.checklist) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', margin: '8px 0' }}>
+                          {(note.checklist || []).map(item => (
+                            <label
+                              key={item.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '11px',
+                                color: item.completed ? '#9ca3af' : '#374151',
+                                textDecoration: item.completed ? 'line-through' : 'none',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!item.completed}
+                                onChange={() => handleToggleChecklistItem(note.id, item.id)}
+                              />
+                              <span>{item.text}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ margin: '6px 0 10px 0', fontSize: '11px', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                          {note.content}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Footer Date */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #f3f4f6', fontSize: '9px', color: '#9ca3af' }}>
+                      <span>{note.createdAt || 'Saved'}</span>
+                      <span style={{ textTransform: 'uppercase', fontWeight: '800', color: note.color || '#38bdf8' }}>
+                        {note.type === 'task' ? 'Tasks' : 'Note'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            {notesList.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#590907' }}>
+                <CheckSquare size={32} color="#590907" style={{ opacity: 0.5, marginBottom: '6px' }} />
+                <p style={{ margin: 0, fontSize: '12px', fontWeight: '800' }}>No notes yet. Create your first task checklist or text note above!</p>
+              </div>
+            )}
+
           </div>
         </div>
       )}
