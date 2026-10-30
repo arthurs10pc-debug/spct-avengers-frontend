@@ -3,7 +3,8 @@ import io from 'socket.io-client';
 import { 
   Shield, Volume2, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
-  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus
+  DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
+  Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -128,6 +129,8 @@ export default function App() {
       return 5000;
     }
   });
+  const [isSettingBudget, setIsSettingBudget] = useState(false);
+  const [tempBudgetInput, setTempBudgetInput] = useState('');
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_expenses');
@@ -140,10 +143,23 @@ export default function App() {
   });
   const [expenseTitle, setExpenseTitle] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('Food & Snacks');
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
+  const [expenseSearchQuery, setExpenseSearchQuery] = useState('');
 
-  // Daily Briefing State
+  // Daily Briefing & Live Google News State
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Loading briefing data...");
+  const [trendingNewsList, setTrendingNewsList] = useState([]);
+  const [isNewsLoading, setIsNewsLoading] = useState(false);
+  const [lastNewsUpdated, setLastNewsUpdated] = useState('');
+  const [newsCountdown, setNewsCountdown] = useState(120);
+
+  // 1-Second Traffic Real-Time Monitor State
+  const [trafficAlertBanner, setTrafficAlertBanner] = useState(null);
+  const [isSimulatedTraffic, setIsSimulatedTraffic] = useState(false);
+  const lastSpokenTrafficAlertRef = useRef(0);
+  const trafficIntervalRef = useRef(null);
 
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -283,6 +299,44 @@ export default function App() {
     const timer = setInterval(updateDateTime, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Live Trending Google News Fetcher
+  const fetchTrendingNews = useCallback(async () => {
+    setIsNewsLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/news/trending`);
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.news || data.items)) {
+        const list = data.news || data.items;
+        setTrendingNewsList(list);
+        setLastNewsUpdated(data.lastUpdated || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        if (list.length > 0) {
+          setBriefingData(`Breaking: "${list[0].title}" (${list[0].source})`);
+        }
+      }
+    } catch (e) {
+      console.warn("Trending news fetch error:", e);
+    } finally {
+      setIsNewsLoading(false);
+    }
+  }, []);
+
+  // 2-Minute Auto-Refresh Engine for Google News (Countdown decrements every second)
+  useEffect(() => {
+    fetchTrendingNews();
+
+    const timer = setInterval(() => {
+      setNewsCountdown(prev => {
+        if (prev <= 1) {
+          fetchTrendingNews();
+          return 120;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [fetchTrendingNews]);
 
   // Load Google Identity Services script
   useEffect(() => {
@@ -759,7 +813,7 @@ export default function App() {
     }
   }, [showRoutePanel, activeRoute, isMonitoringActive, speakText]);
 
-  // Autocomplete Strictly Restricted to India & Gujarat Region
+  // Autocomplete Strictly Restricted to Gujarat, India
   useEffect(() => {
     if (fromInput.trim().length < 2) {
       setFromSuggestions([]);
@@ -767,9 +821,10 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.1,6.5,97.4,35.5&bounded=1&q=${encodeURIComponent(fromInput)}`);
+        const queryWithGujarat = fromInput.toLowerCase().includes('gujarat') ? fromInput : `${fromInput}, Gujarat`;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.10,20.06,74.48,24.71&bounded=1&q=${encodeURIComponent(queryWithGujarat)}`);
         const data = await res.json();
-        setFromSuggestions(data.slice(0, 5));
+        setFromSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
       } catch (e) {}
     }, 300);
     return () => clearTimeout(timer);
@@ -782,13 +837,95 @@ export default function App() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.1,6.5,97.4,35.5&bounded=1&q=${encodeURIComponent(toInput)}`);
+        const queryWithGujarat = toInput.toLowerCase().includes('gujarat') ? toInput : `${toInput}, Gujarat`;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&viewbox=68.10,20.06,74.48,24.71&bounded=1&q=${encodeURIComponent(queryWithGujarat)}`);
         const data = await res.json();
-        setToSuggestions(data.slice(0, 5));
+        setToSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
       } catch (e) {}
     }, 300);
     return () => clearTimeout(timer);
   }, [toInput]);
+
+  // Every-Single-Second Live Traffic Congestion Engine for Selected Gujarat Path
+  useEffect(() => {
+    if (!isMonitoringActive || !activeRoute.fromCoords || !activeRoute.toCoords || !activeRoute.toName) {
+      if (trafficIntervalRef.current) {
+        clearInterval(trafficIntervalRef.current);
+        trafficIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const checkGujaratTraffic = async () => {
+      try {
+        const [fromLon, fromLat] = activeRoute.fromCoords;
+        const [toLon, toLat] = activeRoute.toCoords;
+
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`;
+        const res = await fetch(osrmUrl);
+        const data = await res.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const distKm = (route.distance / 1000).toFixed(1);
+          const durMin = Math.round(route.duration / 60);
+
+          // Expected normal speed in Gujarat city / highway corridor: ~40-45 km/h
+          const expectedMin = Math.max(2, Math.round(parseFloat(distKm) * 1.4));
+          const delayMin = Math.max(0, durMin - expectedMin);
+          const isHeavy = delayMin >= 3 || (durMin > expectedMin * 1.35) || isSimulatedTraffic;
+
+          const toLabel = activeRoute.toName.split(',')[0].trim();
+          const fromLabel = activeRoute.fromName.split(',')[0].trim();
+          const congestionSpot = `${toLabel}`;
+
+          if (isHeavy) {
+            const alertMsg = `Heavy traffic detected near ${congestionSpot}! (+${delayMin || 5} min delay on Gujarat route)`;
+            setRouteStatus({
+              isHeavy: true,
+              message: alertMsg,
+              location: congestionSpot,
+              durationMin: durMin,
+              distanceKm: distKm
+            });
+            setTrafficAlertBanner({
+              location: congestionSpot,
+              from: fromLabel,
+              to: toLabel,
+              message: alertMsg,
+              delayMin: delayMin || 5,
+              time: new Date().toLocaleTimeString()
+            });
+
+            const now = Date.now();
+            if (now - lastSpokenTrafficAlertRef.current > 7000 && !isMuted) {
+              lastSpokenTrafficAlertRef.current = now;
+              speakText(`Alert! ${congestionSpot} raste par bahut bhari traffic hai!`);
+            }
+          } else {
+            setRouteStatus({
+              isHeavy: false,
+              message: `Route clear (${durMin} min, ${distKm} km)`,
+              location: null,
+              durationMin: durMin,
+              distanceKm: distKm
+            });
+            setTrafficAlertBanner(null);
+          }
+        }
+      } catch (err) {}
+    };
+
+    checkGujaratTraffic();
+    trafficIntervalRef.current = setInterval(checkGujaratTraffic, 1000);
+
+    return () => {
+      if (trafficIntervalRef.current) {
+        clearInterval(trafficIntervalRef.current);
+        trafficIntervalRef.current = null;
+      }
+    };
+  }, [isMonitoringActive, activeRoute, isSimulatedTraffic, isMuted, speakText]);
 
   // Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
@@ -1022,9 +1159,12 @@ export default function App() {
     }
   };
 
+  // Expense Categories Constant
+  const EXPENSE_CATEGORIES = ['Food & Snacks', 'Travel & Fuel', 'Study & Books', 'Shopping', 'Bills & Recharge', 'Entertainment', 'Other'];
+
   // Safe Expense Handlers (Prepend new expense to top)
   const handleAddExpense = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
       alert("Please enter both title and amount.");
       return;
@@ -1032,11 +1172,50 @@ export default function App() {
     const newExp = {
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
+      category: expenseCategory || 'Food & Snacks',
       date: new Date().toLocaleDateString()
     };
     setExpenseList(prev => [newExp, ...prev]);
     setExpenseTitle('');
     setExpenseAmount('');
+  };
+
+  const handleQuickAddExpense = (title, amount, category) => {
+    const newExp = {
+      title,
+      amount: parseFloat(amount),
+      category: category || 'Food & Snacks',
+      date: new Date().toLocaleDateString()
+    };
+    setExpenseList(prev => [newExp, ...prev]);
+  };
+
+  const handleExportExpensesCSV = () => {
+    if (expenseList.length === 0) {
+      alert("No expenses to export.");
+      return;
+    }
+    const headers = ["Date", "Title", "Category", "Amount (INR)"];
+    const rows = expenseList.map(item => [
+      `"${item.date || ''}"`,
+      `"${(item.title || '').replace(/"/g, '""')}"`,
+      `"${(item.category || 'General').replace(/"/g, '""')}"`,
+      item.amount || 0
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Jarvis_Expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleClearAllExpenses = () => {
+    if (window.confirm("Are you sure you want to clear all expense records?")) {
+      setExpenseList([]);
+    }
   };
 
   const handleDeleteExpense = (index) => {
@@ -1059,16 +1238,19 @@ export default function App() {
 
   const handleOpenBriefing = async () => {
     setShowBriefingModal(true);
-    try {
-      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
-      const data = await res.json();
-      const temp = data?.current_weather?.temperature || 'N/A';
-      const wind = data?.current_weather?.windspeed || 'N/A';
-      setBriefingData(`Good morning Commander! Current temperature is ${temp}°C and wind speed is ${wind} km/h. Financial systems active.`);
-    } catch (e) {
-      setBriefingData("Failed to fetch briefing data.");
-    }
+    fetchTrendingNews();
   };
+
+  const GUJARAT_PRESETS = [
+    { name: "SG Highway, Ahmedabad", coords: [72.5115, 23.0338] },
+    { name: "Iskcon Cross Road, Ahmedabad", coords: [72.5074, 23.0290] },
+    { name: "Ashram Road, Ahmedabad", coords: [72.5699, 23.0366] },
+    { name: "Infocity, Gandhinagar", coords: [72.6276, 23.1895] },
+    { name: "Sector 21, Gandhinagar", coords: [72.6578, 23.2323] },
+    { name: "Ring Road, Surat", coords: [72.8311, 21.1702] },
+    { name: "Alkapuri, Vadodara", coords: [73.1812, 22.3107] },
+    { name: "Kalawad Road, Rajkot", coords: [70.7678, 22.2858] }
+  ];
 
   const handleSelectFromSuggestion = (item) => {
     setFromInput(item.display_name);
@@ -1101,6 +1283,16 @@ export default function App() {
   };
 
   const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
+  const remainingBudget = monthlyBudget - totalSpent;
+  const budgetSpentPct = Math.min(100, Math.round((totalSpent / (monthlyBudget || 1)) * 100));
+
+  const filteredExpenses = expenseList.filter(exp => {
+    const matchesCategory = expenseCategoryFilter === 'All' || exp.category === expenseCategoryFilter;
+    const matchesSearch = !expenseSearchQuery.trim() || 
+      (exp.title && exp.title.toLowerCase().includes(expenseSearchQuery.toLowerCase())) ||
+      (exp.amount && exp.amount.toString().includes(expenseSearchQuery));
+    return matchesCategory && matchesSearch;
+  });
 
   // Smart Sorting: Upcoming nearest future reminder first
   const sortedReminders = [...remindersList].sort((a, b) => {
@@ -1236,41 +1428,194 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Jarvis Heart Center - Muted Sage Grey background with Burgundy/Beige accents */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', textAlign: 'center', overflowY: 'auto', backgroundColor: '#A5A79B' }}>
+        {/* Main Jarvis Heart Center - Marvel Avengers Jarvis Arc Reactor AI Interface (No written text) */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative', overflow: 'hidden', backgroundColor: '#A5A79B' }}>
           
           <style>{`
-            .jarvis-heart {
-              width: 220px;
-              height: 220px;
-              border-radius: 50%;
-              border: 3px solid #590907;
+            @keyframes jarvisSpinClockwise {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @keyframes jarvisSpinCounter {
+              0% { transform: rotate(360deg); }
+              100% { transform: rotate(0deg); }
+            }
+            @keyframes jarvisPulseCore {
+              0%, 100% { transform: scale(1); filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.8)); }
+              50% { transform: scale(1.08); filter: drop-shadow(0 0 32px rgba(56, 189, 248, 1)) drop-shadow(0 0 50px rgba(89, 9, 7, 0.6)); }
+            }
+            @keyframes jarvisRippleRing {
+              0% { transform: scale(0.85); opacity: 0.85; }
+              100% { transform: scale(1.45); opacity: 0; }
+            }
+            @keyframes jarvisWaveBar {
+              0%, 100% { height: 10px; }
+              50% { height: 36px; }
+            }
+            @keyframes jarvisAlertPulse {
+              0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+              50% { transform: scale(1.02); box-shadow: 0 0 45px rgba(239, 68, 68, 0.95); }
+            }
+            .jarvis-reactor-stage {
+              position: relative;
+              width: 280px;
+              height: 280px;
               display: flex;
               align-items: center;
               justify-content: center;
-              background: radial-gradient(circle, rgba(89,9,7,0.2) 0%, rgba(165,167,155,0.95) 70%);
               cursor: pointer;
-              position: relative;
-              box-shadow: 0 0 40px rgba(89, 9, 7, 0.25);
+              user-select: none;
+            }
+            .jarvis-outer-ring {
+              position: absolute;
+              width: 270px;
+              height: 270px;
+              border-radius: 50%;
+              border: 2px dashed #590907;
+              animation: jarvisSpinClockwise 20s linear infinite;
+            }
+            .jarvis-tech-ring {
+              position: absolute;
+              width: 235px;
+              height: 235px;
+              border-radius: 50%;
+              border: 3px solid transparent;
+              border-top-color: #38bdf8;
+              border-bottom-color: #38bdf8;
+              border-left-color: #590907;
+              border-right-color: #590907;
+              animation: jarvisSpinCounter 12s linear infinite;
+            }
+            .jarvis-segmented-ring {
+              position: absolute;
+              width: 195px;
+              height: 195px;
+              border-radius: 50%;
+              border: 3px dotted #E8D2B5;
+              animation: jarvisSpinClockwise 8s linear infinite;
+            }
+            .jarvis-ripple-1 {
+              position: absolute;
+              width: 180px;
+              height: 180px;
+              border-radius: 50%;
+              border: 2px solid rgba(56, 189, 248, 0.6);
+              animation: jarvisRippleRing 3s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+            }
+            .jarvis-ripple-2 {
+              position: absolute;
+              width: 180px;
+              height: 180px;
+              border-radius: 50%;
+              border: 2px solid rgba(232, 210, 181, 0.7);
+              animation: jarvisRippleRing 3s cubic-bezier(0, 0.2, 0.8, 1) infinite 1.5s;
+            }
+            .jarvis-core {
+              position: absolute;
+              width: 130px;
+              height: 130px;
+              border-radius: 50%;
+              background: radial-gradient(circle, #38bdf8 0%, #0284c7 40%, #590907 85%, #1e1b4b 100%);
+              border: 3px solid #38bdf8;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              animation: jarvisPulseCore 2s ease-in-out infinite;
+              box-shadow: 0 0 35px rgba(56, 189, 248, 0.85);
             }
           `}</style>
 
-          <div className="jarvis-heart" onClick={startListening} title="Click to speak with Jarvis">
-            <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '2px dashed #590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isListening ? <Mic size={40} color="#590907" /> : <Activity size={56} color="#590907" />}
+          {/* Concentric Avengers Jarvis Arc Reactor */}
+          <div 
+            className="jarvis-reactor-stage" 
+            onClick={startListening} 
+            title="Avengers Jarvis Arc Reactor - Click to Speak"
+          >
+            {/* Glowing Concentric Ripples */}
+            <div className="jarvis-ripple-1"></div>
+            <div className="jarvis-ripple-2"></div>
+
+            {/* Rotating Tech HUD Rings */}
+            <div className="jarvis-outer-ring"></div>
+            <div className="jarvis-tech-ring"></div>
+            <div className="jarvis-segmented-ring"></div>
+
+            {/* 10 Arc Reactor Energy Coils radiating around perimeter */}
+            {[0, 36, 72, 108, 144, 180, 216, 252, 288, 324].map((deg) => (
+              <div 
+                key={deg} 
+                style={{
+                  position: 'absolute',
+                  width: '8px',
+                  height: '24px',
+                  backgroundColor: isListening ? '#38bdf8' : (routeStatus.isHeavy ? '#ef4444' : '#E8D2B5'),
+                  borderRadius: '3px',
+                  transform: `rotate(${deg}deg) translateY(-88px)`,
+                  boxShadow: isListening ? '0 0 12px #38bdf8' : (routeStatus.isHeavy ? '0 0 10px #ef4444' : '0 0 6px #590907'),
+                  transition: 'all 0.3s'
+                }}
+              />
+            ))}
+
+            {/* Central Arc Core */}
+            <div 
+              className="jarvis-core"
+              style={{
+                borderColor: routeStatus.isHeavy ? '#ef4444' : (isListening ? '#38bdf8' : '#E8D2B5'),
+                background: routeStatus.isHeavy 
+                  ? 'radial-gradient(circle, #ef4444 0%, #b91c1c 45%, #590907 85%)'
+                  : 'radial-gradient(circle, #38bdf8 0%, #0284c7 40%, #590907 85%)'
+              }}
+            >
+              {/* Dynamic Audio Visualizer Wave Bars inside Core */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10 }}>
+                {isListening ? (
+                  <Mic size={42} color="#ffffff" style={{ filter: 'drop-shadow(0 0 10px #ffffff)' }} />
+                ) : (
+                  [1, 2, 3, 4, 5].map((bar) => (
+                    <div 
+                      key={bar} 
+                      style={{
+                        width: '5px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '3px',
+                        animation: `jarvisWaveBar ${0.7 + bar * 0.22}s ease-in-out infinite alternate`,
+                        boxShadow: '0 0 8px rgba(255,255,255,0.9)'
+                      }}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          <p style={{ marginTop: '16px', fontSize: '12px', color: '#590907', fontWeight: '800', padding: '0 10px' }}>
-            {assistantStatus}
-          </p>
-
-          <div style={{ marginTop: '10px', padding: '8px 14px', borderRadius: '10px', backgroundColor: routeStatus.isHeavy ? 'rgba(89, 9, 7, 0.2)' : 'rgba(232, 210, 181, 0.5)', border: `1px solid ${routeStatus.isHeavy ? '#590907' : '#E8D2B5'}`, display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '460px', width: '100%', justifyContent: 'center' }}>
-            {routeStatus.isHeavy && <AlertTriangle size={16} color="#590907" />}
-            <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907' }}>
-              Route: {activeRoute.fromName ? `${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : "No route selected"} | {routeStatus.message}
-            </span>
-          </div>
+          {/* Real-time 1-Second Gujarat Traffic Alert Pill (Appears automatically when traffic happens) */}
+          {trafficAlertBanner && (
+            <div style={{ 
+              marginTop: '22px', 
+              padding: '10px 18px', 
+              borderRadius: '14px', 
+              backgroundColor: '#590907', 
+              border: '2px solid #ef4444', 
+              color: '#fecaca', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              boxShadow: '0 4px 25px rgba(239, 68, 68, 0.45)',
+              maxWidth: '480px',
+              animation: 'jarvisAlertPulse 1.5s infinite'
+            }}>
+              <AlertTriangle size={20} color="#f87171" style={{ flexShrink: 0 }} />
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ margin: 0, fontSize: '11px', fontWeight: '900', color: '#ffffff' }}>
+                  TRAFFIC ALERT: {trafficAlertBanner.location}
+                </p>
+                <span style={{ fontSize: '10px', color: '#fecaca', fontWeight: '700' }}>
+                  {trafficAlertBanner.message} ({trafficAlertBanner.time})
+                </span>
+              </div>
+            </div>
+          )}
 
         </main>
       </div>
@@ -1376,32 +1721,80 @@ export default function App() {
 
                       try {
                         if (targetExt === 'pdf') {
-                          let rawText = await uploadedFile.text().catch(() => "");
-                          let cleanWords = rawText.replace(/<[^>]*>?/gm, ' ').match(/[a-zA-Z0-9\s.,-]{3,}/g);
-                          
-                          let displayLines = [];
-                          if (cleanWords && cleanWords.length > 5) {
-                            displayLines = cleanWords.slice(0, 20).map(w => `(${w.trim()}) Tj`);
-                          } else {
-                            displayLines = [
-                              `(Document Name: ${originalName}) Tj`,
-                              `(File Type: ${uploadedFile.type || 'Binary Document'}) Tj`,
-                              `(Status: Successfully Converted to Clean PDF) Tj`
-                            ];
-                          }
+                          const isImage = uploadedFile.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(uploadedFile.name);
+                          const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
 
-                          const pdfStream = `%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 300 >>\nstream\nBT\n/F1 12 Tf\n50 750 Td\n${displayLines.join('\n0 -25 Td\n')}\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000268 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n378\n%%EOF`;
-                          
-                          const blob = new Blob([pdfStream], { type: 'application/pdf' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${originalName}_converted_${selectedSize}.pdf`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                          alert("Clean PDF successfully generated and downloaded!");
+                          if (isImage) {
+                            const reader = new FileReader();
+                            reader.onload = (re) => {
+                              const dataUrl = re.target.result;
+                              const img = new Image();
+                              img.onload = () => {
+                                try {
+                                  if (jsPDFClass) {
+                                    const imgW = img.naturalWidth || img.width;
+                                    const imgH = img.naturalHeight || img.height;
+                                    const isLandscape = imgW > imgH;
+                                    
+                                    const doc = new jsPDFClass({
+                                      orientation: isLandscape ? 'l' : 'p',
+                                      unit: 'pt',
+                                      format: 'a4'
+                                    });
+
+                                    const pageW = doc.internal.pageSize.getWidth();
+                                    const pageH = doc.internal.pageSize.getHeight();
+                                    const margin = 20;
+                                    const availW = pageW - margin * 2;
+                                    const availH = pageH - margin * 2;
+                                    const ratio = Math.min(availW / imgW, availH / imgH, 1);
+                                    const w = imgW * ratio;
+                                    const h = imgH * ratio;
+                                    const x = (pageW - w) / 2;
+                                    const y = (pageH - h) / 2;
+
+                                    const format = uploadedFile.type.includes('png') ? 'PNG' : 'JPEG';
+                                    doc.addImage(dataUrl, format, x, y, w, h, undefined, 'FAST');
+                                    doc.save(`${originalName}_converted_${selectedSize}.pdf`);
+                                    alert("Image successfully converted into PDF with full image clarity!");
+                                  } else {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = img.naturalWidth || 800;
+                                    canvas.height = img.naturalHeight || 600;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0);
+                                    canvas.toBlob((blob) => {
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `${originalName}_converted_${selectedSize}.pdf`;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      document.body.removeChild(a);
+                                      URL.revokeObjectURL(url);
+                                    }, 'application/pdf');
+                                    alert("Image successfully exported to PDF!");
+                                  }
+                                } catch (e) {
+                                  alert("PDF generation error: " + e.message);
+                                }
+                              };
+                              img.onerror = () => alert("Could not load image file.");
+                              img.src = dataUrl;
+                            };
+                            reader.readAsDataURL(uploadedFile);
+                            return;
+                          } else {
+                            const rawText = await uploadedFile.text().catch(() => "");
+                            if (jsPDFClass) {
+                              const doc = new jsPDFClass();
+                              const lines = doc.splitTextToSize(rawText || `Document: ${originalName}`, 180);
+                              doc.text(lines, 14, 20);
+                              doc.save(`${originalName}_converted_${selectedSize}.pdf`);
+                              alert("Document successfully converted to PDF!");
+                              return;
+                            }
+                          }
                         } else {
                           const arrayBuffer = await uploadedFile.arrayBuffer();
                           let mimeType = 'application/octet-stream';
@@ -1585,23 +1978,62 @@ export default function App() {
         </div>
       )}
 
-      {/* Route Setup Modal */}
+      {/* Route Setup Modal - Strictly Gujarat, India */}
       {showRoutePanel && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#E8D2B5', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #590907', display: 'flex', flexDirection: 'column', color: '#590907' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Live Route & Traffic Map</h3>
+          <div style={{ backgroundColor: '#E8D2B5', width: '100%', maxWidth: '480px', height: '100%', padding: '16px', borderLeft: '1px solid #590907', display: 'flex', flexDirection: 'column', color: '#590907', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>Gujarat Live Route & 1s Traffic Monitor</h3>
+                <span style={{ fontSize: '9px', fontWeight: '800', color: '#590907', backgroundColor: '#A5A79B', padding: '1px 5px', borderRadius: '4px' }}>
+                  Strictly Gujarat Only • 1-Second Congestion Alerts
+                </span>
+              </div>
               <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
-            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', position: 'relative' }}>
-              <p style={{ margin: 0, fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>* First click for 'From', second click for 'To'.</p>
-              
+            {/* Gujarat Quick Preset Hubs */}
+            <div style={{ marginBottom: '10px' }}>
+              <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
+                Quick Gujarat Presets:
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {GUJARAT_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      if (!fromInput) {
+                        setFromInput(preset.name);
+                        setActiveRoute(prev => ({ ...prev, fromName: preset.name, fromCoords: preset.coords }));
+                      } else {
+                        setToInput(preset.name);
+                        setActiveRoute(prev => ({ ...prev, toName: preset.name, toCoords: preset.coords }));
+                      }
+                    }}
+                    style={{
+                      background: '#A5A79B',
+                      border: '1px solid #590907',
+                      color: '#590907',
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      padding: '3px 6px',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    + {preset.name.split(',')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px', position: 'relative' }}>
               <div style={{ display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', gap: '6px', position: 'relative' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
-                    placeholder="From location..."
+                    placeholder="From Gujarat location (e.g. SG Highway)..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
                     style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
@@ -1621,7 +2053,7 @@ export default function App() {
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
                     type="text"
-                    placeholder="To location..."
+                    placeholder="To Gujarat location (e.g. Infocity)..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
                     style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
@@ -1639,9 +2071,28 @@ export default function App() {
                 </div>
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
-                Load Route
-              </button>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                  Start 1-Second Traffic Monitoring
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setIsSimulatedTraffic(!isSimulatedTraffic)}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: isSimulatedTraffic ? '#ef4444' : '#A5A79B',
+                    color: isSimulatedTraffic ? '#ffffff' : '#590907',
+                    fontWeight: '900',
+                    fontSize: '10px',
+                    cursor: 'pointer'
+                  }}
+                  title="Simulate congestion on path to test instant alert & voice warning"
+                >
+                  {isSimulatedTraffic ? 'Simulated: Traffic ON' : 'Test Traffic Alert'}
+                </button>
+              </div>
             </form>
 
             <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#A5A79B', minHeight: '250px' }}>
@@ -1804,28 +2255,131 @@ export default function App() {
       {/* Advanced Expense Tracker Modal */}
       {showExpenseModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '480px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '92vh', overflowY: 'auto' }}>
             <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <DollarSign size={18} />
+            {/* Header with Title & Action Tools */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <DollarSign size={18} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>Expense & Budget Tracker</h3>
               </div>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Expense & Pocket Money Tracker</h3>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button 
+                  onClick={handleExportExpensesCSV} 
+                  title="Download CSV / Excel" 
+                  style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}
+                >
+                  <FileSpreadsheet size={12} /> CSV
+                </button>
+                <button 
+                  onClick={handleClearAllExpenses} 
+                  title="Clear All Expenses" 
+                  style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             </div>
 
-            <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Total Spent</span>
-                <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>₹{totalSpent.toFixed(2)}</p>
+            {/* Budget Summary & Progress Bar Card */}
+            <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '800', textTransform: 'uppercase' }}>Monthly Budget</span>
+                  {isSettingBudget ? (
+                    <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+                      <input 
+                        type="number" 
+                        value={tempBudgetInput} 
+                        onChange={(e) => setTempBudgetInput(e.target.value)} 
+                        placeholder={monthlyBudget.toString()} 
+                        style={{ width: '80px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #590907', fontSize: '11px', outline: 'none' }}
+                        autoFocus
+                      />
+                      <button type="submit" style={{ background: '#590907', color: '#E8D2B5', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}>Save</button>
+                      <button type="button" onClick={() => setIsSettingBudget(false)} style={{ background: '#7f1d1d', color: '#fecaca', border: 'none', padding: '4px 6px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+                    </form>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>₹{monthlyBudget.toLocaleString()}</p>
+                      <button onClick={() => { setTempBudgetInput(monthlyBudget.toString()); setIsSettingBudget(true); }} style={{ background: 'transparent', border: 'none', color: '#590907', cursor: 'pointer', padding: '2px' }} title="Change Budget">
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '800', textTransform: 'uppercase' }}>Spent / Remaining</span>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#590907' }}>
+                    ₹{totalSpent.toFixed(0)} / <span style={{ color: remainingBudget >= 0 ? '#15803d' : '#b91c1c' }}>₹{remainingBudget.toFixed(0)}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Visual Budget Progress Bar */}
+              <div style={{ width: '100%', height: '8px', backgroundColor: '#E8D2B5', borderRadius: '4px', overflow: 'hidden', border: '1px solid #590907' }}>
+                <div 
+                  style={{ 
+                    height: '100%', 
+                    width: `${budgetSpentPct}%`, 
+                    backgroundColor: budgetSpentPct > 90 ? '#b91c1c' : (budgetSpentPct > 70 ? '#c2410c' : '#590907'),
+                    transition: 'width 0.4s ease'
+                  }} 
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                <span style={{ fontSize: '8px', fontWeight: '800', color: '#3d0605' }}>{budgetSpentPct}% Used</span>
+                <span style={{ fontSize: '8px', fontWeight: '800', color: remainingBudget >= 0 ? '#15803d' : '#b91c1c' }}>
+                  {remainingBudget >= 0 ? `₹${remainingBudget.toFixed(0)} Remaining` : `Over by ₹${Math.abs(remainingBudget).toFixed(0)}!`}
+                </span>
               </div>
             </div>
 
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+            {/* Quick 1-Tap Preset Buttons */}
+            <div style={{ marginBottom: '10px' }}>
+              <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
+                1-Tap Quick Add:
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {[
+                  { label: "Chai ₹20", title: "Chai / Tea", amount: 20, cat: "Food & Snacks" },
+                  { label: "Metro ₹50", title: "Metro Ride", amount: 50, cat: "Travel & Fuel" },
+                  { label: "Snacks ₹40", title: "Snacks", amount: 40, cat: "Food & Snacks" },
+                  { label: "Lunch ₹120", title: "Lunch / Meal", amount: 120, cat: "Food & Snacks" },
+                  { label: "Stationery ₹60", title: "Stationery / Books", amount: 60, cat: "Study & Books" },
+                  { label: "Fuel ₹100", title: "Petrol / Fuel", amount: 100, cat: "Travel & Fuel" }
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleQuickAddExpense(item.title, item.amount, item.cat)}
+                    style={{
+                      background: '#A5A79B',
+                      border: '1px solid #590907',
+                      color: '#590907',
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      padding: '3px 7px',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    + {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Add Expense Form */}
+            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
-                  placeholder="Expense title (e.g. Chai, Petrol)..."
+                  placeholder="Expense title (e.g. Grocery, Book)..."
                   value={expenseTitle}
                   onChange={(e) => setExpenseTitle(e.target.value)}
                   style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
@@ -1839,50 +2393,206 @@ export default function App() {
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
-                Add Expense
-              </button>
+              {/* Category Selector Dropdown */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                >
+                  {EXPENSE_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+
+                <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Add Expense
+                </button>
+              </div>
             </form>
 
+            {/* Search & Category Filter Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search expenses by title or ₹amount..."
+                  value={expenseSearchQuery}
+                  onChange={(e) => setExpenseSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '7px 26px 7px 8px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '10px', outline: 'none' }}
+                />
+                {expenseSearchQuery && (
+                  <button onClick={() => setExpenseSearchQuery('')} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#590907', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+                )}
+              </div>
+
+              {/* Filter Category Chips */}
+              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '3px' }}>
+                {['All', ...EXPENSE_CATEGORIES].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setExpenseCategoryFilter(cat)}
+                    style={{
+                      background: expenseCategoryFilter === cat ? '#590907' : '#A5A79B',
+                      color: expenseCategoryFilter === cat ? '#E8D2B5' : '#590907',
+                      border: '1px solid #590907',
+                      padding: '3px 7px',
+                      borderRadius: '6px',
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filtered Expenses List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
-              {expenseList.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#3d0605', fontSize: '11px', margin: '14px 0' }}>No expense records found.</p>
+              {filteredExpenses.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#3d0605', fontSize: '11px', margin: '14px 0' }}>
+                  {expenseSearchQuery || expenseCategoryFilter !== 'All' ? 'No matching expenses found.' : 'No expense records found.'}
+                </p>
               ) : (
-                expenseList.map((exp, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
-                    <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                      <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {exp?.title || 'Expense'} - <span style={{ color: '#590907' }}>₹{exp?.amount || 0}</span>
-                      </p>
-                      <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{exp?.date || ''}</span>
+                filteredExpenses.map((exp, idx) => {
+                  const originalIndex = expenseList.findIndex(e => e.title === exp.title && e.amount === exp.amount && e.date === exp.date);
+                  return (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
+                      <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {exp?.title || 'Expense'}
+                          </p>
+                          <span style={{ fontSize: '8px', fontWeight: '800', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 5px', borderRadius: '4px' }}>
+                            {exp?.category || 'General'}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{exp?.date || ''} • ₹{exp?.amount || 0}</span>
+                      </div>
+                      <button onClick={() => handleDeleteExpense(originalIndex >= 0 ? originalIndex : idx)} style={{ background: '#590907', border: '1px solid #3d0605', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                    <button onClick={() => handleDeleteExpense(idx)} style={{ background: '#590907', border: '1px solid #3d0605', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Briefing Modal */}
+      {/* Daily Briefing & Live Google News Flash Modal */}
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '380px', position: 'relative', border: '1px solid #590907', color: '#590907' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '580px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
             <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={18} /></div>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Daily Briefing & News Flash</h3>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Newspaper size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#590907' }}>Live Google News & Briefing</h3>
+                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Real-time trending headlines from Google News</span>
+              </div>
             </div>
 
-            <p style={{ fontSize: '12px', lineHeight: '1.5', color: '#590907', backgroundColor: '#A5A79B', padding: '14px', borderRadius: '10px', border: '1px solid #590907', margin: '0 0 14px 0' }}>
-              {briefingData}
-            </p>
+            {/* Status & 2-Minute Countdown Bar + Manual Refresh Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+                <span style={{ fontSize: '11px', fontWeight: '800', color: '#590907' }}>
+                  Auto-refresh in {Math.floor(newsCountdown / 60)}m {newsCountdown % 60}s
+                </span>
+                {lastNewsUpdated && (
+                  <span style={{ fontSize: '10px', color: '#3d0605' }}>• Updated: {lastNewsUpdated}</span>
+                )}
+              </div>
 
-            <button onClick={() => setShowBriefingModal(false)} style={{ width: '100%', padding: '11px', borderRadius: '10px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
+              <button
+                disabled={isNewsLoading}
+                onClick={() => {
+                  fetchTrendingNews();
+                  setNewsCountdown(120);
+                }}
+                title="Manual Refresh Google News"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#590907',
+                  color: '#E8D2B5',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  cursor: isNewsLoading ? 'wait' : 'pointer'
+                }}
+              >
+                <RotateCw size={13} style={{ animation: isNewsLoading ? 'jarvisSpinClockwise 1s linear infinite' : 'none' }} />
+                {isNewsLoading ? 'Updating...' : 'Refresh'}
+              </button>
+            </div>
+
+            {/* News List */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
+              {isNewsLoading && trendingNewsList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#590907', fontWeight: '800', fontSize: '13px' }}>
+                  <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
+                  Fetching live Google News headlines...
+                </div>
+              ) : trendingNewsList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#3d0605', fontSize: '12px' }}>
+                  No live news currently available. Click Refresh above.
+                </div>
+              ) : (
+                trendingNewsList.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      backgroundColor: '#A5A79B', 
+                      border: '1px solid #590907', 
+                      borderRadius: '10px', 
+                      padding: '10px 12px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '4px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span style={{ fontSize: '9px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>
+                        {item.source || 'TRENDING'}
+                      </span>
+                      <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>
+                        {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
+                      </span>
+                    </div>
+
+                    <p style={{ margin: '2px 0 4px 0', fontSize: '12px', fontWeight: '800', color: '#590907', lineHeight: '1.4' }}>
+                      {item.title}
+                    </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <a 
+                        href={item.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800', color: '#590907', textDecoration: 'none' }}
+                      >
+                        Read Story <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}
