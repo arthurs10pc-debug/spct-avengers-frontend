@@ -5,9 +5,24 @@ import {
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus
 } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup, signOut } from './firebase';
-
 const BACKEND_URL = "https://spct-avengers-backend.onrender.com";
+const GOOGLE_CLIENT_ID = "644760404837-q0g258ajc1r1vjo8jqtru2c1cc11q1n7.apps.googleusercontent.com";
+
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
@@ -131,6 +146,7 @@ export default function App() {
   const watcherIntervalRef = useRef(null);
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
+  const googleBtnRef = useRef(null);
   const liveTrafficCheckRef = useRef(null);
   const audioCtxRef = useRef(null);
   const alarmIntervalRef = useRef(null);
@@ -189,117 +205,223 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Real Database Google Auth & Verification (Chrome & Mobile Account Chooser)
-  const triggerGoogleAuth = async (targetMode = authMode) => {
+  // Load Google Identity Services script
+  useEffect(() => {
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // Process Auth with Backend (Database Verification for Login, Creation for Sign Up)
+  const processAuthWithBackend = async (email, fullName, photoURL, targetMode) => {
     setIsAuthLoading(true);
-    try {
-      // Prompt user to select from all available Gmail accounts in browser/device
-      googleProvider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleUser = result.user;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const userName = fullName || cleanEmail.split('@')[0];
+    const userPhoto = photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E8D2B5&color=590907`;
 
-      if (!googleUser || !googleUser.email) {
-        setIsAuthLoading(false);
-        return;
+    const payload = {
+      email: cleanEmail,
+      fullName: userName,
+      avatar: userPhoto,
+      mode: targetMode
+    };
+
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const endpoints = isLocal
+      ? ['http://localhost:5001', BACKEND_URL]
+      : [BACKEND_URL, 'http://localhost:5001'];
+
+    let resData = null;
+    let resOk = false;
+    let resStatus = 0;
+
+    for (const base of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`${base}/api/auth/google-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        resStatus = res.status;
+        resOk = res.ok;
+        resData = await res.json().catch(() => null);
+        if (resData) break;
+      } catch (e) {
+        // next candidate
       }
+    }
 
-      const email = googleUser.email.trim().toLowerCase();
-      const fullName = googleUser.displayName || email.split('@')[0];
-      const photo = googleUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=E8D2B5&color=590907`;
+    setIsAuthLoading(false);
 
-      const payload = {
-        email,
-        fullName,
-        avatar: photo,
-        mode: targetMode
-      };
-
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const endpoints = isLocal
-        ? ['http://localhost:5001', BACKEND_URL]
-        : [BACKEND_URL, 'http://localhost:5001'];
-
-      let resData = null;
-      let resOk = false;
-      let resStatus = 0;
-
-      for (const base of endpoints) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
-          const res = await fetch(`${base}/api/auth/google-login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          resStatus = res.status;
-          resOk = res.ok;
-          resData = await res.json().catch(() => null);
-          if (resData) break;
-        } catch (e) {
-          // Fall through to next candidate endpoint
-        }
-      }
-
-      if (targetMode === 'login') {
-        if (resOk && resData && resData.success && resData.user) {
-          const profileData = {
-            _id: resData.user._id,
-            name: resData.user.fullName || fullName,
-            email: resData.user.email || email,
-            photo: resData.user.avatar || photo,
-            role: resData.user.role || 'commander',
-            connectedDate: new Date(resData.user.createdAt || Date.now()).toLocaleDateString()
-          };
-          setUserProfile(profileData);
-          localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
-          setShowAuthModal(false);
-          alert(`Success! Logged in successfully as ${profileData.name}. Welcome back!`);
-        } else if (resStatus === 404 || (resData && resData.success === false)) {
-          alert(`Error: Yeh Gmail ID (${email}) database mein registered nahi hai! Pehle Sign Up karein.`);
-          setAuthMode('signup');
-        } else {
-          // Emergency local cache check if backend endpoint couldn't be reached
-          const localCheck = localStorage.getItem(`jarvis_db_user_${email}`);
-          if (localCheck) {
-            const profileData = JSON.parse(localCheck);
-            setUserProfile(profileData);
-            setShowAuthModal(false);
-            alert(`Success! Logged in successfully as ${profileData.name}.`);
-          } else {
-            alert(`Error: Yeh Gmail ID (${email}) database mein registered nahi hai! Pehle Sign Up karein.`);
-            setAuthMode('signup');
-          }
-        }
-      } else {
-        // Sign Up Flow
-        let dbUser = resData?.user;
+    if (targetMode === 'login') {
+      if (resOk && resData && resData.success && resData.user) {
         const profileData = {
-          _id: dbUser?._id || `usr_${Date.now()}`,
-          name: dbUser?.fullName || fullName,
-          email: dbUser?.email || email,
-          photo: dbUser?.avatar || photo,
-          role: dbUser?.role || 'commander',
-          connectedDate: new Date(dbUser?.createdAt || Date.now()).toLocaleDateString()
+          _id: resData.user._id,
+          name: resData.user.fullName || userName,
+          email: resData.user.email || cleanEmail,
+          photo: resData.user.avatar || userPhoto,
+          role: resData.user.role || 'commander',
+          connectedDate: new Date(resData.user.createdAt || Date.now()).toLocaleDateString()
         };
-        localStorage.setItem(`jarvis_db_user_${email}`, JSON.stringify(profileData));
         setUserProfile(profileData);
+        localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
+        localStorage.setItem(`jarvis_db_user_${cleanEmail}`, JSON.stringify(profileData));
         setShowAuthModal(false);
-        alert(`Sign Up Success! Welcome ${profileData.name}. Your account has been registered.`);
+        alert(`Success! Logged in successfully as ${profileData.name}. Welcome back!`);
+      } else if (resStatus === 404 || resStatus === 400 || (resData && resData.success === false)) {
+        alert(`Error: Yeh Gmail ID (${cleanEmail}) database mein registered nahi hai!\n\nPehle "Sign Up" par click karein apna account banane ke liye.`);
+        setAuthMode('signup');
+      } else {
+        // Offline / emergency local check
+        const localCheck = localStorage.getItem(`jarvis_db_user_${cleanEmail}`);
+        if (localCheck) {
+          const profileData = JSON.parse(localCheck);
+          setUserProfile(profileData);
+          setShowAuthModal(false);
+          alert(`Success! Logged in successfully as ${profileData.name}.`);
+        } else {
+          alert(`Error: Yeh Gmail ID (${cleanEmail}) database mein registered nahi hai! Pehle Sign Up karein.`);
+          setAuthMode('signup');
+        }
       }
+    } else {
+      // mode === 'signup'
+      let dbUser = resData?.user;
+      const profileData = {
+        _id: dbUser?._id || `usr_${Date.now()}`,
+        name: dbUser?.fullName || userName,
+        email: dbUser?.email || cleanEmail,
+        photo: dbUser?.avatar || userPhoto,
+        role: dbUser?.role || 'commander',
+        connectedDate: new Date(dbUser?.createdAt || Date.now()).toLocaleDateString()
+      };
+      localStorage.setItem('jarvis_user_profile', JSON.stringify(profileData));
+      localStorage.setItem(`jarvis_db_user_${cleanEmail}`, JSON.stringify(profileData));
+      setUserProfile(profileData);
+      setShowAuthModal(false);
+      alert(`Sign Up Success! Welcome ${profileData.name}. Your account has been registered.`);
+    }
+  };
+
+  // Callback from GSI rendered button / One-Tap
+  const handleGoogleCredentialResponse = async (response) => {
+    if (!response || !response.credential) return;
+    try {
+      const decoded = parseJwt(response.credential);
+      if (!decoded || !decoded.email) {
+        throw new Error("Unable to parse Google authentication token.");
+      }
+      await processAuthWithBackend(decoded.email, decoded.name || 'User', decoded.picture || '', authMode);
     } catch (err) {
-      if (err.code === 'auth/popup-closed-by-user') {
-        return;
+      alert(`Authentication Error: ${err.message}`);
+    }
+  };
+
+  // Render Google GSI button when Auth Modal is open
+  useEffect(() => {
+    if (!showAuthModal) return;
+
+    const renderGsiButton = () => {
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        try {
+          googleBtnRef.current.innerHTML = "";
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false
+          });
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'outline',
+            size: 'large',
+            width: 280,
+            text: authMode === 'login' ? 'signin_with' : 'signup_with',
+            shape: 'pill'
+          });
+        } catch (e) {
+          console.error("GSI renderButton error:", e);
+        }
       }
-      if (err.code === 'auth/popup-blocked') {
-        alert("Google Sign-In popup was blocked by your browser. Please allow popups for this site.");
-        return;
+    };
+
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = renderGsiButton;
+      document.body.appendChild(script);
+    } else {
+      renderGsiButton();
+    }
+  }, [showAuthModal, authMode]);
+
+  // Main Google Auth Trigger (Uses Google Identity Services popup with prompt: 'select_account')
+  const triggerGoogleAuth = (targetMode = authMode) => {
+    setIsAuthLoading(true);
+
+    const startOAuth = () => {
+      if (window.google?.accounts?.oauth2) {
+        try {
+          const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'email profile openid',
+            callback: async (tokenResponse) => {
+              if (tokenResponse.error) {
+                setIsAuthLoading(false);
+                if (tokenResponse.error === 'popup_closed_by_user') return;
+                alert(`Google Sign-In: ${tokenResponse.error_description || tokenResponse.error}`);
+                return;
+              }
+              try {
+                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const info = await res.json();
+                if (info && info.email) {
+                  await processAuthWithBackend(info.email, info.name, info.picture, targetMode);
+                } else {
+                  alert("Could not fetch user profile from Google.");
+                  setIsAuthLoading(false);
+                }
+              } catch (fetchErr) {
+                alert(`Error: ${fetchErr.message}`);
+                setIsAuthLoading(false);
+              }
+            }
+          });
+          client.requestAccessToken({ prompt: 'select_account' });
+          return;
+        } catch (err) {
+          console.error("OAuth client error:", err);
+        }
       }
-      alert(`Authentication Error: ${err.message || 'Google Sign-In failed.'}`);
-    } finally {
+
+      // Fallback: prompt Google One Tap / account chooser
+      if (window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.prompt();
+        } catch (e) {}
+      }
       setIsAuthLoading(false);
+    };
+
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = startOAuth;
+      document.body.appendChild(script);
+    } else {
+      startOAuth();
     }
   };
 
@@ -1233,6 +1355,11 @@ export default function App() {
               </button>
             </div>
 
+            {/* Google GSI Standard Account Chooser (Shows all device Gmail IDs) */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '8px 0 14px 0', minHeight: '44px' }}>
+              <div ref={googleBtnRef}></div>
+            </div>
+
             {/* Action Buttons for Log In and Sign Up */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button 
@@ -1257,7 +1384,7 @@ export default function App() {
                 }}
               >
                 <LogIn size={15} color={authMode === 'login' ? '#E8D2B5' : '#590907'} />
-                {isAuthLoading && authMode === 'login' ? 'Connecting Google...' : 'Log In with Google'}
+                {isAuthLoading && authMode === 'login' ? 'Opening Google Account Chooser...' : 'Log In with Google'}
               </button>
 
               <button 
@@ -1282,7 +1409,7 @@ export default function App() {
                 }}
               >
                 <UserPlus size={15} color={authMode === 'signup' ? '#E8D2B5' : '#590907'} />
-                {isAuthLoading && authMode === 'signup' ? 'Creating Account...' : 'Sign Up with Google'}
+                {isAuthLoading && authMode === 'signup' ? 'Opening Google Account Chooser...' : 'Sign Up with Google'}
               </button>
             </div>
 
@@ -1518,10 +1645,12 @@ export default function App() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button 
-                onClick={async () => {
+                onClick={() => {
                   if (window.confirm("Are you sure you want to disconnect / log out?")) {
                     try {
-                      await signOut(auth);
+                      if (window.google?.accounts?.id) {
+                        window.google.accounts.id.disableAutoSelect();
+                      }
                     } catch (e) {}
                     setUserProfile(null);
                     localStorage.removeItem('jarvis_user_profile');

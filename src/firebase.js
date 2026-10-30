@@ -1,6 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { getMessaging } from "firebase/messaging";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD-4gRvVI1Tx8VLADJRifzYN190_FqBbJa",
@@ -12,18 +11,10 @@ const firebaseConfig = {
   measurementId: "G-WJ3P8YTDZD"
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-
+const app = initializeApp(firebaseConfig);
 let messaging = null;
 try {
   messaging = getMessaging(app);
-} catch (e) {
-  // Messaging fallback
-}
+} catch (e) {}
 
 export { messaging };
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-
-export { signInWithPopup, signOut };
