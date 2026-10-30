@@ -6,7 +6,8 @@ import {
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
-  Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter
+  Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
+  Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -32,7 +33,7 @@ const parseJwt = (token) => {
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [assistantStatus, setAssistantStatus] = useState("Lone Wolf System Active...");
+  const [assistantStatus, setAssistantStatus] = useState("Shadow System Active...");
 
   // Real Database Google Auth State (Login / Sign Up with Backend verification)
   const [userProfile, setUserProfile] = useState(() => {
@@ -79,7 +80,7 @@ export default function App() {
         },
         {
           id: 'note_preset_2',
-          title: 'SPCT Project Guidelines',
+          title: 'Shadow Guidelines',
           type: 'text',
           content: 'Keep real-time traffic active during peak hours. Use the clean tools converter for PDF export.',
           color: '#f59e0b',
@@ -931,6 +932,42 @@ export default function App() {
                   map.fitBounds(gPoly.getBounds(), { padding: [50, 50] });
                   setRouteStatus({ isHeavy: false, message: `Route clear. (${durationMin} min, ${distanceKm} km)` });
                 }
+
+                // Google Maps Live Animated Navigation Vehicle Pulse Marker
+                if (navVehicleMarkerRef.current && map) {
+                  try { map.removeLayer(navVehicleMarkerRef.current); } catch (e) {}
+                  navVehicleMarkerRef.current = null;
+                }
+                if (navAnimationTimerRef.current) {
+                  clearInterval(navAnimationTimerRef.current);
+                  navAnimationTimerRef.current = null;
+                }
+
+                if (coords && coords.length > 1) {
+                  const navPulseIcon = window.L.divIcon({
+                    className: 'google-nav-pulse-marker',
+                    html: `
+                      <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+                        <div style="position: absolute; inset: 0; border-radius: 50%; background: rgba(56, 189, 248, 0.55); animation: jarvisNavPulse 1.4s ease-out infinite;"></div>
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #0284c7; border: 3px solid #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
+                          <div style="width: 7px; height: 7px; border-radius: 50%; background: #ffffff;"></div>
+                        </div>
+                      </div>
+                    `,
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17]
+                  });
+
+                  const vMarker = window.L.marker(coords[0], { icon: navPulseIcon, zIndexOffset: 1200 }).addTo(map);
+                  navVehicleMarkerRef.current = vMarker;
+
+                  let stepIdx = 0;
+                  navAnimationTimerRef.current = setInterval(() => {
+                    if (!navVehicleMarkerRef.current || !coords || coords.length === 0) return;
+                    stepIdx = (stepIdx + 1) % coords.length;
+                    navVehicleMarkerRef.current.setLatLng(coords[stepIdx]);
+                  }, 400);
+                }
               }
             }).catch(e => {});
         }
@@ -1396,7 +1433,7 @@ export default function App() {
 
           if ('Notification' in window && Notification.permission === 'granted') {
             try {
-              new Notification("Lone Wolf Watcher Alert", {
+              new Notification("Shadow Watcher Alert", {
                 body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
                 icon: "/logo.png"
               });
@@ -1546,34 +1583,37 @@ export default function App() {
     syncNotesToCloud(updated);
   };
 
-  const handleSendNotesEmailNow = async () => {
-    if (!userProfile?.email) {
-      alert("Please Log In with your Gmail ID first so we can send notes to your registered mailbox!");
-      setShowNotesModal(false);
-      setAuthMode('login');
-      setShowAuthModal(true);
-      return;
+  const handleSendNotesEmailNow = async (explicitEmail = null) => {
+    const targetEmail = (explicitEmail || notesTargetEmail || userProfile?.email || '').trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      const prompted = window.prompt("Enter your Gmail address to receive your notes & task reminder:", userProfile?.email || "arthurs10pc@gmail.com");
+      if (!prompted) return;
+      return handleSendNotesEmailNow(prompted);
     }
 
     setIsSendingNotesEmail(true);
-    setNotesEmailFeedback("Delivering notes reminder to registered Gmail...");
+    setNotesEmailFeedback(`Delivering notes to ${targetEmail}...`);
     try {
       const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userProfile.email, slotLabel: 'Manual Instant Reminder' })
+        body: JSON.stringify({
+          email: targetEmail,
+          slotLabel: 'Instant Notes & Tasks Reminder',
+          notes: notesList
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setNotesEmailFeedback(`Delivered successfully to ${userProfile.email}!`);
+        setNotesEmailFeedback(`Email delivered successfully to ${targetEmail}!`);
       } else {
-        setNotesEmailFeedback(data.message || 'Check spam or connection.');
+        setNotesEmailFeedback(data.message || data.error || 'Delivery feedback received.');
       }
     } catch (e) {
-      setNotesEmailFeedback("Failed to send email. Check connection.");
+      setNotesEmailFeedback("Failed to send email. Please check server.");
     } finally {
       setIsSendingNotesEmail(false);
-      setTimeout(() => setNotesEmailFeedback(""), 6000);
+      setTimeout(() => setNotesEmailFeedback(""), 8000);
     }
   };
 
@@ -1857,8 +1897,27 @@ export default function App() {
             )}
           </button>
 
-          <button onClick={handleStopAll} title="Stop All" style={{ background: '#3d0605', border: '1px solid #590907', color: '#E8D2B5', padding: '8px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Square size={14} />
+          <button 
+            onClick={handleStopAll} 
+            title="Shadow Standby / Emergency Audio & Route Stop" 
+            style={{ 
+              background: '#590907', 
+              border: '1px solid #E8D2B5', 
+              color: '#E8D2B5', 
+              padding: '6px 4px', 
+              borderRadius: '10px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '2px', 
+              width: '46px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.35)'
+            }}
+          >
+            <Power size={15} color="#ef4444" />
+            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: '#E8D2B5' }}>STANDBY</span>
           </button>
         </div>
       </aside>
@@ -1869,7 +1928,7 @@ export default function App() {
         {/* Top Header - Warm Cream Beige & Burgundy */}
         <header style={{ padding: '12px 16px', backgroundColor: '#E8D2B5', borderBottom: '1px solid #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
-            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LONE WOLF JARVIS</h1>
+            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
             <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
@@ -1968,30 +2027,62 @@ export default function App() {
           </div>
 
           {/* Real-time 1-Second Gujarat Traffic Alert Pill (Appears automatically when traffic happens) */}
-          {trafficAlertBanner && (
+          {(trafficAlertBanner || isMonitoringActive) && (
             <div style={{ 
-              marginTop: '22px', 
-              padding: '10px 18px', 
+              marginTop: '16px', 
+              padding: '10px 16px', 
               borderRadius: '14px', 
-              backgroundColor: '#590907', 
-              border: '2px solid #ef4444', 
-              color: '#fecaca', 
+              backgroundColor: trafficAlertBanner ? '#590907' : '#111827', 
+              border: `2px solid ${trafficAlertBanner ? '#ef4444' : '#38bdf8'}`, 
+              color: '#ffffff', 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '10px', 
-              boxShadow: '0 4px 25px rgba(239, 68, 68, 0.45)',
-              maxWidth: '480px',
-              animation: 'jarvisAlertPulse 1.5s infinite'
+              justifyContent: 'space-between',
+              gap: '12px', 
+              boxShadow: trafficAlertBanner ? '0 4px 25px rgba(239, 68, 68, 0.45)' : '0 4px 20px rgba(56, 189, 248, 0.35)',
+              maxWidth: '520px',
+              width: '92%',
+              zIndex: 10
             }}>
-              <AlertTriangle size={20} color="#f87171" style={{ flexShrink: 0 }} />
-              <div style={{ textAlign: 'left' }}>
-                <p style={{ margin: 0, fontSize: '11px', fontWeight: '900', color: '#ffffff' }}>
-                  TRAFFIC ALERT: {trafficAlertBanner.location}
-                </p>
-                <span style={{ fontSize: '10px', color: '#fecaca', fontWeight: '700' }}>
-                  {trafficAlertBanner.message} ({trafficAlertBanner.time})
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left', minWidth: 0 }}>
+                {trafficAlertBanner ? (
+                  <AlertTriangle size={20} color="#f87171" style={{ flexShrink: 0 }} />
+                ) : (
+                  <Navigation size={18} color="#38bdf8" style={{ flexShrink: 0 }} />
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: '11px', fontWeight: '900', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Google Maps Live Navigation Active'}
+                  </p>
+                  <span style={{ fontSize: '10px', color: trafficAlertBanner ? '#fecaca' : '#93c5fd', fontWeight: '700' }}>
+                    {trafficAlertBanner ? trafficAlertBanner.message : `Checking Gujarat traffic every second: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}`}
+                  </span>
+                </div>
               </div>
+
+              {isMonitoringActive && (
+                <button
+                  onClick={handleStopRouteNavigation}
+                  style={{
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    flexShrink: 0
+                  }}
+                  title="Stop Continuous Traffic Monitoring & Navigation"
+                >
+                  <StopCircle size={13} />
+                  STOP
+                </button>
+              )}
             </div>
           )}
 
@@ -2321,28 +2412,45 @@ export default function App() {
                 </span>
               </div>
 
-              {/* 3x Daily Email Notification & Instant Test Button */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* 3x Daily Email Notification & Instant Test Button with Email Input */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <input
+                  type="email"
+                  placeholder="Gmail address..."
+                  value={notesTargetEmail}
+                  onChange={(e) => setNotesTargetEmail(e.target.value)}
+                  style={{
+                    padding: '6px 9px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    fontSize: '10px',
+                    width: '160px',
+                    backgroundColor: '#ffffff',
+                    color: '#590907',
+                    fontWeight: '700'
+                  }}
+                />
                 <button
-                  onClick={handleSendNotesEmailNow}
+                  onClick={() => handleSendNotesEmailNow()}
                   disabled={isSendingNotesEmail}
                   style={{
                     backgroundColor: '#590907',
                     color: '#E8D2B5',
                     border: 'none',
-                    padding: '7px 12px',
+                    padding: '6px 12px',
                     borderRadius: '8px',
                     fontSize: '10px',
                     fontWeight: '900',
                     cursor: isSendingNotesEmail ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '5px'
+                    gap: '5px',
+                    boxShadow: '0 2px 6px rgba(89,9,7,0.3)'
                   }}
-                  title="Delivers current task checklist and notes to your signed Gmail ID right now"
+                  title="Delivers current task checklist and notes to this Gmail ID immediately"
                 >
                   <Mail size={12} />
-                  {isSendingNotesEmail ? 'Sending...' : 'Send Notes to My Gmail Now'}
+                  {isSendingNotesEmail ? 'Delivering...' : 'Send Notes to My Gmail Now'}
                 </button>
               </div>
             </div>
@@ -2995,9 +3103,19 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
-                  Start 1-Second Traffic Monitoring
-                </button>
+                {isMonitoringActive ? (
+                  <button 
+                    type="button" 
+                    onClick={handleStopRouteNavigation}
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <StopCircle size={15} /> Stop Route Navigation
+                  </button>
+                ) : (
+                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                    Start Live Navigation & Traffic Radar
+                  </button>
+                )}
                 <button 
                   type="button" 
                   onClick={() => setIsSimulatedTraffic(!isSimulatedTraffic)}
@@ -3214,241 +3332,399 @@ export default function App() {
       )}
 
       {/* Advanced Expense Tracker Modal */}
-      {showExpenseModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '480px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '92vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+      {/* Expense, Income Tracker & Monthly Financial Report Modal */}
+      {showExpenseModal && (() => {
+        const monthlyItems = expenseList.filter(item => {
+          if (!item.date) return true;
+          return item.date.startsWith(selectedExpenseMonth) || item.date.includes(selectedExpenseMonth);
+        });
 
-            {/* Header with Title & Action Tools */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <DollarSign size={18} />
+        const monthlyEarned = monthlyItems
+          .filter(i => i.type === 'income')
+          .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+
+        const monthlySpent = monthlyItems
+          .filter(i => i.type !== 'income')
+          .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+
+        const monthlyNet = monthlyEarned - monthlySpent;
+        const monthlyRemainingBudget = monthlyBudget - monthlySpent;
+        const budgetPct = monthlyBudget > 0 ? Math.min(Math.round((monthlySpent / monthlyBudget) * 100), 100) : 0;
+
+        const catMap = {};
+        monthlyItems.filter(i => i.type !== 'income').forEach(i => {
+          const cat = i.category || 'Other';
+          catMap[cat] = (catMap[cat] || 0) + (parseFloat(i.amount) || 0);
+        });
+        const categoryStats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+        const topCat = categoryStats.length > 0 ? categoryStats[0] : null;
+        const savingsRate = monthlyEarned > 0 ? Math.round((monthlyNet / monthlyEarned) * 100) : 0;
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '720px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DollarSign size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900' }}>Shadow Expense & Monthly Financial Report</h3>
+                    <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Track Earned vs Spent with dynamic monthly analytics</span>
+                  </div>
                 </div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900' }}>Expense & Budget Tracker</h3>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}>
+                    <FileSpreadsheet size={12} /> CSV
+                  </button>
+                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button 
-                  onClick={handleExportExpensesCSV} 
-                  title="Download CSV / Excel" 
-                  style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}
-                >
-                  <FileSpreadsheet size={12} /> CSV
-                </button>
-                <button 
-                  onClick={handleClearAllExpenses} 
-                  title="Clear All Expenses" 
-                  style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
 
-            {/* Budget Summary & Progress Bar Card */}
-            <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div>
-                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '800', textTransform: 'uppercase' }}>Monthly Budget</span>
-                  {isSettingBudget ? (
-                    <form onSubmit={handleUpdateBudget} style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
-                      <input 
-                        type="number" 
-                        value={tempBudgetInput} 
-                        onChange={(e) => setTempBudgetInput(e.target.value)} 
-                        placeholder={monthlyBudget.toString()} 
-                        style={{ width: '80px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #590907', fontSize: '11px', outline: 'none' }}
-                        autoFocus
-                      />
-                      <button type="submit" style={{ background: '#590907', color: '#E8D2B5', border: 'none', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}>Save</button>
-                      <button type="button" onClick={() => setIsSettingBudget(false)} style={{ background: '#7f1d1d', color: '#fecaca', border: 'none', padding: '4px 6px', borderRadius: '6px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
-                    </form>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <p style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>₹{monthlyBudget.toLocaleString()}</p>
-                      <button onClick={() => { setTempBudgetInput(monthlyBudget.toString()); setIsSettingBudget(true); }} style={{ background: 'transparent', border: 'none', color: '#590907', cursor: 'pointer', padding: '2px' }} title="Change Budget">
-                        <Edit2 size={12} />
-                      </button>
-                    </div>
-                  )}
+              {/* Month Selector Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#590907', borderRadius: '12px', padding: '8px 12px', marginBottom: '12px', color: '#E8D2B5' }}>
+                <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
+                  ◀ Prev Month
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', fontSize: '13px' }}>
+                  <Calendar size={15} color="#E8D2B5" />
+                  <span>{formatExpenseMonthLabel(selectedExpenseMonth)}</span>
+                </div>
+                <button onClick={handleNextExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
+                  Next Month ▶
+                </button>
+              </div>
+
+              {/* Top View Mode Switcher: Tracker vs Monthly Chart & Report */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                <button
+                  onClick={() => setExpenseTabMode('tracker')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: expenseTabMode === 'tracker' ? '#590907' : '#A5A79B',
+                    color: expenseTabMode === 'tracker' ? '#E8D2B5' : '#590907',
+                    fontWeight: '900',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Edit2 size={13} /> Transactions & Quick Add
+                </button>
+                <button
+                  onClick={() => setExpenseTabMode('monthly_report')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: expenseTabMode === 'monthly_report' ? '#590907' : '#A5A79B',
+                    color: expenseTabMode === 'monthly_report' ? '#E8D2B5' : '#590907',
+                    fontWeight: '900',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <BarChart2 size={13} /> 📊 Monthly Chart & Report
+                </button>
+              </div>
+
+              {/* 4 Financial Metric Cards for the Selected Month */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '8px', marginBottom: '14px' }}>
+                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#166534', fontSize: '9px', fontWeight: '900' }}>
+                    <TrendingUp size={12} /> TOTAL EARNED
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: '#166534' }}>₹{monthlyEarned.toLocaleString()}</p>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '800', textTransform: 'uppercase' }}>Spent / Remaining</span>
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#590907' }}>
-                    ₹{totalSpent.toFixed(0)} / <span style={{ color: remainingBudget >= 0 ? '#15803d' : '#b91c1c' }}>₹{remainingBudget.toFixed(0)}</span>
+                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#991b1b', fontSize: '9px', fontWeight: '900' }}>
+                    <TrendingDown size={12} /> TOTAL SPENT
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: '#991b1b' }}>₹{monthlySpent.toLocaleString()}</p>
+                </div>
+
+                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#590907' }}>NET BALANCE</div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>
+                    {monthlyNet >= 0 ? `+₹${monthlyNet.toLocaleString()}` : `-₹${Math.abs(monthlyNet).toLocaleString()}`}
+                  </p>
+                </div>
+
+                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#590907' }}>BUDGET LEFT</div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#590907' : '#991b1b' }}>
+                    ₹{monthlyRemainingBudget.toLocaleString()}
                   </p>
                 </div>
               </div>
 
-              {/* Visual Budget Progress Bar */}
-              <div style={{ width: '100%', height: '8px', backgroundColor: '#E8D2B5', borderRadius: '4px', overflow: 'hidden', border: '1px solid #590907' }}>
-                <div 
-                  style={{ 
-                    height: '100%', 
-                    width: `${budgetSpentPct}%`, 
-                    backgroundColor: budgetSpentPct > 90 ? '#b91c1c' : (budgetSpentPct > 70 ? '#c2410c' : '#590907'),
-                    transition: 'width 0.4s ease'
-                  }} 
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                <span style={{ fontSize: '8px', fontWeight: '800', color: '#3d0605' }}>{budgetSpentPct}% Used</span>
-                <span style={{ fontSize: '8px', fontWeight: '800', color: remainingBudget >= 0 ? '#15803d' : '#b91c1c' }}>
-                  {remainingBudget >= 0 ? `₹${remainingBudget.toFixed(0)} Remaining` : `Over by ₹${Math.abs(remainingBudget).toFixed(0)}!`}
-                </span>
-              </div>
-            </div>
+              {/* View 1: Tracker & Add Mode */}
+              {expenseTabMode === 'tracker' && (
+                <>
+                  {/* Transaction Type Selector: Spend vs Earn */}
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTransactionType('expense')}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        borderRadius: '8px',
+                        border: transactionType === 'expense' ? '2px solid #ef4444' : '1px solid #590907',
+                        backgroundColor: transactionType === 'expense' ? '#991b1b' : '#A5A79B',
+                        color: transactionType === 'expense' ? '#ffffff' : '#590907',
+                        fontWeight: '900',
+                        fontSize: '11px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🔴 Spend / Expense
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransactionType('income')}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        borderRadius: '8px',
+                        border: transactionType === 'income' ? '2px solid #22c55e' : '1px solid #590907',
+                        backgroundColor: transactionType === 'income' ? '#166534' : '#A5A79B',
+                        color: transactionType === 'income' ? '#ffffff' : '#590907',
+                        fontWeight: '900',
+                        fontSize: '11px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🟢 Earn / Income
+                    </button>
+                  </div>
 
-            {/* Quick 1-Tap Preset Buttons */}
-            <div style={{ marginBottom: '10px' }}>
-              <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
-                1-Tap Quick Add:
-              </span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {[
-                  { label: "Chai ₹20", title: "Chai / Tea", amount: 20, cat: "Food & Snacks" },
-                  { label: "Metro ₹50", title: "Metro Ride", amount: 50, cat: "Travel & Fuel" },
-                  { label: "Snacks ₹40", title: "Snacks", amount: 40, cat: "Food & Snacks" },
-                  { label: "Lunch ₹120", title: "Lunch / Meal", amount: 120, cat: "Food & Snacks" },
-                  { label: "Stationery ₹60", title: "Stationery / Books", amount: 60, cat: "Study & Books" },
-                  { label: "Fuel ₹100", title: "Petrol / Fuel", amount: 100, cat: "Travel & Fuel" }
-                ].map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleQuickAddExpense(item.title, item.amount, item.cat)}
-                    style={{
-                      background: '#A5A79B',
-                      border: '1px solid #590907',
-                      color: '#590907',
-                      fontSize: '9px',
-                      fontWeight: '800',
-                      padding: '3px 7px',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    + {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                  {/* 1-Tap Quick Presets */}
+                  <div style={{ marginBottom: '10px' }}>
+                    <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
+                      1-Tap Quick Presets ({transactionType === 'income' ? 'Earn' : 'Spend'}):
+                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {transactionType === 'expense' ? (
+                        [
+                          { label: "Chai ₹20", title: "Chai / Tea", amount: 20, cat: "Food & Snacks" },
+                          { label: "Metro ₹50", title: "Metro Ride", amount: 50, cat: "Travel & Fuel" },
+                          { label: "Snacks ₹40", title: "Snacks", amount: 40, cat: "Food & Snacks" },
+                          { label: "Lunch ₹120", title: "Lunch / Meal", amount: 120, cat: "Food & Snacks" },
+                          { label: "Stationery ₹60", title: "Stationery / Books", amount: 60, cat: "Study & Books" },
+                          { label: "Fuel ₹100", title: "Petrol / Fuel", amount: 100, cat: "Travel & Fuel" }
+                        ].map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleQuickAddExpense(item.title, item.amount, item.cat, 'expense')}
+                            style={{ background: '#A5A79B', border: '1px solid #590907', color: '#590907', fontSize: '9px', fontWeight: '800', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer' }}
+                          >
+                            + {item.label}
+                          </button>
+                        ))
+                      ) : (
+                        [
+                          { label: "Salary ₹15,000", title: "Monthly Salary", amount: 15000, cat: "Income / Earnings" },
+                          { label: "Freelance ₹3,000", title: "Freelance Work", amount: 3000, cat: "Income / Earnings" },
+                          { label: "Pocket Money ₹1,500", title: "Pocket Money", amount: 1500, cat: "Income / Earnings" },
+                          { label: "Bonus ₹1,000", title: "Incentive / Bonus", amount: 1000, cat: "Income / Earnings" }
+                        ].map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleQuickAddExpense(item.title, item.amount, item.cat, 'income')}
+                            style={{ background: '#dcfce7', border: '1px solid #166534', color: '#166534', fontSize: '9px', fontWeight: '800', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer' }}
+                          >
+                            + {item.label}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
 
-            {/* Add Expense Form */}
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  type="text"
-                  placeholder="Expense title (e.g. Grocery, Book)..."
-                  value={expenseTitle}
-                  onChange={(e) => setExpenseTitle(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
-                />
-                <input
-                  type="number"
-                  placeholder="Amount (₹)"
-                  value={expenseAmount}
-                  onChange={(e) => setExpenseAmount(e.target.value)}
-                  style={{ width: '85px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
-                />
-              </div>
+                  {/* Form */}
+                  <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        type="text"
+                        placeholder={transactionType === 'income' ? "Income description (e.g. Salary, Freelance, Gift)..." : "Expense title (e.g. Grocery, Book, Fuel)..."}
+                        value={expenseTitle}
+                        onChange={(e) => setExpenseTitle(e.target.value)}
+                        style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Amount (₹)"
+                        value={expenseAmount}
+                        onChange={(e) => setExpenseAmount(e.target.value)}
+                        style={{ width: '90px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
+                      />
+                    </div>
 
-              {/* Category Selector Dropdown */}
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <select
-                  value={expenseCategory}
-                  onChange={(e) => setExpenseCategory(e.target.value)}
-                  style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '700' }}
-                >
-                  {EXPENSE_CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <select
+                        value={expenseCategory}
+                        onChange={(e) => setExpenseCategory(e.target.value)}
+                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                      >
+                        {transactionType === 'income' ? (
+                          <>
+                            <option value="Income / Earnings">Income / Earnings</option>
+                            <option value="Salary">Salary</option>
+                            <option value="Freelance">Freelance Work</option>
+                            <option value="Investment">Investment Returns</option>
+                            <option value="Pocket Money">Pocket Money</option>
+                            <option value="Gift / Other">Gift / Other</option>
+                          </>
+                        ) : (
+                          EXPENSE_CATEGORIES.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))
+                        )}
+                      </select>
 
-                <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  Add Expense
-                </button>
-              </div>
-            </form>
-
-            {/* Search & Category Filter Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  placeholder="Search expenses by title or ₹amount..."
-                  value={expenseSearchQuery}
-                  onChange={(e) => setExpenseSearchQuery(e.target.value)}
-                  style={{ width: '100%', padding: '7px 26px 7px 8px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '10px', outline: 'none' }}
-                />
-                {expenseSearchQuery && (
-                  <button onClick={() => setExpenseSearchQuery('')} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#590907', cursor: 'pointer', fontSize: '12px' }}>✕</button>
-                )}
-              </div>
-
-              {/* Filter Category Chips */}
-              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '3px' }}>
-                {['All', ...EXPENSE_CATEGORIES].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setExpenseCategoryFilter(cat)}
-                    style={{
-                      background: expenseCategoryFilter === cat ? '#590907' : '#A5A79B',
-                      color: expenseCategoryFilter === cat ? '#E8D2B5' : '#590907',
-                      border: '1px solid #590907',
-                      padding: '3px 7px',
-                      borderRadius: '6px',
-                      fontSize: '9px',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filtered Expenses List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
-              {filteredExpenses.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#3d0605', fontSize: '11px', margin: '14px 0' }}>
-                  {expenseSearchQuery || expenseCategoryFilter !== 'All' ? 'No matching expenses found.' : 'No expense records found.'}
-                </p>
-              ) : (
-                filteredExpenses.map((exp, idx) => {
-                  const originalIndex = expenseList.findIndex(e => e.title === exp.title && e.amount === exp.amount && e.date === exp.date);
-                  return (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {exp?.title || 'Expense'}
-                          </p>
-                          <span style={{ fontSize: '8px', fontWeight: '800', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 5px', borderRadius: '4px' }}>
-                            {exp?.category || 'General'}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{exp?.date || ''} • ₹{exp?.amount || 0}</span>
-                      </div>
-                      <button onClick={() => handleDeleteExpense(originalIndex >= 0 ? originalIndex : idx)} style={{ background: '#590907', border: '1px solid #3d0605', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer', flexShrink: 0 }}>
-                        <Trash2 size={12} />
+                      <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: transactionType === 'income' ? '#166534' : '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {transactionType === 'income' ? '+ Log Earned' : '+ Log Expense'}
                       </button>
                     </div>
-                  );
-                })
+                  </form>
+
+                  {/* Transactions List */}
+                  <div style={{ flex: 1, maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {monthlyItems.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '20px', color: '#3d0605', fontSize: '11px' }}>
+                        No transactions recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}. Add one above!
+                      </div>
+                    ) : (
+                      monthlyItems.map((exp, idx) => (
+                        <div key={exp.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907' }}>
+                                {exp.title}
+                              </p>
+                              <span style={{ fontSize: '8px', fontWeight: '800', color: exp.type === 'income' ? '#166534' : '#E8D2B5', backgroundColor: exp.type === 'income' ? '#dcfce7' : '#590907', padding: '1px 5px', borderRadius: '4px' }}>
+                                {exp.category || (exp.type === 'income' ? 'Earned' : 'Spent')}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{exp.date} • {exp.time}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '900', color: exp.type === 'income' ? '#166534' : '#991b1b' }}>
+                              {exp.type === 'income' ? `+₹${exp.amount}` : `-₹${exp.amount}`}
+                            </span>
+                            <button onClick={() => handleDeleteExpense(expenseList.findIndex(e => e.id === exp.id))} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '4px', borderRadius: '4px', cursor: 'pointer' }}>
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
               )}
+
+              {/* View 2: Full Monthly Chart & Financial Report */}
+              {expenseTabMode === 'monthly_report' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Visual Comparison: Earned vs Spent Meter */}
+                  <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '12px', padding: '12px' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '900', color: '#590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <BarChart2 size={14} /> Earned vs Spent Comparison ({formatExpenseMonthLabel(selectedExpenseMonth)})
+                    </h4>
+                    <div style={{ display: 'flex', height: '18px', borderRadius: '9px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#E8D2B5' }}>
+                      <div
+                        style={{
+                          width: monthlyEarned + monthlySpent > 0 ? `${(monthlyEarned / (monthlyEarned + monthlySpent)) * 100}%` : '50%',
+                          backgroundColor: '#16a34a',
+                          transition: 'width 0.4s ease'
+                        }}
+                        title={`Earned: ₹${monthlyEarned}`}
+                      />
+                      <div
+                        style={{
+                          width: monthlyEarned + monthlySpent > 0 ? `${(monthlySpent / (monthlyEarned + monthlySpent)) * 100}%` : '50%',
+                          backgroundColor: '#dc2626',
+                          transition: 'width 0.4s ease'
+                        }}
+                        title={`Spent: ₹${monthlySpent}`}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '10px', fontWeight: '800' }}>
+                      <span style={{ color: '#166534' }}>🟢 Earned: ₹{monthlyEarned.toLocaleString()} ({monthlyEarned + monthlySpent > 0 ? Math.round((monthlyEarned / (monthlyEarned + monthlySpent)) * 100) : 0}%)</span>
+                      <span style={{ color: '#991b1b' }}>🔴 Spent: ₹{monthlySpent.toLocaleString()} ({monthlyEarned + monthlySpent > 0 ? Math.round((monthlySpent / (monthlyEarned + monthlySpent)) * 100) : 0}%)</span>
+                    </div>
+                  </div>
+
+                  {/* Category Breakdown Bar Chart */}
+                  <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '12px', padding: '12px' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <PieChart size={14} /> Category Spending Distribution Chart
+                    </h4>
+                    {categoryStats.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: '11px', color: '#3d0605', textAlign: 'center', padding: '10px' }}>No categorized expenses for this month.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {categoryStats.map(([cat, amt]) => {
+                          const pct = monthlySpent > 0 ? Math.round((amt / monthlySpent) * 100) : 0;
+                          return (
+                            <div key={cat}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '800', marginBottom: '2px' }}>
+                                <span>{cat}</span>
+                                <span>₹{amt.toLocaleString()} ({pct}%)</span>
+                              </div>
+                              <div style={{ width: '100%', height: '7px', backgroundColor: '#E8D2B5', borderRadius: '4px', overflow: 'hidden', border: '1px solid #590907' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#590907', borderRadius: '4px' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Monthly Financial Health Report Summary */}
+                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '900', color: '#590907' }}>
+                      📑 Monthly Financial Health Report ({formatExpenseMonthLabel(selectedExpenseMonth)})
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: '11px' }}>
+                      <div>• <strong>Top Expense Area:</strong> {topCat ? `${topCat[0]} (₹${topCat[1]})` : 'None'}</div>
+                      <div>• <strong>Daily Average Spend:</strong> ₹{Math.round(monthlySpent / 30).toLocaleString()} / day</div>
+                      <div>• <strong>Savings Rate:</strong> {savingsRate}%</div>
+                      <div>• <strong>Budget Status:</strong> {monthlyRemainingBudget >= 0 ? '✅ Within Budget' : '⚠️ Over Budget'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Daily Briefing & Live Google News Flash Modal */}
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '580px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '780px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
             <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             {/* Header */}
@@ -3617,7 +3893,7 @@ export default function App() {
                           </span>
                         </div>
 
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907', lineHeight: '1.35', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#590907', lineHeight: '1.4', wordBreak: 'break-word' }}>
                           {item.title}
                         </p>
                       </div>
@@ -3628,9 +3904,9 @@ export default function App() {
                           href={item.link} 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '9px', fontWeight: '900', color: '#590907', textDecoration: 'none', backgroundColor: 'rgba(89,9,7,0.1)', padding: '2px 6px', borderRadius: '4px' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', textDecoration: 'none', padding: '5px 12px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(89,9,7,0.2)' }}
                         >
-                          Read Story <ExternalLink size={10} />
+                          Read Article <ExternalLink size={11} />
                         </a>
                       </div>
                     </div>
