@@ -494,7 +494,9 @@ export default function App() {
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
   // Live Countdown Timer String for Sidebar ("MM:SS")
-  const [nextCountdownStr, setNextCountdownStr] = useState('--:--');
+  const [nextCountdownStr, setNextCountdownStr] = useState('09:00');
+  const [nextRemTimeStr, setNextRemTimeStr] = useState('09:00');
+  const [nextRemTitle, setNextRemTitle] = useState('Morning Review & Focus');
 
   // Advanced Expense Tracker State with Top-First Order
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -685,8 +687,10 @@ export default function App() {
         const data = await res.json();
         if (data && data.success) {
           isRemoteSyncRef.current = true;
-          if (Array.isArray(data.reminders)) {
+          if (Array.isArray(data.reminders) && data.reminders.length > 0) {
             setRemindersList(data.reminders);
+          } else if (Array.isArray(data.reminders) && data.reminders.length === 0) {
+            setRemindersList(DEFAULT_REMINDERS);
           }
           if (typeof data.snoozeMinutes === 'number') {
             setSnoozeMinutes(data.snoozeMinutes);
@@ -975,7 +979,7 @@ export default function App() {
       };
       if (dbUser) {
         isRemoteSyncRef.current = true;
-        if (Array.isArray(dbUser.reminders)) setRemindersList(dbUser.reminders);
+        if (Array.isArray(dbUser.reminders) && dbUser.reminders.length > 0) setRemindersList(dbUser.reminders);
         if (typeof dbUser.snoozeMinutes === 'number') setSnoozeMinutes(dbUser.snoozeMinutes);
         if (Array.isArray(dbUser.expenses)) setExpenseList(dbUser.expenses);
         if (typeof dbUser.monthlyBudget === 'number') setMonthlyBudget(dbUser.monthlyBudget);
@@ -1179,8 +1183,8 @@ export default function App() {
     };
 
     playFluteTune();
-    // Continuous loop every 1.5 seconds until stopAlarmSound is called
-    alarmIntervalRef.current = setInterval(playFluteTune, 1500);
+    // Continuous loop every 1.4 seconds until user clicks "Got It"
+    alarmIntervalRef.current = setInterval(playFluteTune, 1400);
   }, [isMuted]);
 
   const stopAlarmSound = useCallback(() => {
@@ -1213,6 +1217,9 @@ export default function App() {
       } catch (e) {}
     };
     window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
     window.addEventListener('touchstart', unlockAudio, { passive: true });
     return () => {
       window.removeEventListener('click', unlockAudio);
@@ -1932,7 +1939,7 @@ export default function App() {
       if (data.email && data.email.toLowerCase() !== userProfileRef.current.email.toLowerCase()) return;
 
       isRemoteSyncRef.current = true;
-      if (Array.isArray(data.reminders)) setRemindersList(data.reminders);
+      if (Array.isArray(data.reminders) && data.reminders.length > 0) setRemindersList(data.reminders);
       if (typeof data.snoozeMinutes === 'number') setSnoozeMinutes(data.snoozeMinutes);
       if (Array.isArray(data.expenses)) setExpenseList(data.expenses);
       if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
@@ -2030,37 +2037,54 @@ export default function App() {
         }
       } catch (e) {}
 
-      // 1. Calculate positive countdown to the nearest upcoming future reminder today
+      // 1. Calculate next upcoming reminder today or tomorrow morning
       let nearestFutureDiffSec = Infinity;
-      let nextRemTimeStr = null;
+      let upcomingTime = null;
+      let upcomingTitle = null;
 
       remindersList.forEach((rem) => {
         if (rem && rem.time) {
           const [h, m] = rem.time.split(':').map(Number);
           const remTotalSec = h * 3600 + m * 60;
           const diff = remTotalSec - currentTotalSec;
-          // Only future reminders count toward the countdown
           if (diff > 0 && diff < nearestFutureDiffSec) {
             nearestFutureDiffSec = diff;
-            nextRemTimeStr = rem.time;
+            upcomingTime = rem.time;
+            upcomingTitle = rem.task;
           }
         }
       });
 
       if (remindersList.length === 0) {
-        setNextCountdownStr('--:--');
+        setRemindersList(DEFAULT_REMINDERS);
+        setNextRemTimeStr('09:00');
+        setNextRemTitle('Morning Review & Focus');
+        setNextCountdownStr('09:00');
       } else if (nearestFutureDiffSec !== Infinity && nearestFutureDiffSec > 0) {
+        setNextRemTimeStr(upcomingTime);
+        setNextRemTitle(upcomingTitle);
         const remH = Math.floor(nearestFutureDiffSec / 3600);
         const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
         const remS = nearestFutureDiffSec % 60;
         if (remH > 0) {
           setNextCountdownStr(`${remH}h ${remM}m`);
+        } else if (remM > 0) {
+          setNextCountdownStr(`${remM}m`);
         } else {
-          setNextCountdownStr(`${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
+          setNextCountdownStr(`${remS}s`);
         }
       } else {
-        // All reminders for today have already passed their scheduled time
-        setNextCountdownStr('All Done ✔');
+        // All reminders for today have completed; next is tomorrow's first reminder
+        const sortedByTime = [...remindersList].filter(r => r && r.time).sort((a, b) => a.time.localeCompare(b.time));
+        const firstRemTomorrow = sortedByTime[0] || { time: '09:00', task: 'Morning Routine' };
+        setNextRemTimeStr(firstRemTomorrow.time);
+        setNextRemTitle(firstRemTomorrow.task);
+        const [fh, fm] = (firstRemTomorrow.time || '09:00').split(':').map(Number);
+        const secUntilMidnight = (24 * 3600) - currentTotalSec;
+        const secAfterMidnight = fh * 3600 + fm * 60;
+        const totalTomSec = secUntilMidnight + secAfterMidnight;
+        const tomH = Math.floor(totalTomSec / 3600);
+        setNextCountdownStr(`${tomH}h left`);
       }
 
       // 2. Synchronize: Triggered reminders marked completed (✔), future ones pending
@@ -2693,10 +2717,32 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
 
-        <button onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} title="Watcher Reminders" style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button 
+          onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
+          title={`Watcher Reminders - Next: ${nextRemTitle || 'Routine'} at ${nextRemTimeStr || '09:00'} (${nextCountdownStr})`} 
+          style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '52px' }}
+        >
           <Clock size={17} />
-          <span style={{ fontSize: '8px', fontWeight: '900', color: '#590907', background: '#E8D2B5', padding: '1px 3px', borderRadius: '4px', border: '1px solid #E8D2B5', whiteSpace: 'nowrap' }}>
-            {nextCountdownStr}
+          <span style={{ 
+            fontSize: '8px', 
+            fontWeight: '900', 
+            color: '#590907', 
+            background: '#E8D2B5', 
+            padding: '2px 4px', 
+            borderRadius: '4px', 
+            border: '1px solid #590907', 
+            whiteSpace: 'nowrap',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            lineHeight: 1.1
+          }}>
+            <span style={{ fontSize: '8.5px', fontWeight: '900', letterSpacing: '0.2px' }}>
+              {nextRemTimeStr || '09:00'}
+            </span>
+            <span style={{ fontSize: '7.5px', fontWeight: '800', opacity: 0.85, color: '#881337' }}>
+              {nextCountdownStr}
+            </span>
           </span>
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
@@ -4287,7 +4333,7 @@ export default function App() {
               fontSize: '11px'
             }}
           >
-            Dismiss
+            <Check size={13} style={{ marginRight: '4px' }} /> Got It
           </button>
         </div>
       )}
@@ -4373,7 +4419,7 @@ export default function App() {
                 gap: '8px'
               }}
             >
-              <Check size={18} /> Got It / Dismiss
+              <Check size={18} /> Got It
             </button>
 
             <button
