@@ -1096,6 +1096,15 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
 
+  const handleStopAll = useCallback(() => {
+    setIsMonitoringActive(false);
+    stopAlarmSound();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setRouteStatus({ isHeavy: false, message: "Monitoring stopped." });
+  }, [stopAlarmSound]);
+
   // 12-Hour Time Formatter
   const formatTimeTo12Hour = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return timeStr;
@@ -2220,14 +2229,7 @@ export default function App() {
     speakText("Route active. Real-time traffic monitoring has started.");
   };
 
-  const handleStopAll = () => {
-    setIsMonitoringActive(false);
-    stopAlarmSound();
-    window.speechSynthesis.cancel();
-    setRouteStatus({ isHeavy: false, message: "Monitoring stopped." });
-  };
-
-  const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
+    const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
   const remainingBudget = monthlyBudget - totalSpent;
   const budgetSpentPct = Math.min(100, Math.round((totalSpent / (monthlyBudget || 1)) * 100));
 
