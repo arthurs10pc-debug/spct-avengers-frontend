@@ -775,7 +775,7 @@ export default function App() {
         setShowAuthModal(false);
         alert(`Success! Logged in successfully as ${profileData.name}. Welcome back!`);
       } else if (resStatus === 404 || resStatus === 400 || (resData && resData.success === false)) {
-        alert(`Error: Yeh Gmail ID (${cleanEmail}) database mein registered nahi hai!\n\nPehle "Sign Up" par click karein apna account banane ke liye.`);
+        alert(`Error: This Gmail ID (${cleanEmail}) is not registered in the database.\n\nPlease click "Sign Up" first to create your account.`);
         setAuthMode('signup');
       } else {
         // Offline / emergency local check
@@ -786,7 +786,7 @@ export default function App() {
           setShowAuthModal(false);
           alert(`Success! Logged in successfully as ${profileData.name}.`);
         } else {
-          alert(`Error: Yeh Gmail ID (${cleanEmail}) database mein registered nahi hai! Pehle Sign Up karein.`);
+          alert(`Error: This Gmail ID (${cleanEmail}) is not registered in the database. Please Sign Up first.`);
           setAuthMode('signup');
         }
       }
@@ -1064,13 +1064,13 @@ export default function App() {
     window.speechSynthesis.cancel();
     
     const voices = window.speechSynthesis.getVoices();
-    const selectedVoice = voices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('male')) || voices[0];
+    const selectedVoice = voices.find(v => v.lang.includes('en') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('male')) || voices[0];
 
     const utterance = new SpeechSynthesisUtterance(text);
     if (selectedVoice) utterance.voice = selectedVoice;
     utterance.rate = 0.82; 
     utterance.pitch = 0.75; 
-    utterance.lang = 'hi-IN';
+    utterance.lang = 'en-US';
 
     window.speechSynthesis.speak(utterance);
   }, [isMuted]);
@@ -1106,7 +1106,7 @@ export default function App() {
             setToInput(address);
             setActiveRoute(prev => ({ ...prev, toName: address, toCoords: [lon, lat] }));
           }
-          if (isMonitoringActive) speakText("Current GPS location set ho gayi hai.");
+          if (isMonitoringActive) speakText("Current GPS location set successfully.");
         } catch (e) {}
       },
       (error) => {
@@ -1218,7 +1218,7 @@ export default function App() {
                   map.fitBounds(window.L.polyline(coords).getBounds(), { padding: [50, 50] });
 
                   setRouteStatus({ isHeavy: true, message: `RED ALERT: Heavy traffic near ${toLabel}! (${durationMin} min)` });
-                  if (isMonitoringActive) speakText(`Alert! ${toLabel} raste par bahut bhari traffic hai.`);
+                  if (isMonitoringActive) speakText(`Traffic Alert! Heavy traffic congestion detected near ${toLabel}.`);
                 } else {
                   // Entire route clear -> Clean Green line
                   const gPoly = window.L.polyline(coords, { color: '#10b981', weight: 6, opacity: 0.9 }).addTo(map);
@@ -1279,12 +1279,12 @@ export default function App() {
               setFromInput(placeName);
               setActiveRoute(prev => ({ ...prev, fromName: placeName, fromCoords: [lon, lat] }));
               clickStepRef.current = 1;
-              if (isMonitoringActive) speakText("From location select ho gayi hai.");
+              if (isMonitoringActive) speakText("Starting location selected.");
             } else {
               setToInput(placeName);
               setActiveRoute(prev => ({ ...prev, toName: placeName, toCoords: [lon, lat] }));
               clickStepRef.current = 0;
-              if (isMonitoringActive) speakText("To location select ho gayi hai.");
+              if (isMonitoringActive) speakText("Destination selected. Starting route monitoring.");
               setIsMonitoringActive(true);
             }
           } catch (err) {}
@@ -1509,7 +1509,7 @@ export default function App() {
             const nowMs = Date.now();
             if (nowMs - lastSpokenTrafficAlertRef.current > 20000 && !isMuted) {
               lastSpokenTrafficAlertRef.current = nowMs;
-              speakText(`Alert! ${congestionSpot} raste par bhari traffic jam hai, gaadiyan dheeeme chal rahi hain.`);
+              speakText(`Traffic Alert! Heavy traffic congestion detected at ${congestionSpot}. Vehicles are moving very slowly.`);
             }
           } else {
             setRouteStatus({
@@ -1560,14 +1560,14 @@ export default function App() {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
         const data = await res.json();
         if (data && data.current_weather) {
-          reply = `Vartaman taapman ${data.current_weather.temperature} degree Celsius hai.`;
+          reply = `The current temperature is ${data.current_weather.temperature} degrees Celsius.`;
         }
       } catch (err) {}
     } else if (lowerQ.includes('traffic')) {
       if (routeStatus.isHeavy) {
-        reply = "Bhari traffic hai!";
+        reply = "Heavy traffic congestion detected on your route!";
       } else {
-        reply = "Rasta bilkul saaf hai.";
+        reply = "The route is clear with smooth traffic.";
       }
     }
 
@@ -1609,7 +1609,7 @@ export default function App() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'hi-IN';
+      recognition.lang = 'en-US';
       recognition.continuous = false;
       recognition.interimResults = false;
 
@@ -2042,7 +2042,7 @@ export default function App() {
     }
     setIsMonitoringActive(true);
     setShowRoutePanel(false);
-    speakText("Route set ho gaya hai. Real-time traffic monitoring shuru kar di gayi hai.");
+    speakText("Route active. Real-time traffic monitoring has started.");
   };
 
   const handleStopAll = () => {
@@ -2498,7 +2498,7 @@ export default function App() {
                     key={fmt}
                     onClick={async () => {
                       if (!uploadedFile) {
-                        alert("Pehle koi file upload ya drag karein!");
+                        alert("Please upload or drag a file first!");
                         return;
                       }
 
@@ -3474,7 +3474,7 @@ export default function App() {
                 {/* Total Earned */}
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #22c55e', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(34,197,94,0.1)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534', textTransform: 'uppercase' }}>कुल कमाई (Earned)</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534', textTransform: 'uppercase' }}>TOTAL EARNED</span>
                     <TrendingUp size={16} color="#166534" />
                   </div>
                   <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#166534' }}>+₹{monthlyEarned.toLocaleString()}</p>
@@ -3483,7 +3483,7 @@ export default function App() {
                 {/* Total Spent */}
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(239,68,68,0.1)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }}>कुल खर्च (Spent)</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }}>TOTAL SPENT</span>
                     <TrendingDown size={16} color="#991b1b" />
                   </div>
                   <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#991b1b' }}>-₹{monthlySpent.toLocaleString()}</p>
@@ -3492,7 +3492,7 @@ export default function App() {
                 {/* Net Savings */}
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(89,9,7,0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', textTransform: 'uppercase' }}>शुद्ध बचत (Balance)</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', textTransform: 'uppercase' }}>NET BALANCE</span>
                     <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>{savingsRate}% rate</span>
                   </div>
                   <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>
@@ -3538,7 +3538,7 @@ export default function App() {
                       boxShadow: transactionType === 'expense' ? '0 2px 8px rgba(239,68,68,0.25)' : 'none'
                     }}
                   >
-                    🔴 खर्च (Spend / Expense)
+                    🔴 Spend / Expense
                   </button>
                   <button
                     type="button"
@@ -3560,7 +3560,7 @@ export default function App() {
                       boxShadow: transactionType === 'income' ? '0 2px 8px rgba(34,197,94,0.25)' : 'none'
                     }}
                   >
-                    🟢 कमाई (Earn / Income)
+                    🟢 Earn / Income
                   </button>
                 </div>
 
@@ -3572,11 +3572,11 @@ export default function App() {
                   <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
                     {transactionType === 'expense' ? (
                       [
-                        { t: 'Chai / Tea', a: 20, c: 'Food & Snacks' },
+                        { t: 'Tea & Coffee', a: 20, c: 'Food & Snacks' },
                         { t: 'Breakfast / Snacks', a: 50, c: 'Food & Snacks' },
                         { t: 'Lunch / Dinner', a: 120, c: 'Food & Snacks' },
                         { t: 'Petrol / Fuel', a: 100, c: 'Travel & Commute' },
-                        { t: 'Groceries / Kirana', a: 250, c: 'Groceries' },
+                        { t: 'Groceries', a: 250, c: 'Groceries' },
                         { t: 'Mobile Recharge', a: 299, c: 'Bills & Utilities' }
                       ].map(p => (
                         <button
