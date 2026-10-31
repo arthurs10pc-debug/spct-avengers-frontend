@@ -274,6 +274,8 @@ const IPO_DATABASE = {
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceFeedbackMessage, setVoiceFeedbackMessage] = useState('');
   const [assistantStatus, setAssistantStatus] = useState("Shadow System Active...");
 
   // Real Database Google Auth State (Login / Sign Up with Backend verification)
@@ -472,7 +474,19 @@ export default function App() {
     });
   };
 
+  const isFutureMonthBlocked = (() => {
+    const now = new Date();
+    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return selectedExpenseMonth >= currentYm;
+  })();
+
   const handleNextExpenseMonth = () => {
+    const [y, m] = selectedExpenseMonth.split('-').map(Number);
+    const nextDate = new Date(y, m, 1);
+    const nextYm = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+    const now = new Date();
+    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (nextYm > currentYm) return; // Future months strictly blocked!
     setSelectedExpenseMonth(prev => {
       try {
         const [year, month] = prev.split('-').map(Number);
@@ -1558,30 +1572,174 @@ export default function App() {
 
   // Voice Command Processor
   const handleVoiceCommand = useCallback(async (query) => {
-    if (isMuted) return;
-    const lowerQ = query.toLowerCase();
-    let reply = "";
+    if (!query || typeof query !== 'string') return;
+    const rawQ = query.trim();
+    const lowerQ = rawQ.toLowerCase();
+    setVoiceTranscript(rawQ);
+    console.log('[Shadow Voice AI heard]:', rawQ);
 
-    if (lowerQ.includes('temperature')) {
+    // Intent 1: NOTES (e.g. "Shadow meri note main add kardo ki aaj mall main jaana hai")
+    if (
+      lowerQ.includes('note') || 
+      lowerQ.includes('likho') || 
+      lowerQ.includes('likh do') || 
+      lowerQ.includes('add kardo') || 
+      lowerQ.includes('add kar do') ||
+      lowerQ.includes('add to note')
+    ) {
+      let noteBody = '';
+      if (lowerQ.includes(' ki ')) {
+        noteBody = rawQ.substring(lowerQ.indexOf(' ki ') + 4).trim();
+      } else if (lowerQ.includes(' that ')) {
+        noteBody = rawQ.substring(lowerQ.indexOf(' that ') + 6).trim();
+      } else if (lowerQ.includes('add kardo') || lowerQ.includes('add kar do')) {
+        noteBody = rawQ.replace(/.*(?:add kardo|add kar do|add to note|note me add kardo)/i, '').trim();
+      } else if (lowerQ.includes('note me') || lowerQ.includes('note main')) {
+        noteBody = rawQ.replace(/.*(?:note me|note main|note mein)/i, '').trim();
+      } else {
+        noteBody = rawQ.replace(/.*(?:note)/i, '').trim();
+      }
+
+      noteBody = noteBody.replace(/^(ki|that|me|main)\s+/i, '').trim();
+      if (!noteBody) noteBody = "Voice Note - " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const newVoiceNote = {
+        id: 'note_' + Date.now(),
+        title: noteBody.length > 28 ? noteBody.slice(0, 28) + '...' : noteBody,
+        content: noteBody,
+        color: '#38bdf8',
+        pinned: false,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setNotesList(prev => [newVoiceNote, ...prev]);
+      const confMsg = `Note added: "${noteBody}"`;
+      setVoiceFeedbackMessage(confMsg);
+      speakText(confMsg);
+      return;
+    }
+
+    // Intent 2: REMINDER (e.g. "Shadow reminder set karo 5 baje ka" or "Shadow reminder set karo 17:30 meeting")
+    if (
+      lowerQ.includes('reminder') || 
+      lowerQ.includes('remind') || 
+      (lowerQ.includes('baje') && (lowerQ.includes('set') || lowerQ.includes('laga')))
+    ) {
+      let extractedHour = null;
+      let extractedMin = 0;
+      let reminderTask = 'Scheduled Task';
+
+      const colonMatch = rawQ.match(/(\d{1,2}):(\d{2})/);
+      if (colonMatch) {
+        extractedHour = parseInt(colonMatch[1], 10);
+        extractedMin = parseInt(colonMatch[2], 10);
+      } else {
+        const digitMatch = rawQ.match(/(\d{1,2})\s*(?:baje|pm|am|o'clock)?/i);
+        if (digitMatch) {
+          extractedHour = parseInt(digitMatch[1], 10);
+          if (lowerQ.includes('pm') || lowerQ.includes('shaam') || lowerQ.includes('dopahar') || lowerQ.includes('raat')) {
+            if (extractedHour < 12) extractedHour += 12;
+          }
+        }
+      }
+
+      if (extractedHour !== null) {
+        if (extractedHour < 0) extractedHour = 0;
+        if (extractedHour > 23) extractedHour = 23;
+        const timeStr = `${String(extractedHour).padStart(2, '0')}:${String(extractedMin).padStart(2, '0')}`;
+
+        const cleanTask = rawQ.replace(/.*(?:set karo|set|baje ka|baje|reminder)/gi, '').trim();
+        if (cleanTask.length > 2) reminderTask = cleanTask;
+
+        setRemindersList(prev => [...prev, { task: reminderTask, time: timeStr, completed: false }]);
+        const confMsg = `Reminder set for ${timeStr}: "${reminderTask}"`;
+        setVoiceFeedbackMessage(confMsg);
+        speakText(confMsg);
+        return;
+      }
+    }
+
+    // Intent 3: ROUTE & TRAFFIC (e.g. "Shadow iskon se vaishnodevi ka route set karo")
+    if (
+      lowerQ.includes('route') || 
+      lowerQ.includes('navigation') || 
+      (lowerQ.includes('se') && lowerQ.includes('ka')) ||
+      (lowerQ.includes('iscon') && lowerQ.includes('vaishnodevi'))
+    ) {
+      let startPoi = null;
+      let endPoi = null;
+
+      if (lowerQ.includes('iscon') || lowerQ.includes('iskcon')) {
+        startPoi = GUJARAT_POI_DATABASE.find(p => p.name.toLowerCase().includes('iskcon') || p.name.toLowerCase().includes('iscon'));
+      }
+      if (lowerQ.includes('vaishnodevi')) {
+        endPoi = GUJARAT_POI_DATABASE.find(p => p.name.toLowerCase().includes('vaishnodevi'));
+      }
+
+      if (!startPoi && lowerQ.includes('iscon')) {
+        startPoi = { name: "ISKCON Temple, SG Highway, Ahmedabad", coords: [72.5072, 23.0288] };
+      }
+      if (!endPoi && lowerQ.includes('vaishnodevi')) {
+        endPoi = { name: "KD Hospital, Vaishnodevi Circle, SG Highway", coords: [72.5444, 23.1255] };
+      }
+
+      if (startPoi && endPoi) {
+        setFromInput(startPoi.name);
+        setToInput(endPoi.name);
+        setActiveRoute({
+          fromName: startPoi.name,
+          toName: endPoi.name,
+          fromCoord: startPoi.coords,
+          toCoord: endPoi.coords
+        });
+        setIsMonitoringActive(true);
+        const fromShort = startPoi.name.split(',')[0];
+        const toShort = endPoi.name.split(',')[0];
+        const confMsg = `Route set from ${fromShort} to ${toShort}. Live traffic monitoring started.`;
+        setVoiceFeedbackMessage(confMsg);
+        speakText(confMsg);
+        return;
+      }
+    }
+
+    // Intent 4: TEMPERATURE / WEATHER
+    if (lowerQ.includes('temperature') || lowerQ.includes('weather') || lowerQ.includes('taapman') || lowerQ.includes('mausam')) {
       try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=23.0225&current_weather=true');
         const data = await res.json();
         if (data && data.current_weather) {
-          reply = `The current temperature is ${data.current_weather.temperature} degrees Celsius.`;
+          const confMsg = `The current temperature in Ahmedabad is ${data.current_weather.temperature} degrees Celsius.`;
+          setVoiceFeedbackMessage(confMsg);
+          speakText(confMsg);
+          return;
         }
       } catch (err) {}
-    } else if (lowerQ.includes('traffic')) {
-      if (routeStatus.isHeavy) {
-        reply = "Heavy traffic congestion detected on your route!";
-      } else {
-        reply = "The route is clear with smooth traffic.";
-      }
     }
 
-    if (reply && isMonitoringActive) {
-      speakText(reply);
+    // Intent 5: ROUTE TRAFFIC STATUS
+    if (lowerQ.includes('traffic')) {
+      const confMsg = routeStatus.isHeavy 
+        ? "Heavy traffic congestion detected on your route! Cars are moving slowly." 
+        : "The route is currently clear with normal traffic flow.";
+      setVoiceFeedbackMessage(confMsg);
+      speakText(confMsg);
+      return;
     }
-  }, [routeStatus, isMonitoringActive, isMuted, speakText]);
+
+    // Intent 6: STOP / STANDBY
+    if (lowerQ.includes('stop') || lowerQ.includes('cancel') || lowerQ.includes('band karo') || lowerQ.includes('ruk jao')) {
+      handleStopAll();
+      const confMsg = "Shadow in standby. All navigation and alarms stopped.";
+      setVoiceFeedbackMessage(confMsg);
+      speakText(confMsg);
+      return;
+    }
+
+    const fallbackMsg = `Shadow heard: "${rawQ}". Try saying: "Shadow meri note main add kardo ki aaj mall jana hai" or "Shadow reminder set karo 5 baje".`;
+    setVoiceFeedbackMessage(fallbackMsg);
+    speakText(fallbackMsg);
+  }, [speakText, GUJARAT_POI_DATABASE, routeStatus, handleStopAll]);
 
   useEffect(() => {
     const socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
@@ -1616,7 +1774,7 @@ export default function App() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+      recognition.lang = 'hi-IN';
       recognition.continuous = false;
       recognition.interimResults = false;
 
@@ -1713,6 +1871,16 @@ export default function App() {
       if (isMuted) return;
 
       const currentTotalMin = currentHours * 60 + currentMinutes;
+
+      // Daily Auto-Reset: When a new day begins, reset all set reminders to completed: false so they re-trigger fresh!
+      try {
+        const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
+        if (lastActiveDate && lastActiveDate !== todayDate) {
+          localStorage.setItem('jarvis_last_active_date', todayDate);
+          triggeredKeysRef.current.clear();
+          setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
+        }
+      } catch (e) {}
       const todayDate = now.toLocaleDateString();
 
       remindersList.forEach((rem, idx) => {
@@ -3636,7 +3804,7 @@ export default function App() {
 
               {/* Clean Unified Transaction Creator */}
               <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '16px', border: '1px solid #590907', marginBottom: '14px', boxShadow: '0 2px 10px rgba(89,9,7,0.08)' }}>
-                {/* Segmented Mode: Spend vs Earn */}
+                
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                   <button
                     type="button"
