@@ -516,6 +516,15 @@ export default function App() {
   const [lastNewsUpdated, setLastNewsUpdated] = useState('');
   const [newsCountdown, setNewsCountdown] = useState(120);
 
+  // Real-Time IPO Intelligence State with 1-Hour Auto Refresh
+  const [ipoData, setIpoData] = useState(() => IPO_DATABASE);
+  const [ipoLastUpdated, setIpoLastUpdated] = useState(() => {
+    const d = new Date();
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  });
+  const [ipoRefreshing, setIpoRefreshing] = useState(false);
+  const [ipoCountdown, setIpoCountdown] = useState(3600); // 1-Hour (3600s) Auto-Refresh Countdown
+
   // 1-Second Traffic Real-Time Monitor State
   const [trafficAlertBanner, setTrafficAlertBanner] = useState(null);
   const [isSimulatedTraffic, setIsSimulatedTraffic] = useState(false);
@@ -705,6 +714,53 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, [fetchTrendingNews]);
+
+    // Live Real-Time IPO Intelligence Fetcher (Hourly Auto-Refresh + Manual Trigger)
+  const fetchIpoData = useCallback(async (isManual = false) => {
+    if (isManual) setIpoRefreshing(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ipo/live`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success) {
+          setIpoData({
+            live: data.live || [],
+            upcoming: data.upcoming || []
+          });
+          if (data.lastUpdated) {
+            setIpoLastUpdated(data.lastUpdated);
+          } else {
+            const d = new Date();
+            setIpoLastUpdated(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+          }
+          setIpoCountdown(3600);
+        }
+      }
+    } catch (e) {
+      console.warn("IPO fetch error, using local database:", e);
+    } finally {
+      if (isManual) {
+        setTimeout(() => setIpoRefreshing(false), 500);
+      }
+    }
+  }, []);
+
+  // 1-Hour Auto-Refresh Engine for Real-Time IPO Data
+  useEffect(() => {
+    fetchIpoData();
+
+    const ipoTimer = setInterval(() => {
+      setIpoCountdown(prev => {
+        if (prev <= 1) {
+          fetchIpoData();
+          return 3600;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(ipoTimer);
+  }, [fetchIpoData]);
 
   // Load Google Identity Services script
   useEffect(() => {
@@ -1832,6 +1888,7 @@ export default function App() {
 
     watcherIntervalRef.current = setInterval(() => {
       const now = new Date();
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
       const currentSeconds = now.getSeconds();
@@ -1839,9 +1896,9 @@ export default function App() {
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
       Object.keys(snoozedAlerts).forEach((taskKey) => {
-        if (snoozedAlerts[taskKey] === currentTimeStr && !isMuted) {
+        if (snoozedAlerts[taskKey] === currentTimeStr) {
           setActiveAlertTask(taskKey);
-          startJailerFluteAlarm();
+          if (!isMuted) startJailerFluteAlarm();
           setSnoozedAlerts(prev => {
             const copy = { ...prev };
             delete copy[taskKey];
@@ -1877,20 +1934,19 @@ export default function App() {
         setNextCountdownStr('--:--');
       }
 
-      if (isMuted) return;
-
       const currentTotalMin = currentHours * 60 + currentMinutes;
 
-      // Daily Auto-Reset: When a new day begins, reset all set reminders to completed: false so they re-trigger fresh!
+      // Daily Auto-Reset: When a new day begins, keep all set reminders and reset completed: false so they re-trigger fresh!
       try {
         const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
         if (lastActiveDate && lastActiveDate !== todayDate) {
           localStorage.setItem('jarvis_last_active_date', todayDate);
           triggeredKeysRef.current.clear();
           setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
+        } else if (!lastActiveDate) {
+          localStorage.setItem('jarvis_last_active_date', todayDate);
         }
       } catch (e) {}
-      const todayDate = now.toLocaleDateString();
 
       remindersList.forEach((rem, idx) => {
         if (!rem || !rem.task || !rem.time || rem.completed) return;
@@ -1899,7 +1955,7 @@ export default function App() {
         const remTotalMin = rH * 60 + rM;
         const reminderUniqueKey = `${rem.task}_${rem.time}_${todayDate}`;
 
-        // Never miss a reminder: triggers if due now or in the last 120 minutes of today
+        // Triggers if due now or in the last 120 minutes of today
         const isDue = (currentTotalMin >= remTotalMin && currentTotalMin - remTotalMin <= 120);
 
         if (isDue && !triggeredKeysRef.current.has(reminderUniqueKey)) {
@@ -1907,7 +1963,9 @@ export default function App() {
           setActiveAlertTask(rem.task);
           setActiveAlertKey(reminderUniqueKey);
           setCurrentAlertTaskId(idx);
-          startJailerFluteAlarm();
+          if (!isMuted) {
+            startJailerFluteAlarm();
+          }
 
           if ('Notification' in window && Notification.permission === 'granted') {
             try {
@@ -1925,6 +1983,48 @@ export default function App() {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
   }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
+
+  // Test Watcher Alert Handler (Instant Verification of Sound, Modal & Notification)
+  const triggerTestWatcherAlert = useCallback(() => {
+    setActiveAlertTask("Demo Reminder: Team Review Meeting");
+    setActiveAlertKey(`test_alert_${Date.now()}`);
+    if (!isMuted) {
+      startJailerFluteAlarm();
+    }
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification("Shadow Watcher Alert", {
+          body: "Scheduled Reminder: Team Review Meeting due now!",
+          icon: "/logo.png"
+        });
+      } else if (Notification.permission === 'default') {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') {
+            new Notification("Shadow Watcher Alert", {
+              body: "Scheduled Reminder: Team Review Meeting due now!",
+              icon: "/logo.png"
+            });
+          }
+        });
+      }
+    }
+  }, [isMuted, startJailerFluteAlarm]);
+
+  const handleManualResetToday = useCallback(() => {
+    triggeredKeysRef.current.clear();
+    setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
+    alert("All permanent reminders have been reset and are active for today!");
+  }, []);
+
+  const handleToggleReminderCompleted = useCallback((targetIndex) => {
+    setRemindersList(prev => {
+      const copy = [...prev];
+      if (copy[targetIndex]) {
+        copy[targetIndex] = { ...copy[targetIndex], completed: !copy[targetIndex].completed };
+      }
+      return copy;
+    });
+  }, []);
 
   // Handle Snooze
   const handleSnooze = () => {
@@ -3420,30 +3520,53 @@ export default function App() {
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '400px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
             <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Clock size={18} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
+                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Rechecks every day • Stays set forever</span>
+                </div>
               </div>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
             </div>
+
+            {/* Desktop Notification Status Banner */}
+            {'Notification' in window && Notification.permission !== 'granted' && (
+              <div style={{ marginBottom: '10px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '10px', color: '#92400e', fontWeight: '700' }}>🔔 Browser alerts disabled</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    Notification.requestPermission().then(p => {
+                      alert(`Notification permission is: ${p}`);
+                    });
+                  }}
+                  style={{ background: '#92400e', color: '#ffffff', border: 'none', borderRadius: '5px', padding: '3px 8px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  Enable Notifications
+                </button>
+              </div>
+            )}
 
             <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
-                  placeholder="Enter task..."
+                  placeholder="Enter reminder task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '600' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
+                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                 />
               </div>
 
@@ -3452,26 +3575,30 @@ export default function App() {
               </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto', paddingRight: '4px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
               {sortedReminders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#3d0605', fontSize: '11px', margin: '14px 0' }}>No reminders set.</p>
+                <p style={{ textAlign: 'center', color: '#3d0605', fontSize: '11px', margin: '14px 0' }}>No reminders set. Add your daily routine reminder above!</p>
               ) : (
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
                   return (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ overflow: 'hidden', paddingRight: '6px' }}>
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#3d0605' : '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {rem.task} {rem.completed && "✓"}
-                        </p>
-                        <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', paddingRight: '6px' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!rem.completed}
+                          onChange={() => handleToggleReminderCompleted(originalIndex)}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#590907' }}
+                          title={rem.completed ? "Mark incomplete for today" : "Mark completed for today"}
+                        />
+                        <div style={{ overflow: 'hidden' }}>
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#3d0605' : '#590907', textDecoration: rem.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {rem.task}
+                          </p>
+                          <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-                        {rem.completed && (
-                          <div title="Task Completed" style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(89, 9, 7, 0.2)', border: '1px solid #590907', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#590907' }}>
-                            <Check size={12} />
-                          </div>
-                        )}
                         <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
                         <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
                       </div>
@@ -3481,20 +3608,30 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ position: 'relative', borderTop: '1px solid #590907', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Watcher Modal Action Controls */}
+            <div style={{ position: 'relative', borderTop: '1px solid #590907', paddingTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <button 
                 type="button"
-                onClick={testFluteSound}
-                title="Test Alarm Sound"
-                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                onClick={triggerTestWatcherAlert}
+                title="Instantly Test Watcher Alert (Sound, Modal & Notification)"
+                style={{ flex: '1 1 120px', background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
-                <Volume2 size={12} /> Test Tune
+                <Zap size={12} /> Test Alert Now
+              </button>
+
+              <button 
+                type="button"
+                onClick={handleManualResetToday}
+                title="Reset All Reminders to Unchecked for Today"
+                style={{ flex: '1 1 120px', background: '#3d0605', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+              >
+                <RefreshCw size={12} /> Reset for Today
               </button>
 
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
-                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '5px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
@@ -3516,6 +3653,50 @@ export default function App() {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* Top Sticky Watcher Alert Banner */}
+      {activeAlertTask && (
+        <div style={{
+          position: 'fixed',
+          top: '12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#dc2626',
+          color: '#ffffff',
+          padding: '10px 20px',
+          borderRadius: '12px',
+          zIndex: 999999,
+          boxShadow: '0 8px 30px rgba(220, 38, 38, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <Bell size={20} color="#ffffff" />
+          <div>
+            <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>⏰ Watcher Reminder Alert Due Now</div>
+            <div style={{ fontSize: '13px', fontWeight: '900' }}>"{activeAlertTask}"</div>
+          </div>
+          <button
+            onClick={() => {
+              stopAlarmSound();
+              setActiveAlertTask(null);
+              setActiveAlertKey(null);
+            }}
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#dc2626',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontWeight: '900',
+              cursor: 'pointer',
+              fontSize: '11px'
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -3581,13 +3762,6 @@ export default function App() {
             <button
               onClick={() => {
                 stopAlarmSound();
-                if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
-                  const updated = [...remindersList];
-                  if (updated[currentAlertTaskId]) {
-                    updated[currentAlertTaskId].completed = true;
-                    setRemindersList(updated);
-                  }
-                }
                 setActiveAlertTask(null);
                 setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
@@ -3690,34 +3864,30 @@ export default function App() {
       )}
 
       {/* Advanced Expense Tracker Modal */}
-      {/* Expense, Income Tracker & Monthly Financial Report Modal */}
+      {/* Pure Expense Manager & Monthly Report Modal */}
       {showExpenseModal && (() => {
-        const monthlyItems = (expenseList || []).filter(item => {
+        const monthlyExpenses = (expenseList || []).filter(item => item && item.type !== 'income');
+        const monthlyItems = monthlyExpenses.filter(item => {
           if (!item) return false;
           if (!item.date) return true;
           return String(item.date).startsWith(selectedExpenseMonth) || String(item.date).includes(selectedExpenseMonth);
         });
 
-        const monthlyEarned = monthlyItems
-          .filter(i => i && i.type === 'income')
-          .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-
-        const monthlySpent = monthlyItems
-          .filter(i => i && i.type !== 'income')
-          .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-
-        const monthlyNet = monthlyEarned - monthlySpent;
+        const monthlySpent = monthlyItems.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
         const monthlyRemainingBudget = monthlyBudget - monthlySpent;
         const budgetPct = monthlyBudget > 0 ? Math.min(Math.round((monthlySpent / monthlyBudget) * 100), 100) : 0;
 
         const catMap = {};
-        monthlyItems.filter(i => i && i.type !== 'income').forEach(i => {
+        monthlyItems.forEach(i => {
           const cat = i.category || 'Other';
           catMap[cat] = (catMap[cat] || 0) + (parseFloat(i.amount) || 0);
         });
         const categoryStats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
         const topCat = categoryStats.length > 0 ? categoryStats[0] : null;
-        const savingsRate = monthlyEarned > 0 ? Math.round((monthlyNet / monthlyEarned) * 100) : 0;
+
+        const now = new Date();
+        const currentDay = Math.max(1, now.getDate());
+        const avgDailySpend = Math.round(monthlySpent / currentDay);
 
         return (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
@@ -3731,8 +3901,8 @@ export default function App() {
                     <DollarSign size={20} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#590907' }}>Expense & Income Manager</h3>
-                    <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Track daily spend, income and monthly reports cleanly</span>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#590907' }}>Shadow Expense Manager</h3>
+                    <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Track daily spends & monthly financial analytics</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -3745,7 +3915,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Month Selector Bar */}
+              {/* Month Selector Bar (Strictly Blocks Future Months) */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#590907', borderRadius: '12px', padding: '8px 14px', marginBottom: '14px', color: '#E8D2B5' }}>
                 <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
                   ◀ Prev Month
@@ -3753,48 +3923,102 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '14px', letterSpacing: '0.5px' }}>
                   <Calendar size={16} color="#E8D2B5" />
                   <span>{formatExpenseMonthLabel(selectedExpenseMonth)}</span>
+                  {isFutureMonthBlocked && (
+                    <span style={{ fontSize: '9px', backgroundColor: '#E8D2B5', color: '#590907', padding: '2px 6px', borderRadius: '4px', fontWeight: '900' }}>Current Month</span>
+                  )}
                 </div>
-                <button onClick={handleNextExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
+                <button 
+                  onClick={handleNextExpenseMonth} 
+                  disabled={isFutureMonthBlocked}
+                  style={{ 
+                    background: isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.15)' : 'transparent', 
+                    border: `1px solid ${isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.3)' : '#E8D2B5'}`, 
+                    color: isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.4)' : '#E8D2B5', 
+                    padding: '4px 12px', 
+                    borderRadius: '6px', 
+                    fontSize: '11px', 
+                    fontWeight: '900', 
+                    cursor: isFutureMonthBlocked ? 'not-allowed' : 'pointer',
+                    opacity: isFutureMonthBlocked ? 0.4 : 1
+                  }}
+                  title={isFutureMonthBlocked ? "Current month (Cannot navigate into future months)" : "Next Month"}
+                >
                   Next Month ▶
                 </button>
               </div>
 
-              {/* Clean 3-Card Financial Metric Overview */}
+              {/* Clean 3-Card Overview (NO EARN, NO NET BALANCE) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-                {/* Total Earned */}
-                <div style={{ backgroundColor: '#ffffff', border: '1px solid #22c55e', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(34,197,94,0.1)' }}>
+                {/* 1. Total Spent */}
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(239,68,68,0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534', textTransform: 'uppercase' }}>TOTAL EARNED</span>
-                    <TrendingUp size={16} color="#166534" />
-                  </div>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#166534' }}>+₹{monthlyEarned.toLocaleString()}</p>
-                </div>
-
-                {/* Total Spent */}
-                <div style={{ backgroundColor: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(239,68,68,0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }}>TOTAL SPENT</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }}>TOTAL SPENT THIS MONTH</span>
                     <TrendingDown size={16} color="#991b1b" />
                   </div>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#991b1b' }}>-₹{monthlySpent.toLocaleString()}</p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#991b1b' }}>₹{monthlySpent.toLocaleString()}</p>
+                  <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>{monthlyItems.length} expenses logged</span>
                 </div>
 
-                {/* Net Savings */}
+                {/* 2. Monthly Budget */}
                 <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(89,9,7,0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', textTransform: 'uppercase' }}>NET BALANCE</span>
-                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>{savingsRate}% rate</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
+                    <button 
+                      onClick={() => setIsSettingBudget(prev => !prev)} 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#590907', padding: 0 }}
+                      title="Edit monthly budget"
+                    >
+                      <Edit2 size={13} />
+                    </button>
                   </div>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>
-                    {monthlyNet >= 0 ? `+₹${monthlyNet.toLocaleString()}` : `-₹${Math.abs(monthlyNet).toLocaleString()}`}
+                  {isSettingBudget ? (
+                    <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                      <input
+                        type="number"
+                        value={tempBudgetInput}
+                        onChange={(e) => setTempBudgetInput(e.target.value)}
+                        placeholder="New ₹"
+                        style={{ width: '80px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #590907' }}
+                      />
+                      <button
+                        onClick={() => {
+                          const nb = parseFloat(tempBudgetInput);
+                          if (!isNaN(nb) && nb > 0) {
+                            setMonthlyBudget(nb);
+                            localStorage.setItem('jarvis_monthly_budget', String(nb));
+                          }
+                          setIsSettingBudget(false);
+                        }}
+                        style={{ backgroundColor: '#590907', color: '#E8D2B5', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '3px 8px', fontWeight: '800', cursor: 'pointer' }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#590907' }}>₹{monthlyBudget.toLocaleString()}</p>
+                  )}
+                  <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>Target spending limit</span>
+                </div>
+
+                {/* 3. Budget Remaining */}
+                <div style={{ backgroundColor: '#ffffff', border: `1px solid ${monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626'}`, borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626', textTransform: 'uppercase' }}>BUDGET REMAINING</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626' }}>{budgetPct}% used</span>
+                  </div>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626' }}>
+                    {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()}` : `-₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
                   </p>
+                  <span style={{ fontSize: '10px', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626', fontWeight: '700' }}>
+                    {monthlyRemainingBudget >= 0 ? 'Within budget limit' : 'Over budget!'}
+                  </span>
                 </div>
               </div>
 
               {/* Monthly Budget Progress Bar */}
               <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '800', marginBottom: '6px' }}>
-                  <span>🎯 Monthly Budget: ₹{monthlyBudget.toLocaleString()}</span>
+                  <span>🎯 Monthly Spending Progress: ₹{monthlySpent.toLocaleString()} of ₹{monthlyBudget.toLocaleString()}</span>
                   <span style={{ color: monthlyRemainingBudget >= 0 ? '#166534' : '#ef4444' }}>
                     {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()} Remaining (${budgetPct}% used)` : `⚠️ Over budget by ₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
                   </span>
@@ -3804,117 +4028,42 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Clean Unified Transaction Creator */}
+              {/* Clean Unified Expense Creator (Pure Expense Only) */}
               <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '16px', border: '1px solid #590907', marginBottom: '14px', boxShadow: '0 2px 10px rgba(89,9,7,0.08)' }}>
-                
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setTransactionType('expense')}
-                    style={{
-                      flex: 1,
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: transactionType === 'expense' ? '2px solid #ef4444' : '1px solid #d1d5db',
-                      backgroundColor: transactionType === 'expense' ? '#991b1b' : '#f9fafb',
-                      color: transactionType === 'expense' ? '#ffffff' : '#4b5563',
-                      fontWeight: '900',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      boxShadow: transactionType === 'expense' ? '0 2px 8px rgba(239,68,68,0.25)' : 'none'
-                    }}
-                  >
-                    🔴 Spend / Expense
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTransactionType('income')}
-                    style={{
-                      flex: 1,
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: transactionType === 'income' ? '2px solid #22c55e' : '1px solid #d1d5db',
-                      backgroundColor: transactionType === 'income' ? '#166534' : '#f9fafb',
-                      color: transactionType === 'income' ? '#ffffff' : '#4b5563',
-                      fontWeight: '900',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      boxShadow: transactionType === 'income' ? '0 2px 8px rgba(34,197,94,0.25)' : 'none'
-                    }}
-                  >
-                    🟢 Earn / Income
-                  </button>
-                </div>
-
                 {/* 1-Tap Quick Presets */}
                 <div style={{ marginBottom: '12px' }}>
                   <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'block', marginBottom: '6px' }}>
-                    ⚡ 1-Tap Quick Presets ({transactionType === 'income' ? 'Income' : 'Expense'}):
+                    ⚡ 1-Tap Quick Presets:
                   </span>
                   <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-                    {transactionType === 'expense' ? (
-                      [
-                        { t: 'Tea & Coffee', a: 20, c: 'Food & Snacks' },
-                        { t: 'Breakfast / Snacks', a: 50, c: 'Food & Snacks' },
-                        { t: 'Lunch / Dinner', a: 120, c: 'Food & Snacks' },
-                        { t: 'Petrol / Fuel', a: 100, c: 'Travel & Commute' },
-                        { t: 'Groceries', a: 250, c: 'Groceries' },
-                        { t: 'Mobile Recharge', a: 299, c: 'Bills & Utilities' }
-                      ].map(p => (
-                        <button
-                          key={p.t}
-                          type="button"
-                          onClick={() => { setExpenseTitle(p.t); setExpenseAmount(String(p.a)); setExpenseCategory(p.c); }}
-                          style={{
-                            padding: '4px 9px',
-                            borderRadius: '6px',
-                            border: '1px solid #590907',
-                            backgroundColor: '#E8D2B5',
-                            color: '#590907',
-                            fontSize: '10px',
-                            fontWeight: '800',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          + {p.t} ₹{p.a}
-                        </button>
-                      ))
-                    ) : (
-                      [
-                        { t: 'Monthly Salary', a: 25000, c: 'Salary & Wages' },
-                        { t: 'Freelance Project', a: 5000, c: 'Freelance & Business' },
-                        { t: 'Pocket Money', a: 1000, c: 'Gifts & Pocket Money' },
-                        { t: 'Cashback & Returns', a: 150, c: 'Investments & Returns' }
-                      ].map(p => (
-                        <button
-                          key={p.t}
-                          type="button"
-                          onClick={() => { setExpenseTitle(p.t); setExpenseAmount(String(p.a)); setExpenseCategory(p.c); }}
-                          style={{
-                            padding: '4px 9px',
-                            borderRadius: '6px',
-                            border: '1px solid #166534',
-                            backgroundColor: '#dcfce7',
-                            color: '#166534',
-                            fontSize: '10px',
-                            fontWeight: '800',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          + {p.t} ₹{p.a}
-                        </button>
-                      ))
-                    )}
+                    {[
+                      { t: 'Chai & Snacks', a: 20, c: 'Food & Snacks' },
+                      { t: 'Metro / Bus', a: 50, c: 'Travel & Commute' },
+                      { t: 'Lunch / Thali', a: 120, c: 'Food & Snacks' },
+                      { t: 'Petrol / Fuel', a: 100, c: 'Travel & Commute' },
+                      { t: 'Stationery / Print', a: 60, c: 'Shopping & Books' },
+                      { t: 'Daily Groceries', a: 250, c: 'Groceries' },
+                      { t: 'Mobile Recharge', a: 299, c: 'Bills & Utilities' }
+                    ].map(p => (
+                      <button
+                        key={p.t}
+                        type="button"
+                        onClick={() => { setExpenseTitle(p.t); setExpenseAmount(String(p.a)); setExpenseCategory(p.c); }}
+                        style={{
+                          padding: '4px 9px',
+                          borderRadius: '6px',
+                          border: '1px solid #590907',
+                          backgroundColor: '#E8D2B5',
+                          color: '#590907',
+                          fontSize: '10px',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        + {p.t} ₹{p.a}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -3923,7 +4072,7 @@ export default function App() {
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <input
                       type="text"
-                      placeholder={transactionType === 'income' ? "Income Title (e.g. Salary, Client Pay)..." : "Expense Title (e.g. Chai, Groceries, Petrol)..."}
+                      placeholder="Expense Title (e.g. Chai, Groceries, Petrol, Books)..."
                       value={expenseTitle}
                       onChange={(e) => setExpenseTitle(e.target.value)}
                       style={{ flex: '2 1 200px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '12px', outline: 'none', fontWeight: '600' }}
@@ -3940,25 +4089,13 @@ export default function App() {
                       onChange={(e) => setExpenseCategory(e.target.value)}
                       style={{ flex: '1.5 1 140px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '11px', outline: 'none', fontWeight: '600' }}
                     >
-                      {transactionType === 'income' ? (
-                        <>
-                          <option value="Salary & Wages">💼 Salary & Wages</option>
-                          <option value="Freelance & Business">💻 Freelance & Business</option>
-                          <option value="Investments & Returns">📈 Investments & Returns</option>
-                          <option value="Gifts & Pocket Money">🎁 Gifts & Pocket Money</option>
-                          <option value="Other Income">💰 Other Income</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="Food & Snacks">🍔 Food & Snacks</option>
-                          <option value="Travel & Commute">🚌 Travel & Commute</option>
-                          <option value="Groceries">🛒 Groceries</option>
-                          <option value="Bills & Utilities">⚡ Bills & Utilities</option>
-                          <option value="Shopping & Books">🛍️ Shopping & Books</option>
-                          <option value="Health & Medical">💊 Health & Medical</option>
-                          <option value="Other Expense">📦 Other Expense</option>
-                        </>
-                      )}
+                      <option value="Food & Snacks">🍔 Food & Snacks</option>
+                      <option value="Travel & Commute">🚌 Travel & Commute</option>
+                      <option value="Groceries">🛒 Groceries</option>
+                      <option value="Bills & Utilities">⚡ Bills & Utilities</option>
+                      <option value="Shopping & Books">🛍️ Shopping & Books</option>
+                      <option value="Health & Medical">💊 Health & Medical</option>
+                      <option value="Other Expense">📦 Other Expense</option>
                     </select>
                     <button 
                       type="submit" 
@@ -3966,7 +4103,7 @@ export default function App() {
                         padding: '9px 20px', 
                         borderRadius: '8px', 
                         border: 'none', 
-                        backgroundColor: transactionType === 'income' ? '#166534' : '#590907', 
+                        backgroundColor: '#590907', 
                         color: '#E8D2B5', 
                         fontWeight: '900', 
                         fontSize: '12px', 
@@ -3975,7 +4112,7 @@ export default function App() {
                         boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
                       }}
                     >
-                      {transactionType === 'income' ? '+ Add Income' : '+ Add Expense'}
+                      + Log Expense
                     </button>
                   </div>
                 </form>
@@ -4002,7 +4139,7 @@ export default function App() {
                     gap: '6px'
                   }}
                 >
-                  <Edit2 size={13} /> Transactions ({monthlyItems.length})
+                  <Edit2 size={13} /> Expenses List ({monthlyItems.length})
                 </button>
                 <button
                   type="button"
@@ -4027,20 +4164,19 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Tab 1: Transactions List */}
+              {/* Tab 1: Expenses List */}
               {expenseTabMode === 'tracker' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {monthlyItems.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '30px 10px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px dashed #590907', color: '#590907' }}>
                       <DollarSign size={32} color="#590907" style={{ margin: '0 auto 6px auto', opacity: 0.6 }} />
                       <p style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>
-                        No transactions recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}.
+                        No expenses recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}.
                       </p>
-                      <span style={{ fontSize: '11px', opacity: 0.8 }}>Add your first expense or income above!</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8 }}>Log your first expense using the quick presets above!</span>
                     </div>
                   ) : (
                     monthlyItems.map((item, idx) => {
-                      const isInc = item.type === 'income';
                       return (
                         <div
                           key={item.id || idx}
@@ -4049,7 +4185,7 @@ export default function App() {
                             borderRadius: '10px',
                             padding: '10px 14px',
                             border: '1px solid #e5e7eb',
-                            borderLeft: `4px solid ${isInc ? '#22c55e' : '#ef4444'}`,
+                            borderLeft: '4px solid #ef4444',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -4057,8 +4193,8 @@ export default function App() {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: isInc ? '#dcfce7' : '#fee2e2', color: isInc ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {isInc ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#fee2e2', color: '#991b1b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <TrendingDown size={14} />
                             </div>
                             <div>
                               <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#111827' }}>{item.title}</p>
@@ -4071,14 +4207,14 @@ export default function App() {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '900', color: isInc ? '#166534' : '#991b1b' }}>
-                              {isInc ? `+₹${parseFloat(item.amount).toLocaleString()}` : `-₹${parseFloat(item.amount).toLocaleString()}`}
+                            <span style={{ fontSize: '14px', fontWeight: '900', color: '#991b1b' }}>
+                              -₹{parseFloat(item.amount).toLocaleString()}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleDeleteExpense(item.id || idx)}
                               style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: '#9ca3af' }}
-                              title="Delete transaction"
+                              title="Delete expense"
                             >
                               <Trash2 size={13} />
                             </button>
@@ -4090,47 +4226,34 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 2: Monthly Analytics & Report */}
+              {/* Tab 2: Monthly Analytics & Report (Pure Expense Focus) */}
               {expenseTabMode === 'monthly_report' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Earned vs Spent Visual Ratio Bar */}
-                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#590907' }}>
-                        📊 Earned vs Spent ({formatExpenseMonthLabel(selectedExpenseMonth)})
-                      </span>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534' }}>
-                        Savings Rate: {savingsRate}%
-                      </span>
+                  {/* Spending Velocity & Top Category Card */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', textTransform: 'uppercase' }}>AVERAGE DAILY SPEND</span>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#590907' }}>
+                        ₹{avgDailySpend.toLocaleString()} / day
+                      </p>
+                      <span style={{ fontSize: '9px', color: '#6b7280' }}>Based on {currentDay} days in {formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                     </div>
 
-                    <div style={{ display: 'flex', height: '14px', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#e5e7eb', marginBottom: '8px' }}>
-                      <div 
-                        style={{ 
-                          width: monthlyEarned > 0 ? `${Math.round((monthlyEarned / (monthlyEarned + monthlySpent || 1)) * 100)}%` : '0%', 
-                          backgroundColor: '#166534' 
-                        }} 
-                        title="Earned"
-                      />
-                      <div 
-                        style={{ 
-                          width: monthlySpent > 0 ? `${Math.round((monthlySpent / (monthlyEarned + monthlySpent || 1)) * 100)}%` : '0%', 
-                          backgroundColor: '#991b1b' 
-                        }} 
-                        title="Spent"
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '800' }}>
-                      <span style={{ color: '#166534' }}>🟢 Earned: ₹{monthlyEarned.toLocaleString()}</span>
-                      <span style={{ color: '#991b1b' }}>🔴 Spent: ₹{monthlySpent.toLocaleString()}</span>
+                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', textTransform: 'uppercase' }}>TOP SPENDING CATEGORY</span>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: '900', color: '#991b1b' }}>
+                        {topCat ? topCat[0] : 'None Yet'}
+                      </p>
+                      <span style={{ fontSize: '9px', color: '#6b7280' }}>
+                        {topCat ? `₹${topCat[1].toLocaleString()} (${monthlySpent > 0 ? Math.round((topCat[1] / monthlySpent) * 100) : 0}% of month)` : 'No expenses logged'}
+                      </span>
                     </div>
                   </div>
 
                   {/* Category Breakdown Bar Chart */}
                   <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#590907' }}>
-                      🏷️ Spending by Category
+                      🏷️ Spending by Category ({formatExpenseMonthLabel(selectedExpenseMonth)})
                     </h4>
                     {categoryStats.length === 0 ? (
                       <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>No expense records available for this month.</p>
@@ -4153,19 +4276,6 @@ export default function App() {
                       </div>
                     )}
                   </div>
-
-                  {/* Monthly Health Report */}
-                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '900', color: '#590907' }}>
-                      📑 Monthly Financial Health Report
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px', fontSize: '11px' }}>
-                      <div>• <strong>Top Spending Area:</strong> {topCat ? `${topCat[0]} (₹${topCat[1].toLocaleString()})` : 'None'}</div>
-                      <div>• <strong>Daily Average:</strong> ₹{Math.round(monthlySpent / 30).toLocaleString()} / day</div>
-                      <div>• <strong>Savings Rate:</strong> {savingsRate}%</div>
-                      <div>• <strong>Budget Status:</strong> {monthlyRemainingBudget >= 0 ? '✅ Within Budget' : '⚠️ Over Budget'}</div>
-                    </div>
-                  </div>
                 </div>
               )}
 
@@ -4174,7 +4284,6 @@ export default function App() {
         );
       })()}
 
-      {/* Daily Briefing & Live Google News Flash Modal */}
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '800px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
@@ -4242,7 +4351,7 @@ export default function App() {
             {newsCategory === 'ipo' ? (
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
                 
-                {/* Real-time Live Market Feed Status Bar with Manual Refresh */}
+                {/* Real-time Live Market Feed Status Bar with Manual Refresh and Hourly Auto-Refresh */}
                 <div style={{ 
                   backgroundColor: '#ffffff', 
                   border: '1px solid #590907', 
@@ -4258,12 +4367,37 @@ export default function App() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }} />
                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#590907' }}>
-                      BSE / NSE Live IPO Radar • Current October–November 2026 Issues
+                      BSE & NSE Real-Time IPO Radar • Current October–November 2026 Issues
                     </span>
                   </div>
-                  <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
-                    Real-time Bidding & Grey Market Premium (GMP)
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
+                      Auto-updates hourly (in {Math.floor(ipoCountdown / 60)}m {String(ipoCountdown % 60).padStart(2, '0')}s) • Last sync: {ipoLastUpdated}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => fetchIpoData(true)}
+                      disabled={ipoRefreshing}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #590907',
+                        backgroundColor: '#590907',
+                        color: '#E8D2B5',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        cursor: ipoRefreshing ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 2px 4px rgba(89,9,7,0.15)'
+                      }}
+                      title="Manually refresh real-time IPO data now"
+                    >
+                      <RotateCw size={11} style={{ animation: ipoRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+                      {ipoRefreshing ? 'Updating...' : 'Refresh'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Beginner Guide Card: Plain English Explanations of All Financial Terms */}
@@ -4282,19 +4416,19 @@ export default function App() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', color: '#78350f', fontSize: '10px' }}>
                     <div>
-                      <strong>• What is an IPO?</strong> When a private company sells its shares to the public on the stock market for the first time.
+                      <strong>• What is an IPO?</strong> When a company sells its shares to the public on the stock exchange for the first time.
                     </div>
                     <div>
-                      <strong>• What does "Subscription" mean?</strong> Public demand. If demand is <strong>3x</strong>, it means for every 1 share available, 3 people applied to buy it.
+                      <strong>• What does "Subscription" mean?</strong> Total buyer demand. If demand is <strong>3x</strong>, it means for every 1 share offered, 3 people applied to buy it.
                     </div>
                     <div>
                       <strong>• What is "GMP" (Grey Market Premium)?</strong> Unofficial estimated extra profit per share when the stock begins trading on Day 1.
                     </div>
                     <div>
-                      <strong>• What is "Lot Size"?</strong> The minimum bundle of shares you must buy. (In an IPO, you cannot buy just 1 single share).
+                      <strong>• What is "Lot Size"?</strong> The minimum bundle of shares you must buy in an application.
                     </div>
                     <div>
-                      <strong>• What is "Allotment"?</strong> Getting the shares in your Demat account. If too many apply, a computerized lucky draw picks winners. If you don't win, your money is safely unblocked.
+                      <strong>• What is "Allotment"?</strong> Getting the shares in your Demat account. If oversubscribed, a computerized lucky draw picks winners. If you don't win, your money is safely unblocked.
                     </div>
                   </div>
                 </div>
@@ -4322,7 +4456,7 @@ export default function App() {
                       transition: 'all 0.2s'
                     }}
                   >
-                    🟢 Live Open IPOs (Bidding Active - {IPO_DATABASE.live.length})
+                    🟢 Live Open IPOs (Bidding Active - {(ipoData?.live || []).length})
                   </button>
                   <button
                     type="button"
@@ -4345,12 +4479,12 @@ export default function App() {
                       transition: 'all 0.2s'
                     }}
                   >
-                    📅 Upcoming IPOs (Opening Soon - {IPO_DATABASE.upcoming.length})
+                    📅 Upcoming IPOs (Opening Soon - {(ipoData?.upcoming || []).length})
                   </button>
                 </div>
 
                 {/* IPO Cards in Simple Plain English */}
-                {(IPO_DATABASE[ipoSubTab] || []).map((ipo) => (
+                {(ipoData?.[ipoSubTab] || []).map((ipo) => (
                   <div
                     key={ipo.id}
                     style={{
