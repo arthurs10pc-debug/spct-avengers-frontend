@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import { jsPDF } from 'jspdf';
 import { 
-  Shield, Volume2, VolumeX, Clock, 
+  Shield, Volume2, Bell, VolumeX, Clock, 
   X, Activity, Navigation, Edit2, Trash2, Plus, Mic, AlertTriangle, Square, 
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
@@ -483,6 +483,13 @@ export default function App() {
       }
     });
   };
+
+  // Request Desktop Notification Permission on Startup for Watcher Reminders
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
 
   // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat)
   const [showBriefingModal, setShowBriefingModal] = useState(false);
