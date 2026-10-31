@@ -3349,6 +3349,119 @@ export default function App() {
         </div>
       )}
 
+      {/* Full-Screen Watcher Reminder Alert Modal (Triggers Visually When Reminder Is Due) */}
+      {activeAlertTask && (
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          backgroundColor: 'rgba(89, 9, 7, 0.96)', 
+          backdropFilter: 'blur(10px)', 
+          zIndex: 99999, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: '24px', 
+          textAlign: 'center' 
+        }}>
+          <div style={{ 
+            width: '84px', 
+            height: '84px', 
+            borderRadius: '24px', 
+            backgroundColor: '#dc2626', 
+            color: '#ffffff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            marginBottom: '18px',
+            boxShadow: '0 0 35px rgba(220, 38, 38, 0.85)'
+          }}>
+            <Bell size={44} />
+          </div>
+
+          <span style={{ 
+            fontSize: '12px', 
+            fontWeight: '900', 
+            color: '#fca5a5', 
+            textTransform: 'uppercase', 
+            letterSpacing: '2.5px', 
+            marginBottom: '8px' 
+          }}>
+            ⏰ Watcher Reminder Alert
+          </span>
+
+          <h1 style={{ 
+            fontSize: '28px', 
+            fontWeight: '900', 
+            color: '#E8D2B5', 
+            maxWidth: '680px', 
+            lineHeight: '1.3', 
+            margin: '0 0 10px 0', 
+            padding: '0 16px',
+            wordBreak: 'break-word'
+          }}>
+            "{activeAlertTask}"
+          </h1>
+
+          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: '#fca5a5', fontWeight: '700' }}>
+            Scheduled reminder time has arrived!
+          </p>
+
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                stopAlarmSound();
+                if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
+                  const updated = [...remindersList];
+                  if (updated[currentAlertTaskId]) {
+                    updated[currentAlertTaskId].completed = true;
+                    setRemindersList(updated);
+                  }
+                }
+                setActiveAlertTask(null);
+                setActiveAlertKey(null);
+                setCurrentAlertTaskId(null);
+              }}
+              style={{ 
+                padding: '13px 30px', 
+                borderRadius: '12px', 
+                border: 'none', 
+                backgroundColor: '#E8D2B5', 
+                color: '#590907', 
+                fontWeight: '900', 
+                fontSize: '15px', 
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Check size={18} /> Got It / Dismiss
+            </button>
+
+            <button
+              onClick={handleSnooze}
+              style={{ 
+                padding: '13px 26px', 
+                borderRadius: '12px', 
+                border: '1px solid #E8D2B5', 
+                backgroundColor: '#3d0605', 
+                color: '#E8D2B5', 
+                fontWeight: '900', 
+                fontSize: '15px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px' 
+              }}
+            >
+              <Clock size={16} /> Snooze ({snoozeMinutes}m)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
