@@ -7,7 +7,7 @@ import {
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
   Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
-  Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle
+  Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -404,6 +404,16 @@ export default function App() {
   const [isSendingNotesEmail, setIsSendingNotesEmail] = useState(false);
   const [notesEmailFeedback, setNotesEmailFeedback] = useState('');
   const [notesTargetEmail, setNotesTargetEmail] = useState('');
+
+  // Multimedia Notes Attachments State (Photo, Video, Audio, PDF) with Mobile Sync
+  const [stagedAttachments, setStagedAttachments] = useState([]);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [activeLightboxMedia, setActiveLightboxMedia] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const notesFileInputRef = useRef(null);
 
   // Route & Interactive Map State (Strictly Gujarat/India bounded)
   const [showRoutePanel, setShowRoutePanel] = useState(false);
@@ -2236,18 +2246,177 @@ export default function App() {
     }
   };
 
+  // Client-Side Image Compression & Attachment Reader for High-Speed Mobile Sync
+  const processNoteAttachmentFile = (file) => {
+    return new Promise((resolve, reject) => {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+      let attType = 'other';
+      if (isImage) attType = 'photo';
+      else if (isVideo) attType = 'video';
+      else if (isAudio) attType = 'audio';
+      else if (isPdf) attType = 'pdf';
+
+      const reader = new FileReader();
+
+      if (isImage) {
+        reader.onload = (e) => {
+          const img = new window.Image();
+          img.onload = () => {
+            const maxDim = 1400;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            resolve({
+              id: 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+              name: file.name,
+              type: 'photo',
+              mimeType: 'image/jpeg',
+              size: Math.round((compressedDataUrl.length * 3) / 4),
+              dataUrl: compressedDataUrl,
+              uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+          };
+          img.onerror = () => {
+            resolve({
+              id: 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+              name: file.name,
+              type: 'photo',
+              mimeType: file.type || 'image/jpeg',
+              size: file.size,
+              dataUrl: e.target.result,
+              uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      } else {
+        reader.onload = (e) => {
+          resolve({
+            id: 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            name: file.name,
+            type: attType,
+            mimeType: file.type || (isPdf ? 'application/pdf' : 'application/octet-stream'),
+            size: file.size,
+            dataUrl: e.target.result,
+            uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  const handleNotesFilesSelected = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    for (const file of files) {
+      try {
+        const att = await processNoteAttachmentFile(file);
+        setStagedAttachments(prev => [...prev, att]);
+      } catch (err) {
+        console.error("Error attaching file:", err);
+      }
+    }
+    if (notesFileInputRef.current) notesFileInputRef.current.value = '';
+  };
+
+  const handleRemoveStagedAttachment = (attId) => {
+    setStagedAttachments(prev => prev.filter(a => a.id !== attId));
+  };
+
+  // Direct Voice Recording into Note (Mobile & Desktop Compatible)
+  const handleStartAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result;
+          const newAtt = {
+            id: 'att_voice_' + Date.now(),
+            name: `Voice_Note_${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '-')}.webm`,
+            type: 'audio',
+            mimeType: 'audio/webm',
+            size: audioBlob.size,
+            dataUrl: base64data,
+            uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setStagedAttachments(prev => [...prev, newAtt]);
+        };
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start(200);
+      setIsRecordingAudio(true);
+      setRecordingDuration(0);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      alert("Microphone permission is required to record voice notes.");
+      console.warn("Microphone access notice:", err);
+    }
+  };
+
+  const handleStopAudioRecording = () => {
+    if (mediaRecorderRef.current && isRecordingAudio) {
+      mediaRecorderRef.current.stop();
+      setIsRecordingAudio(false);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    }
+  };
+
   const handleSaveNote = () => {
-    if (!newNoteTitle.trim() && !newNoteContent.trim()) {
-      alert("Please enter a note title or note content.");
+    if (!newNoteTitle.trim() && !newNoteContent.trim() && stagedAttachments.length === 0) {
+      alert("Please enter a note title, content, or attach a photo, video, audio, or PDF.");
       return;
     }
 
     const newNote = {
       id: `note_${Date.now()}`,
-      title: newNoteTitle.trim() || 'Untitled Note',
+      title: newNoteTitle.trim() || (stagedAttachments.length > 0 ? stagedAttachments[0].name : 'Untitled Note'),
       content: newNoteContent.trim(),
       color: newNoteColor || '#38bdf8',
       pinned: newNotePinned,
+      attachments: stagedAttachments,
       createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
 
@@ -2257,6 +2426,7 @@ export default function App() {
     setNewNoteTitle('');
     setNewNoteContent('');
     setNewNotePinned(false);
+    setStagedAttachments([]);
   };
 
   const handleToggleChecklistItem = (noteId, itemId) => {
@@ -3271,7 +3441,7 @@ export default function App() {
 
               {/* Note Content Textarea */}
               <textarea
-                placeholder="Take a note, write details, checklist items or reminders here..."
+                placeholder="Take a note, write details, checklists, or attach photos, videos, audios & PDFs..."
                 rows={3}
                 value={newNoteContent}
                 onChange={(e) => setNewNoteContent(e.target.value)}
@@ -3290,8 +3460,107 @@ export default function App() {
                 }}
               />
 
-              {/* Submit Button */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              {/* Multimedia Attachment Buttons Toolbar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <Paperclip size={12} /> Attach:
+                  </span>
+
+                  {/* Hidden Universal File Input */}
+                  <input
+                    type="file"
+                    ref={notesFileInputRef}
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleNotesFilesSelected}
+                  />
+
+                  {/* Photo Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (notesFileInputRef.current) {
+                        notesFileInputRef.current.accept = "image/*";
+                        notesFileInputRef.current.click();
+                      }
+                    }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    title="Attach Photos / Images (.jpg, .png, .webp)"
+                  >
+                    <Image size={12} /> Photo
+                  </button>
+
+                  {/* Video Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (notesFileInputRef.current) {
+                        notesFileInputRef.current.accept = "video/*";
+                        notesFileInputRef.current.click();
+                      }
+                    }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    title="Attach Videos (.mp4, .webm, .mov)"
+                  >
+                    <Video size={12} /> Video
+                  </button>
+
+                  {/* Audio Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (notesFileInputRef.current) {
+                        notesFileInputRef.current.accept = "audio/*";
+                        notesFileInputRef.current.click();
+                      }
+                    }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    title="Attach Audio files (.mp3, .wav, .m4a)"
+                  >
+                    <Music size={12} /> Audio
+                  </button>
+
+                  {/* PDF Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (notesFileInputRef.current) {
+                        notesFileInputRef.current.accept = "application/pdf,.pdf";
+                        notesFileInputRef.current.click();
+                      }
+                    }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    title="Attach PDF Documents (.pdf)"
+                  >
+                    <FileText size={12} /> PDF
+                  </button>
+
+                  {/* Direct Voice Record Button */}
+                  <button
+                    type="button"
+                    onClick={isRecordingAudio ? handleStopAudioRecording : handleStartAudioRecording}
+                    style={{
+                      padding: '4px 9px',
+                      borderRadius: '6px',
+                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : '#590907'),
+                      backgroundColor: isRecordingAudio ? '#fee2e2' : '#E8D2B5',
+                      color: isRecordingAudio ? '#dc2626' : '#590907',
+                      fontSize: '10px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title={isRecordingAudio ? "Click to stop and attach voice recording" : "Record Voice Note directly from microphone"}
+                  >
+                    <Mic size={12} color={isRecordingAudio ? '#dc2626' : '#590907'} />
+                    {isRecordingAudio ? `Stop (${recordingDuration}s)` : 'Voice Record'}
+                  </button>
+                </div>
+
+                {/* Submit Save Note Button */}
                 <button
                   type="button"
                   onClick={handleSaveNote}
@@ -3310,6 +3579,49 @@ export default function App() {
                   Save Note
                 </button>
               </div>
+
+              {/* Staged Attachments Preview Strip */}
+              {stagedAttachments.length > 0 && (
+                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px dashed #590907' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '800', color: '#590907', marginBottom: '6px' }}>
+                    📎 Ready to Save ({stagedAttachments.length} Attachment{stagedAttachments.length > 1 ? 's' : ''}):
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {stagedAttachments.map((att) => (
+                      <div
+                        key={att.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                          maxWidth: '220px'
+                        }}
+                      >
+                        {att.type === 'photo' && <img src={att.dataUrl} alt={att.name} style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />}
+                        {att.type === 'video' && <Video size={16} color="#3b82f6" />}
+                        {att.type === 'audio' && <Music size={16} color="#10b981" />}
+                        {att.type === 'pdf' && <FileText size={16} color="#ef4444" />}
+                        <span style={{ fontSize: '10px', fontWeight: '700', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                          {att.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStagedAttachment(att.id)}
+                          style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                          title="Remove attachment"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Filter Tabs & Search: ONLY All Notes and Pinned as requested */}
@@ -3429,18 +3741,131 @@ export default function App() {
                       </div>
 
                       {/* Content: Clean readable text */}
-                      <p style={{ margin: '6px 0 12px 0', fontSize: '11px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word' }}>
-                        {note.content || (Array.isArray(note.checklist) ? note.checklist.map(c => c.text).join(', ') : '')}
-                      </p>
+                      {note.content && (
+                        <p style={{ margin: '6px 0 10px 0', fontSize: '11px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                          {note.content}
+                        </p>
+                      )}
+
+                      {/* Multimedia Attachments Rendering */}
+                      {Array.isArray(note.attachments) && note.attachments.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                          {/* Photos Grid */}
+                          {note.attachments.filter(a => a.type === 'photo').length > 0 && (
+                            <div style={{ display: 'grid', gridTemplateColumns: note.attachments.filter(a => a.type === 'photo').length > 1 ? 'repeat(2, 1fr)' : '1fr', gap: '4px' }}>
+                              {note.attachments.filter(a => a.type === 'photo').map((att) => (
+                                <div
+                                  key={att.id}
+                                  onClick={() => setActiveLightboxMedia(att)}
+                                  style={{ position: 'relative', cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', height: '110px', backgroundColor: '#f3f4f6' }}
+                                  title="Click to view full photo"
+                                >
+                                  <img
+                                    src={att.dataUrl}
+                                    alt={att.name}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.2s' }}
+                                  />
+                                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '3px 6px', background: 'linear-gradient(transparent, rgba(0,0,0,0.7))', color: '#ffffff', fontSize: '8px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {att.name}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Videos */}
+                          {note.attachments.filter(a => a.type === 'video').map((att) => (
+                            <div key={att.id} style={{ borderRadius: '8px', overflow: 'hidden', backgroundColor: '#000000' }}>
+                              <video
+                                src={att.dataUrl}
+                                controls
+                                style={{ width: '100%', maxHeight: '160px', display: 'block' }}
+                              />
+                            </div>
+                          ))}
+
+                          {/* Audios */}
+                          {note.attachments.filter(a => a.type === 'audio').map((att) => (
+                            <div key={att.id} style={{ padding: '6px 8px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontWeight: '800', color: '#0f766e', marginBottom: '3px' }}>
+                                <Music size={11} /> {att.name}
+                              </div>
+                              <audio
+                                src={att.dataUrl}
+                                controls
+                                style={{ width: '100%', height: '30px' }}
+                              />
+                            </div>
+                          ))}
+
+                          {/* PDFs */}
+                          {note.attachments.filter(a => a.type === 'pdf').map((att) => (
+                            <div
+                              key={att.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 10px',
+                                backgroundColor: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: '8px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', paddingRight: '6px' }}>
+                                <FileText size={16} color="#dc2626" />
+                                <div>
+                                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#991b1b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {att.name}
+                                  </div>
+                                  <span style={{ fontSize: '8px', color: '#b91c1c' }}>
+                                    PDF Document • {att.size ? Math.round(att.size / 1024) + ' KB' : 'PDF'}
+                                  </span>
+                                </div>
+                              </div>
+                              <a
+                                href={att.dataUrl}
+                                download={att.name}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  fontSize: '10px',
+                                  fontWeight: '900',
+                                  color: '#dc2626',
+                                  backgroundColor: '#ffffff',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #dc2626',
+                                  textDecoration: 'none',
+                                  flexShrink: 0
+                                }}
+                                title="Open / Download PDF"
+                              >
+                                <Download size={11} /> Open
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '9px', color: '#9ca3af', fontWeight: '700' }}>
                       <span>{note.createdAt || 'Saved'}</span>
-                      {note.pinned && (
-                        <span style={{ color: '#e11d48', backgroundColor: '#ffe4e6', padding: '1px 6px', borderRadius: '4px', fontWeight: '800' }}>
-                          📌 Pinned
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {Array.isArray(note.attachments) && note.attachments.length > 0 && (
+                          <span style={{ color: '#0369a1', backgroundColor: '#e0f2fe', padding: '1px 5px', borderRadius: '4px', fontWeight: '800' }}>
+                            📎 {note.attachments.length}
+                          </span>
+                        )}
+                        {note.pinned && (
+                          <span style={{ color: '#e11d48', backgroundColor: '#ffe4e6', padding: '1px 6px', borderRadius: '4px', fontWeight: '800' }}>
+                            📌 Pinned
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -4450,6 +4875,95 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* Lightbox Full-Screen Modal for Photos & Attachments */}
+      {activeLightboxMedia && (
+        <div
+          onClick={() => setActiveLightboxMedia(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.92)',
+            zIndex: 999999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '92vw',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
+            <button
+              onClick={() => setActiveLightboxMedia(null)}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            {activeLightboxMedia.type === 'photo' && (
+              <img
+                src={activeLightboxMedia.dataUrl}
+                alt={activeLightboxMedia.name}
+                style={{
+                  maxWidth: '90vw',
+                  maxHeight: '80vh',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+                  objectFit: 'contain'
+                }}
+              />
+            )}
+
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ color: '#ffffff', fontSize: '12px', fontWeight: '700' }}>
+                {activeLightboxMedia.name}
+              </span>
+              <a
+                href={activeLightboxMedia.dataUrl}
+                download={activeLightboxMedia.name}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  backgroundColor: '#E8D2B5',
+                  color: '#590907',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: '900',
+                  textDecoration: 'none'
+                }}
+              >
+                <Download size={13} /> Download
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
