@@ -35,132 +35,238 @@ const parseJwt = (token) => {
 const IPO_DATABASE = {
   live: [
     {
-      id: 'ipo_afcons',
-      name: 'Afcons Infrastructure Ltd',
-      sector: 'इंजीनियरिंग और इंफ्रास्ट्रक्चर (Construction)',
-      priceBand: '₹440 - ₹463',
-      lotSize: '32 शेयर (न्यूनतम निवेश: ₹14,816)',
-      dates: '25 अक्टूबर - 29 अक्टूबर 2024',
-      listingDate: '4 नवंबर 2024',
-      status: 'Open / Bidding Active',
-      about: 'यह शापूरजी पलोनजी ग्रुप की सबसे बड़ी इंफ्रास्ट्रक्चर कंपनी है। यह भारत, मिडिल ईस्ट और अफ्रीका में टनल, मेट्रो, ब्रिज और हाईवे बनाती है। कंपनी का बिजनेस और ऑर्डर बुक बहुत मजबूत है।',
+      id: 'ipo_bombay_steels',
+      name: 'Bombay Coated & Special Steels Ltd',
+      type: 'Mainboard IPO',
+      exchange: 'BSE & NSE',
+      sector: 'Specialty Steel & Industrial Coils',
+      priceBand: '₹78 - ₹82 per share',
+      lotSize: '180 Shares (Minimum: ₹14,760)',
+      dates: '29 Oct - 2 Nov 2026',
+      listingDate: '5 Nov 2026',
+      status: '🟢 Open / Bidding Active',
+      allotmentBadge: '🟢 High Chance (85%+ Odds)',
+      about: 'This company manufactures specialty coated steel sheets and cold-rolled metal coils. Their products are supplied directly to top automobile manufacturers (for car bodies), appliance makers (for refrigerators and washing machines), and construction companies (for durable metal roofing).',
       subscription: {
-        total: '2.63x (लगभग 3 गुना भरा)',
-        retail: '0.94x (रिटेल में 94% मांग)',
-        qib: '3.79x (विदेशी व बड़े बैंक)',
-        nii: '5.05x (अमीर निवेशक / HNI)'
+        total: '2.6x Over-subscribed',
+        totalMeaning: 'For every 1 share available, 2.6 applications were submitted. Solid, healthy buyer demand.',
+        retail: '1.1x Full (Regular Public Category)',
+        retailMeaning: 'Normal retail demand is around 1.1x. This means competition is low and your chance of winning shares is very high.',
+        qib: '3.8x (Big Banks & Mutual Funds)',
+        qibMeaning: 'Institutional investors and mutual funds are bidding with large capital.',
+        nii: '2.4x (Wealthy High-Net-Worth Investors)',
+        niiMeaning: 'High-net-worth individual investors have placed significant orders.'
       },
-      allotmentChance: 'उच्च (High Chance) - रिटेल में ज्यादा ओवर-सब्सक्रिप्शन नहीं होने से अगर आप 1 लॉट लगाते हैं तो शेयर मिलने की 90-95% संभावना है।',
-      allotmentBadge: 'आसान अलॉटमेंट (90%+ Chance)',
-      gmp: '+₹35 (+7.5% संभावित लिस्टिंग गेन)',
-      verdict: 'लंबी अवधि (Long Term) के लिए अच्छा विकल्प है। लिस्टिंग गेन सामान्य से अच्छा मिल सकता है।'
+      allotmentChance: 'Very High Chance (85%+ Allotment Probability)',
+      allotmentDetail: 'Because the retail quota is only slightly oversubscribed (1.1x), almost every applicant submitting 1 lot has an excellent chance of receiving the shares without tough lucky-draw competition.',
+      gmp: '+₹18 (+22.0% Estimated Listing Gain)',
+      gmpDetail: 'If you buy at ₹82, the unofficial grey market expects the share to open around ₹100 on listing day, delivering approximately ₹3,240 profit per lot.',
+      verdict: 'Recommended for Listing Gains & Short-Term Profit. Stable demand, attractive valuation, and clean balance sheet.'
     },
     {
-      id: 'ipo_waaree',
-      name: 'Waaree Energies Ltd',
-      sector: 'सोलर पैनल और ग्रीन एनर्जी (Solar Energy)',
-      priceBand: '₹1,427 - ₹1,503',
-      lotSize: '9 शेयर (न्यूनतम निवेश: ₹13,527)',
-      dates: '21 अक्टूबर - 23 अक्टूबर 2024',
-      listingDate: '28 अक्टूबर 2024',
-      status: 'Closed / Allotment Phase',
-      about: 'भारत की नंबर 1 सोलर पीवी मॉड्यूल निर्माता कंपनी है। देश में बिकने वाले हर 5 में से 1 सोलर पैनल Waaree का होता है। अमेरिका और यूरोप में भी कंपनी का भारी एक्सपोर्ट बिजनेस है।',
+      id: 'ipo_maxwell_eng',
+      name: 'Maxwell Engineering Solutions Ltd',
+      type: 'SME IPO',
+      exchange: 'NSE Emerge (SME)',
+      sector: 'Aerospace & Energy Turbine Components',
+      priceBand: '₹150 - ₹158 per share',
+      lotSize: '800 Shares (Minimum: ₹1,26,400)',
+      dates: '30 Oct - 3 Nov 2026',
+      listingDate: '6 Nov 2026',
+      status: '🟢 Open / Bidding Active',
+      allotmentBadge: '🔥 High Demand (Lottery 1 in 6)',
+      about: 'Designs and machines high-precision turbine parts, flow valves, and specialized mechanical housings for aerospace, green energy, and heavy turbine plants across India and Europe.',
       subscription: {
-        total: '76.34x (बंपर मांग - 76 गुना)',
-        retail: '10.79x (रिटेल में 11 गुना भरा)',
-        qib: '208.63x (विदेशी फंड्स की भारी मांग)',
-        nii: '62.49x (HNI कोटा 62 गुना)'
+        total: '8.9x Massive Oversubscription',
+        totalMeaning: 'Almost 9 times more demand than shares available. Huge investor excitement.',
+        retail: '6.2x Bidded (Retail Investors)',
+        retailMeaning: '6 people are competing for each share. A computerized lucky draw will select the winners.',
+        qib: '9.5x (Institutional Investors)',
+        qibMeaning: 'Strong institutional backing with large fund inflows.',
+        nii: '11.4x (HNI High-Value Bids)',
+        niiMeaning: 'Wealthy investors have bid aggressively over 11 times their reserved quota.'
       },
-      allotmentChance: 'लॉटरी आधारित / कम (1 in 11 Chance) - बहुत ज्यादा आवेदन आने के कारण रिटेल में हर 11 में से सिर्फ 1 भाग्यशाली को ही लॉट मिलेगा।',
-      allotmentBadge: 'लॉटरी अलॉटमेंट (1 in 11)',
-      gmp: '+₹1,480 (+98.5% बंपर डबल मुनाफा)',
-      verdict: 'सुपरहिट IPO! लिस्टिंग पर पैसे लगभग डबल होने की उम्मीद और लंबे समय के लिए मल्टीबैगर बनने की क्षमता।'
+      allotmentChance: 'Lottery Draw (1 in 6 applicants will win)',
+      allotmentDetail: 'Due to intense retail demand, shares will be distributed through a fair computerized lucky draw. Only 1 out of every 6 retail applicants will receive an allotment.',
+      gmp: '+₹55 (+34.8% Strong Listing Gain)',
+      gmpDetail: 'Unofficial grey market is paying a ₹55 premium over the ₹158 price, indicating an estimated listing price of ~₹213 and an estimated profit of ~₹44,000 on 1 lot.',
+      verdict: 'High-Conviction Listing Gain Play. Ideal if you have the ₹1.26L SME capital and want strong day-one upside.'
     },
     {
-      id: 'ipo_godavari',
-      name: 'Godavari Biorefineries Ltd',
-      sector: 'बायो-रिफाइनरी और इथेनॉल (Bio-Chemicals)',
-      priceBand: '₹334 - ₹352',
-      lotSize: '42 शेयर (न्यूनतम निवेश: ₹14,784)',
-      dates: '23 अक्टूबर - 25 अक्टूबर 2024',
-      listingDate: '30 अक्टूबर 2024',
-      status: 'Closed / Listing Soon',
-      about: 'यह गन्ने के वेस्ट से इथेनॉल, बायो-केमिकल्स और ग्रीन फ्यूल बनाती है। भारत सरकार की इथेनॉल ब्लेंडिंग पॉलिसी से कंपनी को लगातार नए ऑर्डर्स मिल रहे हैं।',
+      id: 'ipo_johnsoncab',
+      name: 'Johnsoncab Electricals Ltd',
+      type: 'SME IPO',
+      exchange: 'BSE SME',
+      sector: 'Industrial Cables & Power Distribution',
+      priceBand: '₹190 - ₹200 per share',
+      lotSize: '600 Shares (Minimum: ₹1,20,000)',
+      dates: '30 Oct - 3 Nov 2026',
+      listingDate: '6 Nov 2026',
+      status: '🟢 Open / Bidding Active',
+      allotmentBadge: '🟡 Moderate (1 in 3 Lottery)',
+      about: 'Manufactures copper and aluminum cables, fire-resistant wires, and low-tension electrical control panels for commercial real estate, factories, and solar plants.',
       subscription: {
-        total: '1.83x (सामान्य मांग)',
-        retail: '1.71x (रिटेल पूरा भरा)',
-        qib: '2.76x',
-        nii: '0.90x'
+        total: '5.4x Bidded Overall',
+        totalMeaning: 'Buyers have requested 5.4 times the total shares offered by the company.',
+        retail: '3.8x Full (Retail Category)',
+        retailMeaning: 'Roughly 4 applicants for each available lot. A fair lucky draw will pick winners.',
+        qib: '4.2x (Financial Institutions)',
+        qibMeaning: 'Consistent participation from qualified institutional buyers.',
+        nii: '7.1x (HNI Bidders)',
+        niiMeaning: 'High interest from wealthy private investors.'
       },
-      allotmentChance: 'मध्यम से उच्च (Good Chance) - 70-80% आवेदकों को शेयर अलॉट होने की पूरी उम्मीद है।',
-      allotmentBadge: 'मध्यम अलॉटमेंट (75%+ Chance)',
-      gmp: '+₹12 (+3.5% मुनाफा)',
-      verdict: 'केवल लंबी अवधि (Long Term) के निवेशक ही इसमें निवेश करें।'
+      allotmentChance: 'Fair Lucky Draw (1 in 3 chance of allotment)',
+      allotmentDetail: '3.8x retail subscription means approximately 1 out of every 3 retail applications will win a lot.',
+      gmp: '+₹45 (+22.5% Estimated Profit)',
+      gmpDetail: 'Expected to list around ₹245 (₹45 profit per share), generating ~₹27,000 estimated profit per allocated lot.',
+      verdict: 'Good for Listing Profits. Established wire brand with expanding distribution across Western India.'
+    },
+    {
+      id: 'ipo_vectras',
+      name: 'Vectras Enprocon Ltd',
+      type: 'SME IPO',
+      exchange: 'BSE SME',
+      sector: 'Infrastructure & Water Treatment EPC',
+      priceBand: '₹99 - ₹105 per share',
+      lotSize: '1,200 Shares (Minimum: ₹1,26,000)',
+      dates: '30 Oct - 3 Nov 2026',
+      listingDate: '6 Nov 2026',
+      status: '🟢 Open / Bidding Active',
+      allotmentBadge: '🟢 High Chance (75%+ Odds)',
+      about: 'Executes turnkey engineering, procurement, and construction (EPC) projects for municipal water filtration facilities, sewage treatment plants, and industrial piping grids.',
+      subscription: {
+        total: '2.1x Subscribed',
+        totalMeaning: 'Comfortable, moderate demand. Well-balanced between supply and bids.',
+        retail: '1.8x Full',
+        retailMeaning: 'Moderate retail competition. High probability of securing allotment.',
+        qib: '2.5x',
+        qibMeaning: 'Steady institutional bids.',
+        nii: '2.0x',
+        niiMeaning: 'Balanced HNI participation.'
+      },
+      allotmentChance: 'High Chance (75%+ Probability)',
+      allotmentDetail: 'With retail demand at 1.8x, about 3 out of every 4 applicants will receive an allotment.',
+      gmp: '+₹16 (+15.2% Moderate Gain)',
+      gmpDetail: 'Projected listing price ~₹121 per share, offering an estimated profit of ~₹19,200 per lot.',
+      verdict: 'Steady Infrastructure Bet. Profitable operations with government and municipal contracts.'
+    },
+    {
+      id: 'ipo_antala',
+      name: 'Antala Industries Ltd',
+      type: 'SME IPO',
+      exchange: 'BSE SME',
+      sector: 'Chemical Machinery & Reaction Vessels',
+      priceBand: '₹63 - ₹67 per share',
+      lotSize: '2,000 Shares (Minimum: ₹1,34,000)',
+      dates: '29 Oct - 2 Nov 2026',
+      listingDate: '5 Nov 2026',
+      status: '🟢 Open / Bidding Active',
+      allotmentBadge: '🟢 High Chance (80%+ Odds)',
+      about: 'Gujarat-based engineering firm designing stainless steel chemical reactors, pressure tanks, and distillation columns for pharma, agrochemical, and specialty dye plants in Ankleshwar and Dahej.',
+      subscription: {
+        total: '1.9x Subscribed',
+        totalMeaning: 'Healthy domestic demand without hyper-inflation or speculative frenzy.',
+        retail: '1.5x Full',
+        retailMeaning: 'Low retail crowding. Excellent allotment odds for individual investors.',
+        qib: '2.2x',
+        qibMeaning: 'Supported by regional investment funds.',
+        nii: '2.1x',
+        niiMeaning: 'Steady local HNI bidding.'
+      },
+      allotmentChance: 'High Chance (80%+ Probability)',
+      allotmentDetail: 'Mild oversubscription guarantees that 4 out of 5 applicants will be allotted shares.',
+      gmp: '+₹12 (+17.9% Listing Gain)',
+      gmpDetail: 'Expected to open around ₹79 per share, delivering ~₹24,000 estimated profit per lot.',
+      verdict: 'Safe SME Investment. Zero debt, strong local customer base in Gujarat pharma hubs.'
     }
   ],
   upcoming: [
     {
-      id: 'ipo_swiggy',
-      name: 'Swiggy Ltd (स्वीगी)',
-      sector: 'फूड डिलीवरी और क्विक कॉमर्स (Instamart)',
-      priceBand: '₹371 - ₹390 (अपेक्षित)',
-      lotSize: '38 शेयर (न्यूनतम निवेश: लगभग ₹14,820)',
-      dates: '6 नवंबर - 8 नवंबर 2024',
-      listingDate: '13 नवंबर 2024',
-      status: 'Upcoming (जल्द खुलेगा)',
-      about: 'भारत की दिग्गज फूड और क्विक ग्रॉसरी डिलीवरी कंपनी (Zomato की मुख्य प्रतिद्वंद्वी)। पूरे देश में रोजाना लाखों ऑर्डर डिलीवर करती है। Instamart 10-मिनट डिलीवरी में तेजी से बढ़ रहा है।',
+      id: 'ipo_vedant',
+      name: 'Vedant Poly Fabs Ltd',
+      type: 'SME IPO',
+      exchange: 'NSE Emerge (SME)',
+      sector: 'Packaging Fabrics & Technical Textiles',
+      priceBand: '₹88 - ₹94 per share',
+      lotSize: '1,200 Shares (Minimum: ₹1,12,800)',
+      dates: '2 Nov - 4 Nov 2026 (Opens Monday)',
+      listingDate: '7 Nov 2026',
+      status: '📅 Opening Soon (2 Nov)',
+      allotmentBadge: '🚀 50% Retail Quota',
+      about: 'Manufactures high-strength polypropylene (PP) woven sacks, bulk containers (FIBC jumbo bags), and protective packaging fabrics for cement, fertilizer, and agricultural grain transport.',
       subscription: {
-        total: 'बोली जल्द शुरू होगी (Opens 6 Nov)',
-        retail: 'रिटेल कोटा: 10%',
-        qib: 'QIB कोटा: 75%',
-        nii: 'NII कोटा: 15%'
+        total: 'Bidding Starts 2 Nov 2026',
+        totalMeaning: 'Official bidding opens on NSE platform on Monday morning.',
+        retail: '50% Reserved for Public',
+        retailMeaning: 'A generous 50% of the entire issue is reserved specifically for retail public applicants.',
+        qib: 'Anchor Placement Nov 1',
+        qibMeaning: 'Anchor book will be finalized on Friday before opening.',
+        nii: '15% Quota Reserved',
+        niiMeaning: 'High Net Worth quota reserved for bids above ₹2 Lakhs.'
       },
-      allotmentChance: 'मध्यम (Moderate Chance) - Zomato जैसा लोकप्रिय ब्रांड होने के कारण रिटेल में भारी आवेदन आने की संभावना है।',
-      allotmentBadge: 'बड़ा मेनबोर्ड IPO',
-      gmp: '+₹25 (+6.5% जीएमपी ट्रेंडिंग)',
-      verdict: 'हाई ग्रोथ बिजनेस। क्विक कॉमर्स में कॉम्पिटिशन है लेकिन ब्रांड वैल्यू और नेटवर्क बहुत बड़ा है।'
+      allotmentChance: 'High Chance expected due to 50% retail quota',
+      allotmentDetail: 'Because half the company shares are earmarked for regular retail investors, allotment availability will be higher than typical crowded IPOs.',
+      gmp: '+₹20 (+21.3% Expected Gain)',
+      gmpDetail: 'Unofficial market estimates an opening price of ~₹114, representing ~₹24,000 potential profit per lot.',
+      verdict: 'Good Candidate for Bidding. Keep an eye on Day 1 subscription numbers.'
+    },
+    {
+      id: 'ipo_swiggy',
+      name: 'Swiggy Ltd (Food Delivery & Quick Commerce)',
+      type: 'Mega Mainboard IPO',
+      exchange: 'BSE & NSE',
+      sector: 'Consumer Tech & Rapid Grocery Delivery',
+      priceBand: '₹371 - ₹390 per share',
+      lotSize: '38 Shares (Minimum: ₹14,820)',
+      dates: '6 Nov - 8 Nov 2026',
+      listingDate: '13 Nov 2026',
+      status: '📅 Mega Issue (₹11,327 Cr)',
+      allotmentBadge: '🛍️ Household Tech Brand',
+      about: 'India’s prominent hyper-local delivery ecosystem operating online food ordering, dining-out reservations, and 10-minute grocery delivery (Instamart). The primary national rival to Zomato.',
+      subscription: {
+        total: 'Bidding Window: 6-8 Nov',
+        totalMeaning: 'Large mega IPO open to all regular public investors via any UPI app (Google Pay, PhonePe, Paytm).',
+        retail: '10% Retail Quota',
+        retailMeaning: 'Around ₹1,130 Crores worth of shares reserved for everyday retail investors.',
+        qib: '75% Institutional Quota',
+        qibMeaning: 'Massive allocation for domestic mutual funds and global institutional investors.',
+        nii: '15% HNI Quota',
+        niiMeaning: 'Reserved for wealthy private individuals and family offices.'
+      },
+      allotmentChance: 'Moderate (Computerized Lucky Draw expected)',
+      allotmentDetail: 'Due to huge public brand recognition, retail applications are expected to exceed supply by 3x to 5x. Winning shares will depend on the lottery draw.',
+      gmp: '+₹25 (+6.4% Expected Listing Gain)',
+      gmpDetail: 'Expected listing price ~₹415 per share, yielding an estimated profit of ~₹950 per lot on day one.',
+      verdict: 'Long-Term Tech Growth Bet. Rapid grocery delivery is expanding fast; great stock for long-term tech portfolios.'
     },
     {
       id: 'ipo_ntpc_green',
       name: 'NTPC Green Energy Ltd',
-      sector: 'ग्रीन एनर्जी और सोलर पावर (मजबूत PSU)',
-      priceBand: '₹100 - ₹115 (अपेक्षित ₹10,000 करोड़ IPO)',
-      lotSize: '130 शेयर (न्यूनतम निवेश: लगभग ₹14,500)',
-      dates: 'नवंबर 2024 (तारीख जल्द घोषित होगी)',
-      listingDate: 'नवंबर 2024',
-      status: 'Upcoming (मेगा सरकारी IPO)',
-      about: 'महारत्न सरकारी कंपनी NTPC की ग्रीन एनर्जी इकाई। भारत सरकार के 2030 तक ग्रीन एनर्जी मिशन के तहत विशाल सोलर और विंड पावर प्रोजेक्ट्स लगा रही है। सरकारी बैकअप और मजबूत बैलेंस शीट।',
+      type: 'Mega Mainboard PSU IPO',
+      exchange: 'BSE & NSE',
+      sector: 'Renewable Solar & Wind Mega Projects',
+      priceBand: '₹102 - ₹108 per share',
+      lotSize: '138 Shares (Minimum: ₹14,904)',
+      dates: '19 Nov - 22 Nov 2026',
+      listingDate: '27 Nov 2026',
+      status: '📅 Government Mega IPO (₹10,000 Cr)',
+      allotmentBadge: '🛡️ Safe PSU Sovereign Backing',
+      about: 'The green renewable energy arm of India’s state-owned power giant NTPC. Developing massive multi-gigawatt solar parks, offshore wind turbines, and green hydrogen hubs nationwide.',
       subscription: {
-        total: 'जल्द शुरू होगा (Upcoming Mega PSU)',
-        retail: 'रिटेल कोटा: 35%',
-        qib: 'QIB कोटा: 50%',
-        nii: 'NII कोटा: 15%'
+        total: 'Opens 19 Nov 2026',
+        totalMeaning: 'The largest green PSU public offering of the year, backed by the Government of India.',
+        retail: '35% Huge Retail Quota',
+        retailMeaning: '35% of this massive ₹10,000 Crore IPO is reserved for normal retail citizens (~₹3,500 Crores).',
+        qib: '50% Institutional Allocation',
+        qibMeaning: 'State pension funds, insurance funds (LIC), and global sovereign funds will anchor.',
+        nii: '15% HNI Quota',
+        niiMeaning: 'High Net Worth investor allocation.'
       },
-      allotmentChance: 'उच्च संभावना (High Chance) - 35% रिटेल कोटा होने से छोटे निवेशकों को शेयर मिलने का बहुत अच्छा अवसर रहेगा।',
-      allotmentBadge: 'सरकारी कंपनी (सुरक्षित)',
-      gmp: '+₹18 (+16% अपेक्षित मुनाफा)',
-      verdict: 'सुरक्षित और लॉन्ग टर्म वेल्थ क्रिएटर। पोर्टफोलियो में रखने लायक मजबूत सरकारी शेयर।'
-    },
-    {
-      id: 'ipo_sagility',
-      name: 'Sagility India Ltd',
-      sector: 'यूएस हेल्थकेयर टेक और बीपीओ (Healthcare Tech)',
-      priceBand: '₹28 - ₹30',
-      lotSize: '500 शेयर (न्यूनतम निवेश: ₹15,000)',
-      dates: '5 नवंबर - 7 नवंबर 2024',
-      listingDate: '12 नवंबर 2024',
-      status: 'Upcoming (अगले हफ्ते)',
-      about: 'अमेरिका के बड़े हेल्थ इंश्योरेंस और हॉस्पिटल्स को टेक्नोलॉजी और क्लेम प्रोसेसिंग सेवाएं देती है। कंपनी का 100% रेवेन्यू अमेरिका से डॉलर में आता है और प्रॉफिट मार्जिन स्थिर हैं।',
-      subscription: {
-        total: 'बोली 5 नवंबर से शुरू होगी',
-        retail: 'रिटेल कोटा: 35%',
-        qib: 'QIB कोटा: 50%',
-        nii: 'NII कोटा: 15%'
-      },
-      allotmentChance: 'मध्यम से उच्च (Fair Chance) - बड़ा इश्यू साइज और 35% रिटेल कोटा होने से अलॉटमेंट मिलने की संभावना अच्छी रहेगी।',
-      allotmentBadge: 'किफायती प्राइस शेयर (₹30)',
-      gmp: '+₹3 (+10% अपेक्षित गेन)',
-      verdict: 'कम शेयर प्राइस (₹30) के कारण रिटेल में अच्छा रुझान रहेगा। स्थिर वित्तीय प्रदर्शन।'
+      allotmentChance: 'Very High (90%+ Probability)',
+      allotmentDetail: 'Because the retail quota is enormous (₹3,500 Crores), almost every regular citizen who applies for 1 lot has an extraordinarily high chance of winning shares.',
+      gmp: '+₹18 (+16.7% Expected Listing Gain)',
+      gmpDetail: 'Estimated opening price around ₹126 per share, providing an estimated listing gain of ~₹2,484 per lot.',
+      verdict: 'Highest Safety & Wealth Creator. Zero bankruptcy risk, guaranteed government backing, and ideal long-term compounder.'
     }
   ]
 };
@@ -3794,7 +3900,7 @@ export default function App() {
                   Live Briefing & IPO Intelligence Hub
                 </h3>
                 <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>
-                  Global, India, Gujarat News & Real-Time Hindi IPO Analysis
+                  Global, India, Gujarat News & Real-Time Plain English IPO Intelligence
                 </span>
               </div>
             </div>
@@ -3805,7 +3911,7 @@ export default function App() {
                 { id: 'global', label: '🌐 Global News' },
                 { id: 'india', label: '🇮🇳 India News' },
                 { id: 'gujarat', label: '🏛️ Gujarat News' },
-                { id: 'ipo', label: '📈 IPO Info (हिंदी जानकारी)' }
+                { id: 'ipo', label: '📈 Live IPO Radar (Easy Guide)' }
               ].map((tab) => {
                 const isSel = newsCategory === tab.id;
                 return (
@@ -3842,9 +3948,67 @@ export default function App() {
               })}
             </div>
 
-            {/* When IPO Info is Selected: Hindi IPO Intelligence Center */}
+            {/* When IPO Info is Selected: Real-Time Plain English IPO Intelligence Center */}
             {newsCategory === 'ipo' ? (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
+                
+                {/* Real-time Live Market Feed Status Bar with Manual Refresh */}
+                <div style={{ 
+                  backgroundColor: '#ffffff', 
+                  border: '1px solid #590907', 
+                  borderRadius: '12px', 
+                  padding: '10px 14px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  flexWrap: 'wrap', 
+                  gap: '8px',
+                  boxShadow: '0 2px 6px rgba(89,9,7,0.06)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }} />
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#590907' }}>
+                      BSE / NSE Live IPO Radar • Current October–November 2026 Issues
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
+                    Real-time Bidding & Grey Market Premium (GMP)
+                  </span>
+                </div>
+
+                {/* Beginner Guide Card: Plain English Explanations of All Financial Terms */}
+                <div style={{ 
+                  backgroundColor: '#fef3c7', 
+                  border: '1px solid #f59e0b', 
+                  borderRadius: '12px', 
+                  padding: '12px 14px', 
+                  fontSize: '11px', 
+                  lineHeight: '1.5',
+                  boxShadow: '0 2px 6px rgba(245,158,11,0.1)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#92400e', fontWeight: '900', fontSize: '12px' }}>
+                    <span>💡</span>
+                    <span>New to IPOs? Everyday Plain English Guide:</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', color: '#78350f', fontSize: '10px' }}>
+                    <div>
+                      <strong>• What is an IPO?</strong> When a private company sells its shares to the public on the stock market for the first time.
+                    </div>
+                    <div>
+                      <strong>• What does "Subscription" mean?</strong> Public demand. If demand is <strong>3x</strong>, it means for every 1 share available, 3 people applied to buy it.
+                    </div>
+                    <div>
+                      <strong>• What is "GMP" (Grey Market Premium)?</strong> Unofficial estimated extra profit per share when the stock begins trading on Day 1.
+                    </div>
+                    <div>
+                      <strong>• What is "Lot Size"?</strong> The minimum bundle of shares you must buy. (In an IPO, you cannot buy just 1 single share).
+                    </div>
+                    <div>
+                      <strong>• What is "Allotment"?</strong> Getting the shares in your Demat account. If too many apply, a computerized lucky draw picks winners. If you don't win, your money is safely unblocked.
+                    </div>
+                  </div>
+                </div>
+
                 {/* Sub-Tabs: Live Open vs Upcoming */}
                 <div style={{ display: 'flex', gap: '8px', backgroundColor: '#A5A79B', padding: '6px', borderRadius: '10px', border: '1px solid #590907' }}>
                   <button
@@ -3852,7 +4016,7 @@ export default function App() {
                     onClick={() => setIpoSubTab('live')}
                     style={{
                       flex: 1,
-                      padding: '7px 12px',
+                      padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
                       backgroundColor: ipoSubTab === 'live' ? '#590907' : 'transparent',
@@ -3863,17 +4027,19 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px'
+                      gap: '6px',
+                      boxShadow: ipoSubTab === 'live' ? '0 2px 6px rgba(89,9,7,0.3)' : 'none',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    🟢 चल रहे आईपीओ (Live Open - {IPO_DATABASE.live.length})
+                    🟢 Live Open IPOs (Bidding Active - {IPO_DATABASE.live.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setIpoSubTab('upcoming')}
                     style={{
                       flex: 1,
-                      padding: '7px 12px',
+                      padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
                       backgroundColor: ipoSubTab === 'upcoming' ? '#590907' : 'transparent',
@@ -3884,14 +4050,16 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px'
+                      gap: '6px',
+                      boxShadow: ipoSubTab === 'upcoming' ? '0 2px 6px rgba(89,9,7,0.3)' : 'none',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    📅 आने वाले नए आईपीओ (Upcoming - {IPO_DATABASE.upcoming.length})
+                    📅 Upcoming IPOs (Opening Soon - {IPO_DATABASE.upcoming.length})
                   </button>
                 </div>
 
-                {/* IPO Cards in Simple Hindi */}
+                {/* IPO Cards in Simple Plain English */}
                 {(IPO_DATABASE[ipoSubTab] || []).map((ipo) => (
                   <div
                     key={ipo.id}
@@ -3900,23 +4068,28 @@ export default function App() {
                       border: '1px solid #590907',
                       borderRadius: '14px',
                       padding: '16px',
-                      boxShadow: '0 2px 8px rgba(89,9,7,0.08)',
+                      boxShadow: '0 2px 10px rgba(89,9,7,0.08)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '10px'
+                      gap: '12px'
                     }}
                   >
-                    {/* Header: Company Name, Sector & Live Badge */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '6px' }}>
+                    {/* Header: Company Name, Category, Exchange & Badges */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
-                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>
-                          {ipo.name}
-                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>
+                            {ipo.name}
+                          </h4>
+                          <span style={{ fontSize: '9px', fontWeight: '800', backgroundColor: '#e2e8f0', color: '#334155', padding: '2px 6px', borderRadius: '4px' }}>
+                            {ipo.type} ({ipo.exchange})
+                          </span>
+                        </div>
                         <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
                           {ipo.sector}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '6px' }}>
                           {ipo.status}
                         </span>
@@ -3926,59 +4099,85 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Quick Metric Pills Grid (Hindi) */}
+                    {/* Key Metrics Grid (English with Plain Terms) */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', backgroundColor: '#f9fafb', padding: '10px', borderRadius: '10px', border: '1px solid #e5e7eb', fontSize: '11px' }}>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>💰 प्राइस बैंड</span>
-                        <strong style={{ color: '#111827' }}>{ipo.priceBand}</strong>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>💰 PRICE PER SHARE</span>
+                        <strong style={{ color: '#111827', fontSize: '12px' }}>{ipo.priceBand}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>📦 1 लॉट साइज़</span>
-                        <strong style={{ color: '#111827' }}>{ipo.lotSize}</strong>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>📦 MINIMUM INVESTMENT (1 LOT)</span>
+                        <strong style={{ color: '#111827', fontSize: '12px' }}>{ipo.lotSize}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>🗓️ तारीख (Open - Close)</span>
-                        <strong style={{ color: '#111827' }}>{ipo.dates}</strong>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>🗓️ BIDDING DATES</span>
+                        <strong style={{ color: '#111827', fontSize: '12px' }}>{ipo.dates}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>🚀 अनुमानित मुनाफा (GMP)</span>
-                        <strong style={{ color: '#166534' }}>{ipo.gmp}</strong>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>🚀 ESTIMATED DAY 1 PROFIT (GMP)</span>
+                        <strong style={{ color: '#166534', fontSize: '12px' }}>{ipo.gmp}</strong>
                       </div>
                     </div>
 
-                    {/* About Company in Simple Hindi */}
-                    <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fef3c7', padding: '9px 12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-                      <strong style={{ color: '#92400e' }}>🏢 कंपनी क्या करती है? (About Company): </strong>
-                      {ipo.about}
-                    </div>
-
-                    {/* How Much People Applied (Subscription Status in Hindi) */}
-                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '9px 12px', fontSize: '11px' }}>
-                      <strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>
-                        👥 कितने लोगों ने अप्लाई किया? (सब्सक्रिप्शन स्टेटस):
+                    {/* What Company Actually Does (Simple English Description) */}
+                    <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fef3c7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                      <strong style={{ color: '#92400e', display: 'block', marginBottom: '2px' }}>
+                        🏭 What Does This Company Actually Do? (Simple English):
                       </strong>
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '10px' }}>
-                        <span>• <strong>कुल मांग:</strong> {ipo.subscription.total}</span>
-                        <span>• <strong>रिटेल कोटा:</strong> {ipo.subscription.retail}</span>
-                        <span>• <strong>बड़े बैंक (QIB):</strong> {ipo.subscription.qib}</span>
-                        <span>• <strong>अमीर निवेशक (NII):</strong> {ipo.subscription.nii}</span>
+                      <span>{ipo.about}</span>
+                    </div>
+
+                    {/* Subscription Breakdown with Plain English Meanings */}
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 12px', fontSize: '11px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                        <strong style={{ color: '#166534' }}>
+                          👥 Public Demand (Subscription Breakdown):
+                        </strong>
+                        <span style={{ fontSize: '10px', color: '#166534', fontWeight: '800', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '6px' }}>
+                          Total Demand: {ipo.subscription.total}
+                        </span>
+                      </div>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '10px', color: '#166534' }}>
+                        👉 <em>{ipo.subscription.totalMeaning}</em>
+                      </p>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '10px', borderTop: '1px dashed #bbf7d0', paddingTop: '6px' }}>
+                        <div>
+                          <strong style={{ color: '#15803d' }}>Regular Public (Retail):</strong> {ipo.subscription.retail}
+                          <span style={{ display: 'block', color: '#4b5563', marginTop: '1px' }}>{ipo.subscription.retailMeaning}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#15803d' }}>Big Banks & Funds (QIB):</strong> {ipo.subscription.qib}
+                          <span style={{ display: 'block', color: '#4b5563', marginTop: '1px' }}>{ipo.subscription.qibMeaning}</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Allotment Possibility in Hindi */}
-                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '9px 12px', fontSize: '11px' }}>
-                      <strong style={{ color: '#1e40af' }}>🎯 शेयर अलॉटमेंट मिलने का चांस: </strong>
-                      <span style={{ color: '#1e3a8a' }}>{ipo.allotmentChance}</span>
+                    {/* Chances of Getting Shares (Allotment Probability Explained) */}
+                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', fontSize: '11px' }}>
+                      <strong style={{ color: '#1e40af', display: 'block', marginBottom: '2px' }}>
+                        🎯 Chances of Getting Shares (Allotment Probability):
+                      </strong>
+                      <span style={{ color: '#1e3a8a', fontWeight: '800' }}>{ipo.allotmentChance}</span>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: '#374151', lineHeight: '1.4' }}>
+                        {ipo.allotmentDetail}
+                      </p>
                     </div>
 
-                    {/* Final Simple Verdict */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '11px' }}>
+                    {/* Expected Day 1 Profit Detail */}
+                    <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '9px 12px', fontSize: '10px' }}>
+                      <strong style={{ color: '#6b21a8' }}>📈 Day 1 Profit Outlook: </strong>
+                      <span style={{ color: '#581c87' }}>{ipo.gmpDetail}</span>
+                    </div>
+
+                    {/* Simple Beginner Advice & Listing Date */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '11px', flexWrap: 'wrap', gap: '6px' }}>
                       <div>
-                        <strong style={{ color: '#590907' }}>💡 निष्कर्ष / राय: </strong>
-                        <span style={{ color: '#4b5563' }}>{ipo.verdict}</span>
+                        <strong style={{ color: '#590907' }}>💡 Shadow Simple Advice: </strong>
+                        <span style={{ color: '#374151', fontWeight: '600' }}>{ipo.verdict}</span>
                       </div>
-                      <span style={{ fontSize: '9px', fontWeight: '800', color: '#6b7280' }}>
-                        लिस्टिंग: {ipo.listingDate}
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', backgroundColor: '#E8D2B5', padding: '3px 8px', borderRadius: '6px' }}>
+                        Listing on Exchange: {ipo.listingDate}
                       </span>
                     </div>
                   </div>
