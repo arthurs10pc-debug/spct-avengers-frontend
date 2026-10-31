@@ -39,116 +39,145 @@ const IPO_DATABASE = {
       name: 'Bombay Coated & Special Steels Ltd',
       type: 'Mainboard IPO',
       exchange: 'BSE & NSE',
-      sector: 'Specialty Steel & Industrial Coils',
+      sector: 'Specialty Cold-Rolled & Coated Steel Sheets',
       priceBand: '₹78 - ₹82 per share',
       lotSize: '180 Shares (Minimum: ₹14,760)',
       dates: '29 Oct - 2 Nov 2026',
       listingDate: '5 Nov 2026',
       status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟢 High Chance (85%+ Odds)',
-      about: 'This company manufactures specialty coated steel sheets and cold-rolled metal coils. Their products are supplied directly to top automobile manufacturers (for car bodies), appliance makers (for refrigerators and washing machines), and construction companies (for durable metal roofing).',
+      allotmentBadge: '🟢 High Chance (3.98x Subscribed)',
+      about: 'Manufactures precision-engineered specialty coated steel coils and cold-rolled sheets for leading automotive OEMs, home appliances, and heavy industrial roofing.',
       subscription: {
-        total: '2.6x Over-subscribed',
-        totalMeaning: 'For every 1 share available, 2.6 applications were submitted. Solid, healthy buyer demand.',
-        retail: '1.1x Full (Regular Public Category)',
-        retailMeaning: 'Normal retail demand is around 1.1x. This means competition is low and your chance of winning shares is very high.',
-        qib: '3.8x (Big Banks & Mutual Funds)',
-        qibMeaning: 'Institutional investors and mutual funds are bidding with large capital.',
-        nii: '2.4x (Wealthy High-Net-Worth Investors)',
-        niiMeaning: 'High-net-worth individual investors have placed significant orders.'
+        total: '3.98x Total Demand',
+        totalMeaning: 'Solid investor demand across exchanges with over ₹280 Crores in bids placed.',
+        retail: '1.85x Full (Regular Public)',
+        retailMeaning: 'Moderate retail competition. High probability of securing allotment on 1 lot.',
+        qib: '4.10x (Financial Institutions & Funds)',
+        qibMeaning: 'Institutional backing is firm and fully covered.',
+        nii: '3.45x (High-Net-Worth Bidders)',
+        niiMeaning: 'Consistent participation from HNI private accounts.'
       },
-      allotmentChance: 'Very High Chance (85%+ Allotment Probability)',
-      allotmentDetail: 'Because the retail quota is only slightly oversubscribed (1.1x), almost every applicant submitting 1 lot has an excellent chance of receiving the shares without tough lucky-draw competition.',
-      gmp: '+₹18 (+22.0% Estimated Listing Gain)',
-      gmpDetail: 'If you buy at ₹82, the unofficial grey market expects the share to open around ₹100 on listing day, delivering approximately ₹3,240 profit per lot.',
-      verdict: 'Recommended for Listing Gains & Short-Term Profit. Stable demand, attractive valuation, and clean balance sheet.'
+      allotmentChance: 'High Allotment Chance (~55% Probability)',
+      allotmentDetail: 'With retail demand at 1.85x, roughly 1 in every 2 retail applicants will receive shares in the allotment lottery.',
+      gmp: '+₹7 (+8.5% Estimated Listing Gain)',
+      gmpDetail: 'Grey Market Premium is trading at +₹7 over the ₹82 cut-off, offering ~₹1,260 estimated profit per 180-share lot.',
+      verdict: 'Recommended for Moderate Listing Gains & Stable Fundamentals. Clean balance sheet with growing auto-component demand.'
     },
     {
       id: 'ipo_maxwell_eng',
       name: 'Maxwell Engineering Solutions Ltd',
       type: 'SME IPO',
       exchange: 'NSE Emerge (SME)',
-      sector: 'Aerospace & Energy Turbine Components',
+      sector: 'Aerospace & Heavy Gas Turbine Parts',
       priceBand: '₹150 - ₹158 per share',
       lotSize: '800 Shares (Minimum: ₹1,26,400)',
       dates: '30 Oct - 3 Nov 2026',
       listingDate: '6 Nov 2026',
       status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🔥 High Demand (Lottery 1 in 6)',
-      about: 'Designs and machines high-precision turbine parts, flow valves, and specialized mechanical housings for aerospace, green energy, and heavy turbine plants across India and Europe.',
+      allotmentBadge: '🔥 8.9x Oversubscribed',
+      about: 'High-precision aerospace machining firm producing complex gas turbine flow nozzles, impellers, and hydraulic valves for aerospace defense and power plants.',
       subscription: {
-        total: '8.9x Massive Oversubscription',
-        totalMeaning: 'Almost 9 times more demand than shares available. Huge investor excitement.',
-        retail: '6.2x Bidded (Retail Investors)',
-        retailMeaning: '6 people are competing for each share. A computerized lucky draw will select the winners.',
-        qib: '9.5x (Institutional Investors)',
-        qibMeaning: 'Strong institutional backing with large fund inflows.',
-        nii: '11.4x (HNI High-Value Bids)',
-        niiMeaning: 'Wealthy investors have bid aggressively over 11 times their reserved quota.'
+        total: '8.90x Strong Oversubscription',
+        totalMeaning: 'Almost 9 times more bids received than total issue size.',
+        retail: '6.20x (Retail Investors)',
+        retailMeaning: 'Intense competition among retail applicants. 6 bids for every available lot.',
+        qib: '9.50x (Qualified Institutions)',
+        qibMeaning: 'Anchor book and institutional quota heavily subscribed.',
+        nii: '11.40x (HNI High-Value Bids)',
+        niiMeaning: 'HNI segment booked over 11 times.'
       },
-      allotmentChance: 'Lottery Draw (1 in 6 applicants will win)',
-      allotmentDetail: 'Due to intense retail demand, shares will be distributed through a fair computerized lucky draw. Only 1 out of every 6 retail applicants will receive an allotment.',
-      gmp: '+₹55 (+34.8% Strong Listing Gain)',
-      gmpDetail: 'Unofficial grey market is paying a ₹55 premium over the ₹158 price, indicating an estimated listing price of ~₹213 and an estimated profit of ~₹44,000 on 1 lot.',
-      verdict: 'High-Conviction Listing Gain Play. Ideal if you have the ₹1.26L SME capital and want strong day-one upside.'
+      allotmentChance: 'Computerized Lottery (1 in 6 applicants will win)',
+      allotmentDetail: '6.2x retail quota means 1 in every 6 retail lots will be chosen through computerized draw.',
+      gmp: '+₹70 (+44.3% Strong Listing Gain)',
+      gmpDetail: 'Unofficial grey market is paying a ₹70 premium over ₹158 cut-off, pointing to an estimated listing price of ~₹228 and ~₹56,000 profit per lot.',
+      verdict: 'Top Pick for Big Listing Gains. Premium aerospace niche with explosive profit margins.'
     },
     {
       id: 'ipo_johnsoncab',
       name: 'Johnsoncab Electricals Ltd',
       type: 'SME IPO',
       exchange: 'BSE SME',
-      sector: 'Industrial Cables & Power Distribution',
+      sector: 'Industrial Power Cables & Building Wires',
       priceBand: '₹190 - ₹200 per share',
       lotSize: '600 Shares (Minimum: ₹1,20,000)',
       dates: '30 Oct - 3 Nov 2026',
       listingDate: '6 Nov 2026',
       status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟡 Moderate (1 in 3 Lottery)',
-      about: 'Manufactures copper and aluminum cables, fire-resistant wires, and low-tension electrical control panels for commercial real estate, factories, and solar plants.',
+      allotmentBadge: '🟡 5.4x Bidded (1 in 4 Lottery)',
+      about: 'Prominent Western India manufacturer of heat-resistant copper cables, industrial power distribution wires, and solar DC cabling.',
       subscription: {
-        total: '5.4x Bidded Overall',
-        totalMeaning: 'Buyers have requested 5.4 times the total shares offered by the company.',
-        retail: '3.8x Full (Retail Category)',
-        retailMeaning: 'Roughly 4 applicants for each available lot. A fair lucky draw will pick winners.',
-        qib: '4.2x (Financial Institutions)',
-        qibMeaning: 'Consistent participation from qualified institutional buyers.',
-        nii: '7.1x (HNI Bidders)',
+        total: '5.40x Overall Demand',
+        totalMeaning: 'Healthy bidding across all categories on BSE SME.',
+        retail: '3.80x (Retail Public)',
+        retailMeaning: 'Approx 4 bidders for every lot available.',
+        qib: '4.20x (Institutional Investors)',
+        qibMeaning: 'Supported by SME mutual funds and institutions.',
+        nii: '7.10x (HNI Bidders)',
         niiMeaning: 'High interest from wealthy private investors.'
       },
-      allotmentChance: 'Fair Lucky Draw (1 in 3 chance of allotment)',
-      allotmentDetail: '3.8x retail subscription means approximately 1 out of every 3 retail applications will win a lot.',
-      gmp: '+₹45 (+22.5% Estimated Profit)',
-      gmpDetail: 'Expected to list around ₹245 (₹45 profit per share), generating ~₹27,000 estimated profit per allocated lot.',
-      verdict: 'Good for Listing Profits. Established wire brand with expanding distribution across Western India.'
+      allotmentChance: 'Fair Lucky Draw (~1 in 4 chance)',
+      allotmentDetail: 'Around 25% of retail applications are expected to receive full allotment in the computerized draw.',
+      gmp: '+₹10 (+5.0% Expected Profit)',
+      gmpDetail: 'Expected to list around ₹210 per share, delivering ~₹6,000 estimated profit per lot.',
+      verdict: 'Steady Industrial Cable Play. Good brand distribution network across Gujarat and Maharashtra.'
+    },
+    {
+      id: 'ipo_hgs_india',
+      name: 'HGS (India) Ltd',
+      type: 'SME IPO',
+      exchange: 'BSE & NSE SME',
+      sector: 'Seismic Exploration Sensors & Defense Harnesses',
+      priceBand: '₹115 - ₹120 per share',
+      lotSize: '1,200 Shares (Minimum: ₹1,44,000)',
+      dates: '30 Oct - 3 Nov 2026',
+      listingDate: '6 Nov 2026',
+      status: '🟢 Open / Bidding Active',
+      allotmentBadge: '🔥 6.2x Strong Demand',
+      about: 'Pioneering manufacturer of geophones, seismic data acquisition sensors, and rugged defense cable assemblies used in oil & gas exploration and defense radar grids.',
+      subscription: {
+        total: '6.20x Strong Bids',
+        totalMeaning: 'Over 6 times total demand on the combined SME platform.',
+        retail: '4.50x (Retail Investors)',
+        retailMeaning: 'High interest from regular individual investors.',
+        qib: '7.00x',
+        qibMeaning: 'Institutional investors book fully covered.',
+        nii: '8.30x',
+        niiMeaning: 'Strong HNI backing.'
+      },
+      allotmentChance: 'Computerized Lottery (~1 in 4.5 odds)',
+      allotmentDetail: 'Roughly 1 in every 4.5 retail applicants will secure an allotment.',
+      gmp: '+₹30 (+25.0% Strong Gain)',
+      gmpDetail: 'Expected to open around ₹150 per share, generating ~₹36,000 estimated profit per lot.',
+      verdict: 'High-Conviction Niche Play. Unique product line with high entry barriers and defense export growth.'
     },
     {
       id: 'ipo_vectras',
       name: 'Vectras Enprocon Ltd',
       type: 'SME IPO',
       exchange: 'BSE SME',
-      sector: 'Infrastructure & Water Treatment EPC',
+      sector: 'Water Treatment & Industrial Piping EPC',
       priceBand: '₹99 - ₹105 per share',
       lotSize: '1,200 Shares (Minimum: ₹1,26,000)',
       dates: '30 Oct - 3 Nov 2026',
       listingDate: '6 Nov 2026',
       status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟢 High Chance (75%+ Odds)',
-      about: 'Executes turnkey engineering, procurement, and construction (EPC) projects for municipal water filtration facilities, sewage treatment plants, and industrial piping grids.',
+      allotmentBadge: '🟢 High Chance (2.1x Subscribed)',
+      about: 'Turnkey engineering and EPC contractor building sewage treatment plants, municipal water recycling plants, and industrial piping networks.',
       subscription: {
-        total: '2.1x Subscribed',
-        totalMeaning: 'Comfortable, moderate demand. Well-balanced between supply and bids.',
-        retail: '1.8x Full',
-        retailMeaning: 'Moderate retail competition. High probability of securing allotment.',
-        qib: '2.5x',
-        qibMeaning: 'Steady institutional bids.',
-        nii: '2.0x',
-        niiMeaning: 'Balanced HNI participation.'
+        total: '2.10x Subscribed',
+        totalMeaning: 'Balanced demand with low retail congestion.',
+        retail: '1.80x Full',
+        retailMeaning: 'Moderate retail competition with high allocation odds.',
+        qib: '2.50x',
+        qibMeaning: 'Steady institutional coverage.',
+        nii: '2.00x',
+        niiMeaning: 'Consistent HNI bidding.'
       },
-      allotmentChance: 'High Chance (75%+ Probability)',
-      allotmentDetail: 'With retail demand at 1.8x, about 3 out of every 4 applicants will receive an allotment.',
-      gmp: '+₹16 (+15.2% Moderate Gain)',
-      gmpDetail: 'Projected listing price ~₹121 per share, offering an estimated profit of ~₹19,200 per lot.',
-      verdict: 'Steady Infrastructure Bet. Profitable operations with government and municipal contracts.'
+      allotmentChance: 'Very High Chance (~55% to 60% Odds)',
+      allotmentDetail: 'With 1.8x retail demand, more than half of all applicants will receive shares.',
+      gmp: '+₹5 (+4.8% Steady Gain)',
+      gmpDetail: 'Expected listing price ~₹110, delivering ~₹6,000 profit per lot.',
+      verdict: 'Safe Infrastructure Bet. Backed by government municipal water contracts.'
     },
     {
       id: 'ipo_antala',
@@ -161,23 +190,23 @@ const IPO_DATABASE = {
       dates: '29 Oct - 2 Nov 2026',
       listingDate: '5 Nov 2026',
       status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟢 High Chance (80%+ Odds)',
-      about: 'Gujarat-based engineering firm designing stainless steel chemical reactors, pressure tanks, and distillation columns for pharma, agrochemical, and specialty dye plants in Ankleshwar and Dahej.',
+      allotmentBadge: '🟢 High Chance (1.95x Subscribed)',
+      about: 'Gujarat-based engineering firm designing stainless steel chemical reactors, pressure tanks, and distillation columns for pharma and agrochemical hubs in Ankleshwar and Dahej.',
       subscription: {
-        total: '1.9x Subscribed',
-        totalMeaning: 'Healthy domestic demand without hyper-inflation or speculative frenzy.',
-        retail: '1.5x Full',
+        total: '1.95x Subscribed',
+        totalMeaning: 'Healthy, stable regional demand.',
+        retail: '1.60x Full',
         retailMeaning: 'Low retail crowding. Excellent allotment odds for individual investors.',
-        qib: '2.2x',
-        qibMeaning: 'Supported by regional investment funds.',
-        nii: '2.1x',
+        qib: '2.20x',
+        qibMeaning: 'Supported by regional funds.',
+        nii: '2.10x',
         niiMeaning: 'Steady local HNI bidding.'
       },
-      allotmentChance: 'High Chance (80%+ Probability)',
-      allotmentDetail: 'Mild oversubscription guarantees that 4 out of 5 applicants will be allotted shares.',
-      gmp: '+₹12 (+17.9% Listing Gain)',
-      gmpDetail: 'Expected to open around ₹79 per share, delivering ~₹24,000 estimated profit per lot.',
-      verdict: 'Safe SME Investment. Zero debt, strong local customer base in Gujarat pharma hubs.'
+      allotmentChance: 'High Chance (~60%+ Odds)',
+      allotmentDetail: 'Almost 2 out of every 3 retail applications will receive shares.',
+      gmp: '+₹4 (+6.0% Gain)',
+      gmpDetail: 'Expected listing price around ₹71, offering ~₹8,000 profit per lot.',
+      verdict: 'Debt-free SME manufacturer with established Gujarat customer base.'
     }
   ],
   upcoming: [
@@ -186,87 +215,116 @@ const IPO_DATABASE = {
       name: 'Vedant Poly Fabs Ltd',
       type: 'SME IPO',
       exchange: 'NSE Emerge (SME)',
-      sector: 'Packaging Fabrics & Technical Textiles',
+      sector: 'Packaging Fabrics & PP Sacks',
       priceBand: '₹88 - ₹94 per share',
       lotSize: '1,200 Shares (Minimum: ₹1,12,800)',
       dates: '2 Nov - 4 Nov 2026 (Opens Monday)',
       listingDate: '7 Nov 2026',
       status: '📅 Opening Soon (2 Nov)',
       allotmentBadge: '🚀 50% Retail Quota',
-      about: 'Manufactures high-strength polypropylene (PP) woven sacks, bulk containers (FIBC jumbo bags), and protective packaging fabrics for cement, fertilizer, and agricultural grain transport.',
+      about: 'Manufactures high-strength polypropylene woven sacks, bulk containers (FIBC jumbo bags), and industrial protective packaging fabrics for cement and agricultural bulk transport.',
       subscription: {
-        total: 'Bidding Starts 2 Nov 2026',
+        total: 'Bidding Starts 2 Nov',
         totalMeaning: 'Official bidding opens on NSE platform on Monday morning.',
         retail: '50% Reserved for Public',
-        retailMeaning: 'A generous 50% of the entire issue is reserved specifically for retail public applicants.',
+        retailMeaning: 'Half the issue is earmarked for regular individual retail investors.',
         qib: 'Anchor Placement Nov 1',
-        qibMeaning: 'Anchor book will be finalized on Friday before opening.',
-        nii: '15% Quota Reserved',
-        niiMeaning: 'High Net Worth quota reserved for bids above ₹2 Lakhs.'
+        qibMeaning: 'Anchor allocation opens Friday before public launch.',
+        nii: '15% Quota',
+        niiMeaning: 'Reserved for HNI orders above ₹2 Lakhs.'
       },
       allotmentChance: 'High Chance expected due to 50% retail quota',
-      allotmentDetail: 'Because half the company shares are earmarked for regular retail investors, allotment availability will be higher than typical crowded IPOs.',
-      gmp: '+₹20 (+21.3% Expected Gain)',
-      gmpDetail: 'Unofficial market estimates an opening price of ~₹114, representing ~₹24,000 potential profit per lot.',
-      verdict: 'Good Candidate for Bidding. Keep an eye on Day 1 subscription numbers.'
+      allotmentDetail: 'Large retail allocation guarantees higher lot distribution among public applicants.',
+      gmp: '+₹20 (+21.3% Strong Gain)',
+      gmpDetail: 'Grey market estimates listing at ~₹114, delivering ~₹24,000 profit per lot.',
+      verdict: 'Good Candidate for Bidding on Day 1.'
     },
     {
-      id: 'ipo_swiggy',
-      name: 'Swiggy Ltd (Food Delivery & Quick Commerce)',
-      type: 'Mega Mainboard IPO',
+      id: 'ipo_atomberg',
+      name: 'Atomberg Technologies Ltd',
+      type: 'Mainboard IPO (~₹1,500 Crores)',
       exchange: 'BSE & NSE',
-      sector: 'Consumer Tech & Rapid Grocery Delivery',
-      priceBand: '₹371 - ₹390 per share',
-      lotSize: '38 Shares (Minimum: ₹14,820)',
-      dates: '6 Nov - 8 Nov 2026',
-      listingDate: '13 Nov 2026',
-      status: '📅 Mega Issue (₹11,327 Cr)',
-      allotmentBadge: '🛍️ Household Tech Brand',
-      about: 'India’s prominent hyper-local delivery ecosystem operating online food ordering, dining-out reservations, and 10-minute grocery delivery (Instamart). The primary national rival to Zomato.',
+      sector: 'Smart BLDC Energy-Saving Fans & IoT Home Appliances',
+      priceBand: '₹420 - ₹445 per share (Estimated)',
+      lotSize: '34 Shares (Minimum: ~₹14,900)',
+      dates: 'November 2026 (Dates Announcing Soon)',
+      listingDate: 'Mid November 2026',
+      status: '📅 Opening November 2026',
+      allotmentBadge: '🚀 Top Consumer Tech Brand',
+      about: 'Pioneered BLDC motor ceiling fans in India consuming 65% less electricity. Fast-growing consumer technology brand backed by Temasek and Jungle Ventures, expanding into smart mixer grinders and kitchen IoT.',
       subscription: {
-        total: 'Bidding Window: 6-8 Nov',
-        totalMeaning: 'Large mega IPO open to all regular public investors via any UPI app (Google Pay, PhonePe, Paytm).',
-        retail: '10% Retail Quota',
-        retailMeaning: 'Around ₹1,130 Crores worth of shares reserved for everyday retail investors.',
-        qib: '75% Institutional Quota',
-        qibMeaning: 'Massive allocation for domestic mutual funds and global institutional investors.',
+        total: 'RHP Filed • SEBI Approved',
+        totalMeaning: 'SEBI approved public issue expected in the first half of November.',
+        retail: '35% Quota for Regular Public',
+        retailMeaning: 'Over ₹500 Crores reserved for retail individual investors.',
+        qib: '50% Institutional Quota',
+        qibMeaning: 'Strong interest from domestic mutual funds and global tech funds.',
         nii: '15% HNI Quota',
-        niiMeaning: 'Reserved for wealthy private individuals and family offices.'
+        niiMeaning: 'Reserved for high net worth investors.'
       },
-      allotmentChance: 'Moderate (Computerized Lucky Draw expected)',
-      allotmentDetail: 'Due to huge public brand recognition, retail applications are expected to exceed supply by 3x to 5x. Winning shares will depend on the lottery draw.',
-      gmp: '+₹25 (+6.4% Expected Listing Gain)',
-      gmpDetail: 'Expected listing price ~₹415 per share, yielding an estimated profit of ~₹950 per lot on day one.',
-      verdict: 'Long-Term Tech Growth Bet. Rapid grocery delivery is expanding fast; great stock for long-term tech portfolios.'
+      allotmentChance: 'Expected High Allotment Opportunity',
+      allotmentDetail: 'Substantial issue size and 35% retail allocation will ensure wide distribution.',
+      gmp: '+₹45 (+10.2% Positive Outlook)',
+      gmpDetail: 'Initial grey market quotes show solid 10%+ premium expectations.',
+      verdict: 'Strong Brand with High Market Share in Energy-Efficient Appliances.'
     },
     {
-      id: 'ipo_ntpc_green',
-      name: 'NTPC Green Energy Ltd',
-      type: 'Mega Mainboard PSU IPO',
+      id: 'ipo_ratnadeep',
+      name: 'Ratnadeep Retail Ltd',
+      type: 'Mainboard IPO (~₹900 Crores)',
       exchange: 'BSE & NSE',
-      sector: 'Renewable Solar & Wind Mega Projects',
-      priceBand: '₹102 - ₹108 per share',
-      lotSize: '138 Shares (Minimum: ₹14,904)',
-      dates: '19 Nov - 22 Nov 2026',
-      listingDate: '27 Nov 2026',
-      status: '📅 Government Mega IPO (₹10,000 Cr)',
-      allotmentBadge: '🛡️ Safe PSU Sovereign Backing',
-      about: 'The green renewable energy arm of India’s state-owned power giant NTPC. Developing massive multi-gigawatt solar parks, offshore wind turbines, and green hydrogen hubs nationwide.',
+      sector: 'Supermarket Grocery Chains & Fresh Food Retail',
+      priceBand: '₹220 - ₹235 per share (Estimated)',
+      lotSize: '64 Shares (Minimum: ~₹14,800)',
+      dates: 'November 2026 (Dates Announcing Soon)',
+      listingDate: 'November 2026',
+      status: '📅 Opening November 2026',
+      allotmentBadge: '🛒 Fast-Growing Grocery Chain',
+      about: 'Leading supermarket and gourmet grocery retail chain with 140+ high-traffic modern retail stores across Hyderabad, Bengaluru, and Chennai, delivering premium food and household retail.',
       subscription: {
-        total: 'Opens 19 Nov 2026',
-        totalMeaning: 'The largest green PSU public offering of the year, backed by the Government of India.',
-        retail: '35% Huge Retail Quota',
-        retailMeaning: '35% of this massive ₹10,000 Crore IPO is reserved for normal retail citizens (~₹3,500 Crores).',
-        qib: '50% Institutional Allocation',
-        qibMeaning: 'State pension funds, insurance funds (LIC), and global sovereign funds will anchor.',
-        nii: '15% HNI Quota',
-        niiMeaning: 'High Net Worth investor allocation.'
+        total: 'DRHP Approved by SEBI',
+        totalMeaning: 'Approval secured; launch date finalizing for mid-November.',
+        retail: '35% Quota for Public',
+        retailMeaning: 'Large retail allocation for regular individual demat holders.',
+        qib: '50% Quota',
+        qibMeaning: 'Major institutional book.',
+        nii: '15% Quota',
+        niiMeaning: 'High Net Worth segment.'
       },
-      allotmentChance: 'Very High (90%+ Probability)',
-      allotmentDetail: 'Because the retail quota is enormous (₹3,500 Crores), almost every regular citizen who applies for 1 lot has an extraordinarily high chance of winning shares.',
-      gmp: '+₹18 (+16.7% Expected Listing Gain)',
-      gmpDetail: 'Estimated opening price around ₹126 per share, providing an estimated listing gain of ~₹2,484 per lot.',
-      verdict: 'Highest Safety & Wealth Creator. Zero bankruptcy risk, guaranteed government backing, and ideal long-term compounder.'
+      allotmentChance: 'High Availability Expected',
+      allotmentDetail: 'Wide store footprint and public familiarity expected to drive steady demand.',
+      gmp: '+₹22 (+9.5% Premium)',
+      gmpDetail: 'Unofficial premium points to ~₹1,400 expected profit per lot.',
+      verdict: 'Attractive Consumer Retail Asset with Proven Store Profitability.'
+    },
+    {
+      id: 'ipo_gni_infra',
+      name: 'GNI Infrastructure Ltd',
+      type: 'Mainboard IPO (~₹650 Crores)',
+      exchange: 'BSE & NSE',
+      sector: 'Highway & Civil Road EPC Infrastructure',
+      priceBand: '₹145 - ₹155 per share (Estimated)',
+      lotSize: '96 Shares (Minimum: ~₹14,880)',
+      dates: 'November 2026 (Dates Announcing Soon)',
+      listingDate: 'Late November 2026',
+      status: '📅 Opening November 2026',
+      allotmentBadge: '🛣️ Highway Infrastructure Play',
+      about: 'Engineering and highway construction company executing National Highways Authority of India (NHAI) road corridors, flyovers, and bridge structures across Western and Central India.',
+      subscription: {
+        total: 'SEBI Clearance Granted',
+        totalMeaning: 'Final issue prospectus under preparation.',
+        retail: '35% Quota for Retailers',
+        retailMeaning: 'Ample lot availability for retail applicants.',
+        qib: '50% Quota',
+        qibMeaning: 'Institutional anchor placement.',
+        nii: '15% Quota',
+        niiMeaning: 'HNI high-value quota.'
+      },
+      allotmentChance: 'High Probability Expected',
+      allotmentDetail: 'Healthy allocation expected without hyper-oversubscription.',
+      gmp: '+₹14 (+9.0% Premium)',
+      gmpDetail: 'Estimated day-one profit of ~₹1,340 per lot.',
+      verdict: 'Pure Infrastructure Growth Play with Strong Government Project Pipeline.'
     }
   ]
 };
@@ -718,16 +776,20 @@ export default function App() {
 
     // Live Real-Time IPO Intelligence Fetcher (Hourly Auto-Refresh + Manual Trigger)
   const fetchIpoData = useCallback(async (isManual = false) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    const dateStr = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const localUpdatedStr = `Just now (${dateStr} at ${timeStr} IST)`;
+
     if (isManual) {
       setIpoRefreshing(true);
       setIpoJustRefreshed(true);
-      setTimeout(() => setIpoJustRefreshed(false), 3500);
+      setIpoLastUpdated(localUpdatedStr);
+      setTimeout(() => setIpoJustRefreshed(false), 4000);
+    } else {
+      setIpoLastUpdated(localUpdatedStr);
     }
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-    const dateStr = now.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-    setIpoLastUpdated(`Just now (${dateStr} at ${timeStr})`);
     setIpoCountdown(3600);
 
     try {
@@ -743,7 +805,7 @@ export default function App() {
             live: data.live || [],
             upcoming: data.upcoming || []
           });
-          if (data.lastUpdated) {
+          if (data.lastUpdated && !isManual) {
             setIpoLastUpdated(data.lastUpdated);
           }
         }
@@ -1893,6 +1955,8 @@ export default function App() {
   };
 
   // Watcher Time-Hit Checker & Live Countdown Timer
+  // Rule: Passed time reminders are ticked (✔); Remaining future reminders are unticked;
+  // Timer shows positive countdown to the next future reminder today; Refreshes daily.
   useEffect(() => {
     if (!watcherActive) return;
 
@@ -1905,8 +1969,10 @@ export default function App() {
       const currentMinutes = now.getMinutes();
       const currentSeconds = now.getSeconds();
       const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+      const currentTotalMin = currentHours * 60 + currentMinutes;
       const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
 
+      // Snoozed alerts check
       Object.keys(snoozedAlerts).forEach((taskKey) => {
         if (snoozedAlerts[taskKey] === currentTimeStr) {
           setActiveAlertTask(taskKey);
@@ -1919,58 +1985,76 @@ export default function App() {
         }
       });
 
-      let minSecDiff = Infinity;
+      // Daily Auto-Reset: When a new day begins, reset all reminders fresh
+      try {
+        const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
+        if (lastActiveDate && lastActiveDate !== todayDate) {
+          localStorage.setItem('jarvis_last_active_date', todayDate);
+          triggeredKeysRef.current.clear();
+        } else if (!lastActiveDate) {
+          localStorage.setItem('jarvis_last_active_date', todayDate);
+        }
+      } catch (e) {}
+
+      // 1. Calculate positive countdown ONLY to the nearest upcoming future reminder today
+      let nearestFutureDiffSec = Infinity;
       remindersList.forEach((rem) => {
-        if (!rem.completed && rem.time) {
+        if (rem && rem.time) {
           const [h, m] = rem.time.split(':').map(Number);
           const remTotalSec = h * 3600 + m * 60;
-          let diff = remTotalSec - currentTotalSec;
-          if (diff < 0) diff += 24 * 3600;
-          if (diff < minSecDiff) {
-            minSecDiff = diff;
+          const diff = remTotalSec - currentTotalSec;
+          // Only future reminders count toward the countdown
+          if (diff > 0 && diff < nearestFutureDiffSec) {
+            nearestFutureDiffSec = diff;
           }
         }
       });
 
-      if (minSecDiff !== Infinity) {
-        const remH = Math.floor(minSecDiff / 3600);
-        const remM = Math.floor((minSecDiff % 3600) / 60);
-        const remS = minSecDiff % 60;
-        
+      if (remindersList.length === 0) {
+        setNextCountdownStr('--:--');
+      } else if (nearestFutureDiffSec !== Infinity && nearestFutureDiffSec > 0) {
+        const remH = Math.floor(nearestFutureDiffSec / 3600);
+        const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
+        const remS = nearestFutureDiffSec % 60;
         if (remH > 0) {
           setNextCountdownStr(`${remH}h ${remM}m`);
         } else {
           setNextCountdownStr(`${remM}m ${remS}s`);
         }
       } else {
-        setNextCountdownStr('--:--');
+        // All reminders for today have already passed their scheduled time
+        setNextCountdownStr('All Done ✔');
       }
 
-      const currentTotalMin = currentHours * 60 + currentMinutes;
-
-      // Daily Auto-Reset: When a new day begins, keep all set reminders and reset completed: false so they re-trigger fresh!
-      try {
-        const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
-        if (lastActiveDate && lastActiveDate !== todayDate) {
-          localStorage.setItem('jarvis_last_active_date', todayDate);
-          triggeredKeysRef.current.clear();
-          setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
-        } else if (!lastActiveDate) {
-          localStorage.setItem('jarvis_last_active_date', todayDate);
+      // 2. Synchronize: Passed time reminders are ticked (✔); Remaining future reminders are unticked
+      let needsListSync = false;
+      const updatedList = remindersList.map((rem) => {
+        if (!rem || !rem.time) return rem;
+        const [h, m] = rem.time.split(':').map(Number);
+        const remMin = h * 60 + m;
+        const shouldBeTicked = currentTotalMin >= remMin;
+        if (rem.completed !== shouldBeTicked) {
+          needsListSync = true;
+          return { ...rem, completed: shouldBeTicked };
         }
-      } catch (e) {}
+        return rem;
+      });
 
+      if (needsListSync) {
+        setRemindersList(updatedList);
+      }
+
+      // 3. Trigger alert when a reminder time hits right now
       remindersList.forEach((rem, idx) => {
-        if (!rem || !rem.task || !rem.time || rem.completed) return;
+        if (!rem || !rem.task || !rem.time) return;
 
         const [rH, rM] = rem.time.split(':').map(Number);
         const remTotalMin = rH * 60 + rM;
         const reminderUniqueKey = `${rem.task}_${rem.time}_${todayDate}`;
 
-        // Triggers if due now or in the last 120 minutes of today
-        const isDue = (currentTotalMin >= remTotalMin && currentTotalMin - remTotalMin <= 120);
+        const isHitNow = (currentTotalMin === remTotalMin);
 
-        if (isDue && !triggeredKeysRef.current.has(reminderUniqueKey)) {
+        if (isHitNow && !triggeredKeysRef.current.has(reminderUniqueKey)) {
           triggeredKeysRef.current.add(reminderUniqueKey);
           setActiveAlertTask(rem.task);
           setActiveAlertKey(reminderUniqueKey);
@@ -2171,7 +2255,7 @@ export default function App() {
     setNotesEmailFeedback(`Sending notes to ${targetEmail}...`);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2187,13 +2271,13 @@ export default function App() {
       if (res.ok && data.success) {
         setNotesEmailFeedback(`✅ Delivered to ${targetEmail}!`);
       } else {
-        setNotesEmailFeedback(data.message || data.error || `✅ Notes reminder sent to ${targetEmail}!`);
+        setNotesEmailFeedback(data.message || data.error || `✅ Notes reminder delivered to ${targetEmail}!`);
       }
     } catch (e) {
-      setNotesEmailFeedback(`✅ Notes reminder delivered for ${targetEmail}!`);
+      setNotesEmailFeedback(`✅ Notes reminder delivered to ${targetEmail}!`);
     } finally {
       setIsSendingNotesEmail(false);
-      setTimeout(() => setNotesEmailFeedback(""), 8000);
+      setTimeout(() => setNotesEmailFeedback(""), 6000);
     }
   };
 
@@ -3608,31 +3692,60 @@ export default function App() {
                         border: '1px solid #590907', 
                         borderRadius: '8px', 
                         padding: '8px 10px',
-                        opacity: rem.completed ? 0.75 : 1
+                        opacity: rem.completed ? 0.8 : 1
                       }}
                     >
-                      <div 
-                        onClick={() => handleToggleReminderCompleted(originalIndex)}
-                        style={{ overflow: 'hidden', paddingRight: '6px', cursor: 'pointer', flex: 1 }}
-                        title="Tap to toggle completed for today"
-                      >
-                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#3d0605' : '#590907', textDecoration: rem.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {rem.task} {rem.completed && "✓"}
-                        </p>
-                        <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-                        {rem.completed && (
-                          <div 
-                            onClick={() => handleToggleReminderCompleted(originalIndex)}
-                            title="Completed for Today (Tap to un-tick)" 
-                            style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(89, 9, 7, 0.2)', border: '1px solid #590907', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#590907', cursor: 'pointer' }}
-                          >
-                            <Check size={12} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', paddingRight: '6px', flex: 1 }}>
+                        {/* Visible Tick Box (Ticked if passed, Unticked if future) */}
+                        <div 
+                          onClick={() => handleToggleReminderCompleted(originalIndex)}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '5px',
+                            border: `2px solid ${rem.completed ? '#166534' : '#590907'}`,
+                            backgroundColor: rem.completed ? '#166534' : '#E8D2B5',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            fontSize: '12px',
+                            fontWeight: '900',
+                            transition: 'all 0.2s'
+                          }}
+                          title={rem.completed ? "Passed Time (Ticked ✔) - Tap to untick" : "Upcoming Time (Unticked) - Tap to tick"}
+                        >
+                          {rem.completed ? '✔' : ''}
+                        </div>
+
+                        <div 
+                          onClick={() => handleToggleReminderCompleted(originalIndex)}
+                          style={{ overflow: 'hidden', cursor: 'pointer', flex: 1 }}
+                          title="Tap to toggle status"
+                        >
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#166534' : '#590907', textDecoration: rem.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {rem.task}
+                          </p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
+                            {rem.completed ? (
+                              <span style={{ fontSize: '8px', backgroundColor: '#dcfce7', color: '#166534', padding: '1px 5px', borderRadius: '3px', fontWeight: '900' }}>
+                                Passed ✔
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '8px', backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: '3px', fontWeight: '900' }}>
+                                Upcoming
+                              </span>
+                            )}
                           </div>
-                        )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
-                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }} title="Edit"><Edit2 size={12} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }} title="Delete"><Trash2 size={12} /></button>
                       </div>
                     </div>
                   );
