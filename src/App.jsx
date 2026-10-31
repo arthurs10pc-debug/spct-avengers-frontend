@@ -2441,8 +2441,9 @@ export default function App() {
     return matchesCategory && matchesSearch;
   });
 
-  // Smart Sorting: Upcoming nearest future reminder first
+  // Smart Sorting: Upcoming nearest future reminder ALWAYS kept at the top, triggered ones below
   const sortedReminders = [...remindersList].sort((a, b) => {
+    // 1. Pending (not yet triggered) come first; Triggered (completed) go below
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     
     const now = new Date();
@@ -2453,10 +2454,16 @@ export default function App() {
     const minA = hA * 60 + mA;
     const minB = hB * 60 + mB;
 
-    const diffA = minA >= currentMin ? minA - currentMin : minA - currentMin + 1440;
-    const diffB = minB >= currentMin ? minB - currentMin : minB - currentMin + 1440;
-
-    return diffA - diffB;
+    if (!a.completed && !b.completed) {
+      // Both are pending today:
+      // The reminder coming up next (nearest future minute today) is ALWAYS kept at the top
+      const diffA = minA >= currentMin ? (minA - currentMin) : (minA - currentMin + 1440);
+      const diffB = minB >= currentMin ? (minB - currentMin) : (minB - currentMin + 1440);
+      return diffA - diffB;
+    } else {
+      // Both are triggered: chronological order
+      return minA - minB;
+    }
   });
 
   return (
@@ -3691,61 +3698,50 @@ export default function App() {
                         backgroundColor: '#A5A79B', 
                         border: '1px solid #590907', 
                         borderRadius: '8px', 
-                        padding: '8px 10px',
-                        opacity: rem.completed ? 0.8 : 1
+                        padding: '10px 12px',
+                        opacity: rem.completed ? 0.75 : 1
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', paddingRight: '6px', flex: 1 }}>
-                        {/* Visible Tick Box (Ticked if passed, Unticked if future) */}
-                        <div 
-                          onClick={() => handleToggleReminderCompleted(originalIndex)}
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '5px',
-                            border: `2px solid ${rem.completed ? '#166534' : '#590907'}`,
-                            backgroundColor: rem.completed ? '#166534' : '#E8D2B5',
-                            color: '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            fontSize: '12px',
-                            fontWeight: '900',
-                            transition: 'all 0.2s'
-                          }}
-                          title={rem.completed ? "Passed Time (Ticked ✔) - Tap to untick" : "Upcoming Time (Unticked) - Tap to tick"}
-                        >
-                          {rem.completed ? '✔' : ''}
-                        </div>
-
-                        <div 
-                          onClick={() => handleToggleReminderCompleted(originalIndex)}
-                          style={{ overflow: 'hidden', cursor: 'pointer', flex: 1 }}
-                          title="Tap to toggle status"
-                        >
-                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#166534' : '#590907', textDecoration: rem.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {rem.task}
-                          </p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
-                            {rem.completed ? (
-                              <span style={{ fontSize: '8px', backgroundColor: '#dcfce7', color: '#166534', padding: '1px 5px', borderRadius: '3px', fontWeight: '900' }}>
-                                Passed ✔
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '8px', backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: '3px', fontWeight: '900' }}>
-                                Upcoming
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                      <div style={{ overflow: 'hidden', paddingRight: '8px', flex: 1 }}>
+                        <p style={{ 
+                          margin: 0, 
+                          fontSize: '12px', 
+                          fontWeight: '800', 
+                          color: rem.completed ? '#166534' : '#590907', 
+                          textDecoration: rem.completed ? 'line-through' : 'none', 
+                          whiteSpace: 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis' 
+                        }}>
+                          {rem.task} {rem.completed && "✓"}
+                        </p>
+                        <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>
+                          Time: {formatTimeTo12Hour(rem.time)}
+                        </span>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }} title="Edit"><Edit2 size={12} /></button>
-                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }} title="Delete"><Trash2 size={12} /></button>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                        {/* Only triggered reminders get the green checkmark badge */}
+                        {rem.completed && (
+                          <div 
+                            title="Triggered for Today" 
+                            style={{ 
+                              width: '24px', 
+                              height: '24px', 
+                              borderRadius: '6px', 
+                              backgroundColor: 'rgba(22, 101, 52, 0.2)', 
+                              border: '1px solid #166534', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              color: '#166534' 
+                            }}
+                          >
+                            <Check size={14} />
+                          </div>
+                        )}
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
                       </div>
                     </div>
                   );
@@ -3764,14 +3760,7 @@ export default function App() {
                 <Zap size={12} /> Test Alert Now
               </button>
 
-              <button 
-                type="button"
-                onClick={handleManualResetToday}
-                title="Reset All Reminders to Unchecked for Today"
-                style={{ flex: '1 1 120px', background: '#3d0605', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
-              >
-                <RefreshCw size={12} /> Reset for Today
-              </button>
+              
 
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
