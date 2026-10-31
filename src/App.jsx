@@ -438,25 +438,36 @@ export default function App() {
     }
   });
 
+  const DEFAULT_REMINDERS = [
+    { task: "Morning Review & Focus", time: "09:00", completed: false },
+    { task: "Afternoon Work & Tasks", time: "14:00", completed: false },
+    { task: "Evening Wrap Up & Notes", time: "20:00", completed: false }
+  ];
+
   const [remindersList, setRemindersList] = useState(() => {
     try {
+      const now = new Date();
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const savedDate = localStorage.getItem('jarvis_last_active_date');
-      const currentDate = new Date().toLocaleDateString();
 
       const saved = localStorage.getItem('jarvis_permanent_reminders');
-      if (!saved) return [];
-      let parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
+      let parsed = saved ? JSON.parse(saved) : null;
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        parsed = DEFAULT_REMINDERS;
+        localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(DEFAULT_REMINDERS));
+      }
 
-      if (savedDate !== currentDate) {
+      if (savedDate !== todayDate) {
         parsed = parsed.map(rem => ({ ...rem, completed: false }));
-        localStorage.setItem('jarvis_last_active_date', currentDate);
+        localStorage.setItem('jarvis_last_active_date', todayDate);
+        localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(parsed));
       }
       return parsed;
     } catch (e) {
-      return [];
+      return DEFAULT_REMINDERS;
     }
   });
+
   const [currentTaskInput, setCurrentTaskInput] = useState('');
   
   const getCurrentTimeString = () => {
@@ -1118,13 +1129,16 @@ export default function App() {
     }
   }, [isMuted]);
 
-  // Pure Music / Sound Alarm Only (No Voice Speech)
+  // Pure Music / Sound Alarm Only - Plays Continuously in a loop until user clicks "Got It / Dismiss"
+  const isAlarmPlayingRef = useRef(false);
+
   const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
+    isAlarmPlayingRef.current = true;
     if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
     const playFluteTune = () => {
-      if (isMuted) return;
+      if (!isAlarmPlayingRef.current || isMuted) return;
       try {
         if (!audioCtxRef.current) {
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -1134,34 +1148,47 @@ export default function App() {
           ctx.resume();
         }
 
-        const notes = [587.33, 659.25, 783.99, 880.00, 783.99, 659.25];
+        const notes = [587.33, 659.25, 783.99, 880.00, 1046.50, 880.00, 783.99];
         notes.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.16);
           
-          gain.gain.setValueAtTime(0.4, ctx.currentTime + idx * 0.18);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.15);
+          gain.gain.setValueAtTime(0.5, ctx.currentTime + idx * 0.16);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.16 + 0.20);
           
           osc.connect(gain);
           gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + idx * 0.18);
-          osc.stop(ctx.currentTime + idx * 0.18 + 0.15);
+          osc.start(ctx.currentTime + idx * 0.16);
+          osc.stop(ctx.currentTime + idx * 0.16 + 0.21);
         });
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Alarm sound error:", e);
+      }
     };
 
     playFluteTune();
-    alarmIntervalRef.current = setInterval(playFluteTune, 1800);
+    // Continuous loop every 1.5 seconds until stopAlarmSound is called
+    alarmIntervalRef.current = setInterval(playFluteTune, 1500);
   }, [isMuted]);
 
   const stopAlarmSound = useCallback(() => {
+    isAlarmPlayingRef.current = false;
     if (alarmIntervalRef.current) {
       clearInterval(alarmIntervalRef.current);
       alarmIntervalRef.current = null;
     }
   }, []);
+
+  // Ensure alarm keeps playing continuously as long as activeAlertTask modal is showing
+  useEffect(() => {
+    if (activeAlertTask && !isMuted) {
+      startJailerFluteAlarm();
+    } else if (!activeAlertTask) {
+      stopAlarmSound();
+    }
+  }, [activeAlertTask, isMuted, startJailerFluteAlarm, stopAlarmSound]);
 
   // Global Audio Unlock Listener on User Interaction (Prevents browser audio blocking)
   useEffect(() => {
@@ -1933,9 +1960,7 @@ export default function App() {
     return () => {
       if (recognitionRef.current) recognitionRef.current.stop();
       if (socketRef.current) socketRef.current.disconnect();
-      if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
       if (liveTrafficCheckRef.current) clearInterval(liveTrafficCheckRef.current);
-      stopAlarmSound();
     };
   }, [handleVoiceCommand, stopAlarmSound, isMuted]);
 
@@ -1960,9 +1985,7 @@ export default function App() {
   useEffect(() => {
     if (!watcherActive) return;
 
-    if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
-
-    watcherIntervalRef.current = setInterval(() => {
+    const checkWatcherTime = () => {
       const now = new Date();
       const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const currentHours = now.getHours();
@@ -1985,19 +2008,22 @@ export default function App() {
         }
       });
 
-      // Daily Auto-Reset: When a new day begins, reset all reminders fresh
+      // Daily Auto-Reset: When a new day begins, uncheck all reminders fresh
       try {
         const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
         if (lastActiveDate && lastActiveDate !== todayDate) {
           localStorage.setItem('jarvis_last_active_date', todayDate);
           triggeredKeysRef.current.clear();
+          setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
         } else if (!lastActiveDate) {
           localStorage.setItem('jarvis_last_active_date', todayDate);
         }
       } catch (e) {}
 
-      // 1. Calculate positive countdown ONLY to the nearest upcoming future reminder today
+      // 1. Calculate positive countdown to the nearest upcoming future reminder today
       let nearestFutureDiffSec = Infinity;
+      let nextRemTimeStr = null;
+
       remindersList.forEach((rem) => {
         if (rem && rem.time) {
           const [h, m] = rem.time.split(':').map(Number);
@@ -2006,6 +2032,7 @@ export default function App() {
           // Only future reminders count toward the countdown
           if (diff > 0 && diff < nearestFutureDiffSec) {
             nearestFutureDiffSec = diff;
+            nextRemTimeStr = rem.time;
           }
         }
       });
@@ -2019,14 +2046,14 @@ export default function App() {
         if (remH > 0) {
           setNextCountdownStr(`${remH}h ${remM}m`);
         } else {
-          setNextCountdownStr(`${remM}m ${remS}s`);
+          setNextCountdownStr(`${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
         }
       } else {
         // All reminders for today have already passed their scheduled time
         setNextCountdownStr('All Done ✔');
       }
 
-      // 2. Synchronize: Passed time reminders are ticked (✔); Remaining future reminders are unticked
+      // 2. Synchronize: Triggered reminders marked completed (✔), future ones pending
       let needsListSync = false;
       const updatedList = remindersList.map((rem) => {
         if (!rem || !rem.time) return rem;
@@ -2073,7 +2100,13 @@ export default function App() {
           }
         }
       });
-    }, 1000);
+    };
+
+    // Run IMMEDIATELY on render so time is visible instantly without delay
+    checkWatcherTime();
+
+    if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
+    watcherIntervalRef.current = setInterval(checkWatcherTime, 1000);
 
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
