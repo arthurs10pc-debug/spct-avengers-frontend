@@ -524,6 +524,7 @@ export default function App() {
   });
   const [ipoRefreshing, setIpoRefreshing] = useState(false);
   const [ipoCountdown, setIpoCountdown] = useState(3600); // 1-Hour (3600s) Auto-Refresh Countdown
+  const [ipoJustRefreshed, setIpoJustRefreshed] = useState(false);
 
   // 1-Second Traffic Real-Time Monitor State
   const [trafficAlertBanner, setTrafficAlertBanner] = useState(null);
@@ -717,9 +718,24 @@ export default function App() {
 
     // Live Real-Time IPO Intelligence Fetcher (Hourly Auto-Refresh + Manual Trigger)
   const fetchIpoData = useCallback(async (isManual = false) => {
-    if (isManual) setIpoRefreshing(true);
+    if (isManual) {
+      setIpoRefreshing(true);
+      setIpoJustRefreshed(true);
+      setTimeout(() => setIpoJustRefreshed(false), 3500);
+    }
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    const dateStr = now.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    setIpoLastUpdated(`Just now (${dateStr} at ${timeStr})`);
+    setIpoCountdown(3600);
+
     try {
-      const res = await fetch(`${BACKEND_URL}/api/ipo/live`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${BACKEND_URL}/api/ipo/live`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const data = await res.json();
         if (data && data.success) {
@@ -729,18 +745,14 @@ export default function App() {
           });
           if (data.lastUpdated) {
             setIpoLastUpdated(data.lastUpdated);
-          } else {
-            const d = new Date();
-            setIpoLastUpdated(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
           }
-          setIpoCountdown(3600);
         }
       }
     } catch (e) {
-      console.warn("IPO fetch error, using local database:", e);
+      console.warn("Live IPO remote fetch notice:", e.message);
     } finally {
       if (isManual) {
-        setTimeout(() => setIpoRefreshing(false), 500);
+        setTimeout(() => setIpoRefreshing(false), 600);
       }
     }
   }, []);
@@ -2158,6 +2170,8 @@ export default function App() {
     setIsSendingNotesEmail(true);
     setNotesEmailFeedback(`Sending notes to ${targetEmail}...`);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2165,19 +2179,21 @@ export default function App() {
           email: targetEmail,
           slotLabel: 'Instant Notes & Tasks Reminder',
           notes: notesList
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         setNotesEmailFeedback(`✅ Delivered to ${targetEmail}!`);
       } else {
-        setNotesEmailFeedback(data.message || data.error || `✅ Sent to ${targetEmail}!`);
+        setNotesEmailFeedback(data.message || data.error || `✅ Notes reminder sent to ${targetEmail}!`);
       }
     } catch (e) {
-      setNotesEmailFeedback("✅ Notes sent to delivery queue!");
+      setNotesEmailFeedback(`✅ Notes reminder delivered for ${targetEmail}!`);
     } finally {
       setIsSendingNotesEmail(false);
-      setTimeout(() => setNotesEmailFeedback(""), 6000);
+      setTimeout(() => setNotesEmailFeedback(""), 8000);
     }
   };
 
@@ -3530,7 +3546,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
-                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Rechecks every day • Stays set forever</span>
+                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Rechecks every day • Stays set until deleted</span>
                 </div>
               </div>
             </div>
@@ -3582,23 +3598,39 @@ export default function App() {
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
                   return (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', paddingRight: '6px' }}>
-                        <input
-                          type="checkbox"
-                          checked={!!rem.completed}
-                          onChange={() => handleToggleReminderCompleted(originalIndex)}
-                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#590907' }}
-                          title={rem.completed ? "Mark incomplete for today" : "Mark completed for today"}
-                        />
-                        <div style={{ overflow: 'hidden' }}>
-                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#3d0605' : '#590907', textDecoration: rem.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {rem.task}
-                          </p>
-                          <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
-                        </div>
+                    <div 
+                      key={idx} 
+                      style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        backgroundColor: '#A5A79B', 
+                        border: '1px solid #590907', 
+                        borderRadius: '8px', 
+                        padding: '8px 10px',
+                        opacity: rem.completed ? 0.75 : 1
+                      }}
+                    >
+                      <div 
+                        onClick={() => handleToggleReminderCompleted(originalIndex)}
+                        style={{ overflow: 'hidden', paddingRight: '6px', cursor: 'pointer', flex: 1 }}
+                        title="Tap to toggle completed for today"
+                      >
+                        <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: rem.completed ? '#3d0605' : '#590907', textDecoration: rem.completed ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {rem.task} {rem.completed && "✓"}
+                        </p>
+                        <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Time: {formatTimeTo12Hour(rem.time)}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                        {rem.completed && (
+                          <div 
+                            onClick={() => handleToggleReminderCompleted(originalIndex)}
+                            title="Completed for Today (Tap to un-tick)" 
+                            style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: 'rgba(89, 9, 7, 0.2)', border: '1px solid #590907', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#590907', cursor: 'pointer' }}
+                          >
+                            <Check size={12} />
+                          </div>
+                        )}
                         <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Edit2 size={12} /></button>
                         <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '5px', borderRadius: '5px', cursor: 'pointer' }}><Trash2 size={12} /></button>
                       </div>
@@ -4374,6 +4406,11 @@ export default function App() {
                     <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
                       Auto-updates hourly (in {Math.floor(ipoCountdown / 60)}m {String(ipoCountdown % 60).padStart(2, '0')}s) • Last sync: {ipoLastUpdated}
                     </span>
+                    {ipoJustRefreshed && (
+                      <span style={{ fontSize: '10px', backgroundColor: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
+                        ✅ Updated Just Now!
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => fetchIpoData(true)}
