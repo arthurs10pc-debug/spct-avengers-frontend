@@ -494,7 +494,7 @@ export default function App() {
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
   // Live Countdown Timer String for Sidebar ("MM:SS")
-  const [nextCountdownStr, setNextCountdownStr] = useState('09:00');
+  const [nextCountdownStr, setNextCountdownStr] = useState('-00:00');
   const [nextRemTimeStr, setNextRemTimeStr] = useState('09:00');
   const [nextRemTitle, setNextRemTitle] = useState('Morning Review & Focus');
 
@@ -2059,7 +2059,7 @@ export default function App() {
         setRemindersList(DEFAULT_REMINDERS);
         setNextRemTimeStr('09:00');
         setNextRemTitle('Morning Review & Focus');
-        setNextCountdownStr('09:00');
+        setNextCountdownStr('-00:00');
       } else if (nearestFutureDiffSec !== Infinity && nearestFutureDiffSec > 0) {
         setNextRemTimeStr(upcomingTime);
         setNextRemTitle(upcomingTitle);
@@ -2067,14 +2067,12 @@ export default function App() {
         const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
         const remS = nearestFutureDiffSec % 60;
         if (remH > 0) {
-          setNextCountdownStr(`${remH}h ${remM}m`);
-        } else if (remM > 0) {
-          setNextCountdownStr(`${remM}m`);
+          setNextCountdownStr(`-${String(remH).padStart(2, '0')}:${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
         } else {
-          setNextCountdownStr(`${remS}s`);
+          setNextCountdownStr(`-${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
         }
       } else {
-        // All reminders for today have completed; next is tomorrow's first reminder
+        // All reminders for today have completed; continuously count down to tomorrow's first reminder
         const sortedByTime = [...remindersList].filter(r => r && r.time).sort((a, b) => a.time.localeCompare(b.time));
         const firstRemTomorrow = sortedByTime[0] || { time: '09:00', task: 'Morning Routine' };
         setNextRemTimeStr(firstRemTomorrow.time);
@@ -2084,7 +2082,9 @@ export default function App() {
         const secAfterMidnight = fh * 3600 + fm * 60;
         const totalTomSec = secUntilMidnight + secAfterMidnight;
         const tomH = Math.floor(totalTomSec / 3600);
-        setNextCountdownStr(`${tomH}h left`);
+        const tomM = Math.floor((totalTomSec % 3600) / 60);
+        const tomS = totalTomSec % 60;
+        setNextCountdownStr(`-${String(tomH).padStart(2, '0')}:${String(tomM).padStart(2, '0')}:${String(tomS).padStart(2, '0')}`);
       }
 
       // 2. Synchronize: Triggered reminders marked completed (✔), future ones pending
@@ -2719,30 +2719,25 @@ export default function App() {
 
         <button 
           onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
-          title={`Watcher Reminders - Next: ${nextRemTitle || 'Routine'} at ${nextRemTimeStr || '09:00'} (${nextCountdownStr})`} 
-          style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '52px' }}
+          title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '09:00'} (${nextCountdownStr} remaining)`} 
+          style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '54px' }}
         >
-          <Clock size={17} />
+          <Clock size={18} />
           <span style={{ 
-            fontSize: '8px', 
+            fontSize: '9px', 
             fontWeight: '900', 
             color: '#590907', 
             background: '#E8D2B5', 
-            padding: '2px 4px', 
-            borderRadius: '4px', 
+            padding: '2px 5px', 
+            borderRadius: '5px', 
             border: '1px solid #590907', 
             whiteSpace: 'nowrap',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            lineHeight: 1.1
+            fontFamily: 'monospace, system-ui',
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '0.3px',
+            textAlign: 'center'
           }}>
-            <span style={{ fontSize: '8.5px', fontWeight: '900', letterSpacing: '0.2px' }}>
-              {nextRemTimeStr || '09:00'}
-            </span>
-            <span style={{ fontSize: '7.5px', fontWeight: '800', opacity: 0.85, color: '#881337' }}>
-              {nextCountdownStr}
-            </span>
+            {nextCountdownStr}
           </span>
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
