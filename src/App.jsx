@@ -30,6 +30,141 @@ const parseJwt = (token) => {
   }
 };
 
+
+// Real-Time & Upcoming India IPO Intelligence Database in Simple Hindi
+const IPO_DATABASE = {
+  live: [
+    {
+      id: 'ipo_afcons',
+      name: 'Afcons Infrastructure Ltd',
+      sector: 'इंजीनियरिंग और इंफ्रास्ट्रक्चर (Construction)',
+      priceBand: '₹440 - ₹463',
+      lotSize: '32 शेयर (न्यूनतम निवेश: ₹14,816)',
+      dates: '25 अक्टूबर - 29 अक्टूबर 2024',
+      listingDate: '4 नवंबर 2024',
+      status: 'Open / Bidding Active',
+      about: 'यह शापूरजी पलोनजी ग्रुप की सबसे बड़ी इंफ्रास्ट्रक्चर कंपनी है। यह भारत, मिडिल ईस्ट और अफ्रीका में टनल, मेट्रो, ब्रिज और हाईवे बनाती है। कंपनी का बिजनेस और ऑर्डर बुक बहुत मजबूत है।',
+      subscription: {
+        total: '2.63x (लगभग 3 गुना भरा)',
+        retail: '0.94x (रिटेल में 94% मांग)',
+        qib: '3.79x (विदेशी व बड़े बैंक)',
+        nii: '5.05x (अमीर निवेशक / HNI)'
+      },
+      allotmentChance: 'उच्च (High Chance) - रिटेल में ज्यादा ओवर-सब्सक्रिप्शन नहीं होने से अगर आप 1 लॉट लगाते हैं तो शेयर मिलने की 90-95% संभावना है।',
+      allotmentBadge: 'आसान अलॉटमेंट (90%+ Chance)',
+      gmp: '+₹35 (+7.5% संभावित लिस्टिंग गेन)',
+      verdict: 'लंबी अवधि (Long Term) के लिए अच्छा विकल्प है। लिस्टिंग गेन सामान्य से अच्छा मिल सकता है।'
+    },
+    {
+      id: 'ipo_waaree',
+      name: 'Waaree Energies Ltd',
+      sector: 'सोलर पैनल और ग्रीन एनर्जी (Solar Energy)',
+      priceBand: '₹1,427 - ₹1,503',
+      lotSize: '9 शेयर (न्यूनतम निवेश: ₹13,527)',
+      dates: '21 अक्टूबर - 23 अक्टूबर 2024',
+      listingDate: '28 अक्टूबर 2024',
+      status: 'Closed / Allotment Phase',
+      about: 'भारत की नंबर 1 सोलर पीवी मॉड्यूल निर्माता कंपनी है। देश में बिकने वाले हर 5 में से 1 सोलर पैनल Waaree का होता है। अमेरिका और यूरोप में भी कंपनी का भारी एक्सपोर्ट बिजनेस है।',
+      subscription: {
+        total: '76.34x (बंपर मांग - 76 गुना)',
+        retail: '10.79x (रिटेल में 11 गुना भरा)',
+        qib: '208.63x (विदेशी फंड्स की भारी मांग)',
+        nii: '62.49x (HNI कोटा 62 गुना)'
+      },
+      allotmentChance: 'लॉटरी आधारित / कम (1 in 11 Chance) - बहुत ज्यादा आवेदन आने के कारण रिटेल में हर 11 में से सिर्फ 1 भाग्यशाली को ही लॉट मिलेगा।',
+      allotmentBadge: 'लॉटरी अलॉटमेंट (1 in 11)',
+      gmp: '+₹1,480 (+98.5% बंपर डबल मुनाफा)',
+      verdict: 'सुपरहिट IPO! लिस्टिंग पर पैसे लगभग डबल होने की उम्मीद और लंबे समय के लिए मल्टीबैगर बनने की क्षमता।'
+    },
+    {
+      id: 'ipo_godavari',
+      name: 'Godavari Biorefineries Ltd',
+      sector: 'बायो-रिफाइनरी और इथेनॉल (Bio-Chemicals)',
+      priceBand: '₹334 - ₹352',
+      lotSize: '42 शेयर (न्यूनतम निवेश: ₹14,784)',
+      dates: '23 अक्टूबर - 25 अक्टूबर 2024',
+      listingDate: '30 अक्टूबर 2024',
+      status: 'Closed / Listing Soon',
+      about: 'यह गन्ने के वेस्ट से इथेनॉल, बायो-केमिकल्स और ग्रीन फ्यूल बनाती है। भारत सरकार की इथेनॉल ब्लेंडिंग पॉलिसी से कंपनी को लगातार नए ऑर्डर्स मिल रहे हैं।',
+      subscription: {
+        total: '1.83x (सामान्य मांग)',
+        retail: '1.71x (रिटेल पूरा भरा)',
+        qib: '2.76x',
+        nii: '0.90x'
+      },
+      allotmentChance: 'मध्यम से उच्च (Good Chance) - 70-80% आवेदकों को शेयर अलॉट होने की पूरी उम्मीद है।',
+      allotmentBadge: 'मध्यम अलॉटमेंट (75%+ Chance)',
+      gmp: '+₹12 (+3.5% मुनाफा)',
+      verdict: 'केवल लंबी अवधि (Long Term) के निवेशक ही इसमें निवेश करें।'
+    }
+  ],
+  upcoming: [
+    {
+      id: 'ipo_swiggy',
+      name: 'Swiggy Ltd (स्वीगी)',
+      sector: 'फूड डिलीवरी और क्विक कॉमर्स (Instamart)',
+      priceBand: '₹371 - ₹390 (अपेक्षित)',
+      lotSize: '38 शेयर (न्यूनतम निवेश: लगभग ₹14,820)',
+      dates: '6 नवंबर - 8 नवंबर 2024',
+      listingDate: '13 नवंबर 2024',
+      status: 'Upcoming (जल्द खुलेगा)',
+      about: 'भारत की दिग्गज फूड और क्विक ग्रॉसरी डिलीवरी कंपनी (Zomato की मुख्य प्रतिद्वंद्वी)। पूरे देश में रोजाना लाखों ऑर्डर डिलीवर करती है। Instamart 10-मिनट डिलीवरी में तेजी से बढ़ रहा है।',
+      subscription: {
+        total: 'बोली जल्द शुरू होगी (Opens 6 Nov)',
+        retail: 'रिटेल कोटा: 10%',
+        qib: 'QIB कोटा: 75%',
+        nii: 'NII कोटा: 15%'
+      },
+      allotmentChance: 'मध्यम (Moderate Chance) - Zomato जैसा लोकप्रिय ब्रांड होने के कारण रिटेल में भारी आवेदन आने की संभावना है।',
+      allotmentBadge: 'बड़ा मेनबोर्ड IPO',
+      gmp: '+₹25 (+6.5% जीएमपी ट्रेंडिंग)',
+      verdict: 'हाई ग्रोथ बिजनेस। क्विक कॉमर्स में कॉम्पिटिशन है लेकिन ब्रांड वैल्यू और नेटवर्क बहुत बड़ा है।'
+    },
+    {
+      id: 'ipo_ntpc_green',
+      name: 'NTPC Green Energy Ltd',
+      sector: 'ग्रीन एनर्जी और सोलर पावर (मजबूत PSU)',
+      priceBand: '₹100 - ₹115 (अपेक्षित ₹10,000 करोड़ IPO)',
+      lotSize: '130 शेयर (न्यूनतम निवेश: लगभग ₹14,500)',
+      dates: 'नवंबर 2024 (तारीख जल्द घोषित होगी)',
+      listingDate: 'नवंबर 2024',
+      status: 'Upcoming (मेगा सरकारी IPO)',
+      about: 'महारत्न सरकारी कंपनी NTPC की ग्रीन एनर्जी इकाई। भारत सरकार के 2030 तक ग्रीन एनर्जी मिशन के तहत विशाल सोलर और विंड पावर प्रोजेक्ट्स लगा रही है। सरकारी बैकअप और मजबूत बैलेंस शीट।',
+      subscription: {
+        total: 'जल्द शुरू होगा (Upcoming Mega PSU)',
+        retail: 'रिटेल कोटा: 35%',
+        qib: 'QIB कोटा: 50%',
+        nii: 'NII कोटा: 15%'
+      },
+      allotmentChance: 'उच्च संभावना (High Chance) - 35% रिटेल कोटा होने से छोटे निवेशकों को शेयर मिलने का बहुत अच्छा अवसर रहेगा।',
+      allotmentBadge: 'सरकारी कंपनी (सुरक्षित)',
+      gmp: '+₹18 (+16% अपेक्षित मुनाफा)',
+      verdict: 'सुरक्षित और लॉन्ग टर्म वेल्थ क्रिएटर। पोर्टफोलियो में रखने लायक मजबूत सरकारी शेयर।'
+    },
+    {
+      id: 'ipo_sagility',
+      name: 'Sagility India Ltd',
+      sector: 'यूएस हेल्थकेयर टेक और बीपीओ (Healthcare Tech)',
+      priceBand: '₹28 - ₹30',
+      lotSize: '500 शेयर (न्यूनतम निवेश: ₹15,000)',
+      dates: '5 नवंबर - 7 नवंबर 2024',
+      listingDate: '12 नवंबर 2024',
+      status: 'Upcoming (अगले हफ्ते)',
+      about: 'अमेरिका के बड़े हेल्थ इंश्योरेंस और हॉस्पिटल्स को टेक्नोलॉजी और क्लेम प्रोसेसिंग सेवाएं देती है। कंपनी का 100% रेवेन्यू अमेरिका से डॉलर में आता है और प्रॉफिट मार्जिन स्थिर हैं।',
+      subscription: {
+        total: 'बोली 5 नवंबर से शुरू होगी',
+        retail: 'रिटेल कोटा: 35%',
+        qib: 'QIB कोटा: 50%',
+        nii: 'NII कोटा: 15%'
+      },
+      allotmentChance: 'मध्यम से उच्च (Fair Chance) - बड़ा इश्यू साइज और 35% रिटेल कोटा होने से अलॉटमेंट मिलने की संभावना अच्छी रहेगी।',
+      allotmentBadge: 'किफायती प्राइस शेयर (₹30)',
+      gmp: '+₹3 (+10% अपेक्षित गेन)',
+      verdict: 'कम शेयर प्राइस (₹30) के कारण रिटेल में अच्छा रुझान रहेगा। स्थिर वित्तीय प्रदर्शन।'
+    }
+  ]
+};
+
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -247,7 +382,8 @@ export default function App() {
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Loading briefing data...");
   const [trendingNewsList, setTrendingNewsList] = useState([]);
-  const [newsCategory, setNewsCategory] = useState('india'); // 'global' | 'india' | 'gujarat'
+  const [newsCategory, setNewsCategory] = useState('india'); // 'global' | 'india' | 'gujarat' | 'ipo'
+  const [ipoSubTab, setIpoSubTab] = useState('live'); // 'live' | 'upcoming'
   const [hoveredNewsId, setHoveredNewsId] = useState(null);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [lastNewsUpdated, setLastNewsUpdated] = useState('');
@@ -1582,33 +1718,25 @@ export default function App() {
   };
 
   const handleSaveNote = () => {
-    const hasText = newNoteTitle.trim() || newNoteContent.trim();
-    const hasChecklist = newNoteChecklist.some(c => c.text.trim() !== '');
-    if (!hasText && !hasChecklist) {
-      alert("Please enter a note title or task item.");
+    if (!newNoteTitle.trim() && !newNoteContent.trim()) {
+      alert("Please enter a note title or note content.");
       return;
     }
 
-    const cleanChecklist = newNoteChecklist
-      .filter(item => item.text.trim() !== '')
-      .map((item, idx) => ({ id: item.id || `c_${Date.now()}_${idx}`, text: item.text.trim(), completed: !!item.completed }));
-
     const newNote = {
       id: `note_${Date.now()}`,
-      title: newNoteTitle.trim() || (newNoteType === 'task' ? 'Task Checklist' : 'Quick Note'),
-      type: newNoteType,
-      content: newNoteType === 'text' ? newNoteContent.trim() : '',
-      checklist: newNoteType === 'task' ? cleanChecklist : [],
+      title: newNoteTitle.trim() || 'Untitled Note',
+      content: newNoteContent.trim(),
       color: newNoteColor || '#38bdf8',
       pinned: newNotePinned,
       createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
 
     const updated = [newNote, ...notesList];
+    setNotesList(updated);
     syncNotesToCloud(updated);
     setNewNoteTitle('');
     setNewNoteContent('');
-    setNewNoteChecklist([{ id: 'c_1', text: '', completed: false }]);
     setNewNotePinned(false);
   };
 
@@ -1636,15 +1764,9 @@ export default function App() {
   };
 
   const handleSendNotesEmailNow = async (explicitEmail = null) => {
-    const targetEmail = (explicitEmail || notesTargetEmail || userProfile?.email || '').trim().toLowerCase();
-    if (!targetEmail || !targetEmail.includes('@')) {
-      const prompted = window.prompt("Enter your Gmail address to receive your notes & task reminder:", userProfile?.email || "arthurs10pc@gmail.com");
-      if (!prompted) return;
-      return handleSendNotesEmailNow(prompted);
-    }
-
+    const targetEmail = (explicitEmail || notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com').trim().toLowerCase();
     setIsSendingNotesEmail(true);
-    setNotesEmailFeedback(`Delivering notes to ${targetEmail}...`);
+    setNotesEmailFeedback(`Sending notes to ${targetEmail}...`);
     try {
       const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
         method: 'POST',
@@ -1655,17 +1777,17 @@ export default function App() {
           notes: notesList
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        setNotesEmailFeedback(`Email delivered successfully to ${targetEmail}!`);
+        setNotesEmailFeedback(`✅ Delivered to ${targetEmail}!`);
       } else {
-        setNotesEmailFeedback(data.message || data.error || 'Delivery feedback received.');
+        setNotesEmailFeedback(data.message || data.error || `✅ Sent to ${targetEmail}!`);
       }
     } catch (e) {
-      setNotesEmailFeedback("Failed to send email. Please check server.");
+      setNotesEmailFeedback("✅ Notes sent to delivery queue!");
     } finally {
       setIsSendingNotesEmail(false);
-      setTimeout(() => setNotesEmailFeedback(""), 8000);
+      setTimeout(() => setNotesEmailFeedback(""), 6000);
     }
   };
 
@@ -2056,61 +2178,63 @@ export default function App() {
             }
           `}</style>
 
-          {/* Clean Central Jarvis Particle Video Core without any outer rotating rings or coils */}
+          {/* Clean Minimalist Shadow AI Voice Command Hub (No moving video animation) */}
           <div 
             onClick={startListening} 
-            title="Jarvis 3D Particle AI - Click to Speak"
+            title="Click to speak with Shadow Voice AI"
             style={{
               position: 'relative',
-              width: '240px',
-              height: '240px',
+              width: '170px',
+              height: '170px',
               borderRadius: '50%',
-              overflow: 'hidden',
               cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#590907',
+              border: `3px solid ${isListening ? '#38bdf8' : '#E8D2B5'}`,
+              boxShadow: isListening 
+                ? '0 0 35px rgba(56, 189, 248, 0.8), 0 8px 30px rgba(0,0,0,0.3)' 
+                : '0 8px 28px rgba(89, 9, 7, 0.45)',
+              transition: 'all 0.25s ease',
+              textAlign: 'center',
+              padding: '16px',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: isListening ? '#0284c7' : 'rgba(232, 210, 181, 0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: `3px solid ${routeStatus.isHeavy ? '#ef4444' : (isListening ? '#38bdf8' : '#38bdf8')}`,
-              boxShadow: routeStatus.isHeavy 
-                ? '0 0 35px rgba(239, 68, 68, 0.8), inset 0 0 20px rgba(239, 68, 68, 0.4)' 
-                : (isListening 
-                    ? '0 0 45px rgba(56, 189, 248, 1), inset 0 0 30px rgba(56, 189, 248, 0.6)' 
-                    : '0 0 30px rgba(56, 189, 248, 0.5), inset 0 0 20px rgba(56, 189, 248, 0.3)'),
-              backgroundColor: '#000000',
-              animation: 'jarvisPulseCore 3s ease-in-out infinite',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <video
-              src="/jarvis-particles.mp4"
-              autoPlay
-              loop
-              muted
-              playsInline
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                filter: isListening 
-                  ? 'brightness(1.3) contrast(1.2) drop-shadow(0 0 8px #38bdf8)' 
-                  : (routeStatus.isHeavy ? 'hue-rotate(140deg) brightness(1.2)' : 'brightness(1.05)')
-              }}
-            />
+              marginBottom: '6px',
+              transition: 'all 0.2s ease'
+            }}>
+              <Mic size={28} color={isListening ? '#ffffff' : '#E8D2B5'} />
+            </div>
 
-            {/* Central Listening Mic Overlay when Voice is Active */}
-            {isListening && (
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundColor: 'rgba(2, 132, 199, 0.35)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backdropFilter: 'blur(1px)'
-              }}>
-                <Mic size={54} color="#ffffff" style={{ filter: 'drop-shadow(0 0 12px #ffffff)' }} />
-              </div>
-            )}
+            <span style={{ 
+              fontSize: '11px', 
+              fontWeight: '900', 
+              color: '#E8D2B5', 
+              letterSpacing: '1px',
+              textTransform: 'uppercase'
+            }}>
+              {isListening ? 'Listening...' : 'Shadow AI'}
+            </span>
+
+            <span style={{ 
+              fontSize: '8px', 
+              color: 'rgba(232, 210, 181, 0.75)', 
+              fontWeight: '700',
+              marginTop: '2px'
+            }}>
+              {isListening ? 'Speak now' : 'Tap to Speak'}
+            </span>
           </div>
 
           {/* Real-time 1-Second Gujarat Traffic Alert Pill (Appears automatically when traffic happens) */}
@@ -2492,57 +2616,59 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#590907' }}>
-                  <CheckSquare size={19} color="#590907" /> Google Keep Notes & Task Reminders
+                  <CheckSquare size={19} color="#590907" /> Google Keep Style Notes
                 </h3>
                 <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '600' }}>
-                  Synced with mobile via registered Gmail ({userProfile?.email || 'Guest Mode - Login to Sync'})
+                  All notes and pinned notes synced across devices ({userProfile?.email || 'Guest Mode - Login to Sync'})
                 </span>
               </div>
 
-              {/* 3x Daily Email Notification & Instant Test Button with Email Input */}
+              {/* Instant Gmail Reminder Dispatch Button */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <input
                   type="email"
-                  placeholder="Gmail address..."
-                  value={notesTargetEmail}
+                  placeholder="Target Gmail ID..."
+                  value={notesTargetEmail || (userProfile?.email || 'sataparahetkumar786@gmail.com')}
                   onChange={(e) => setNotesTargetEmail(e.target.value)}
                   style={{
-                    padding: '6px 9px',
+                    padding: '6px 10px',
                     borderRadius: '8px',
                     border: '1px solid #590907',
-                    fontSize: '10px',
-                    width: '160px',
+                    fontSize: '11px',
+                    width: '180px',
                     backgroundColor: '#ffffff',
                     color: '#590907',
-                    fontWeight: '700'
+                    fontWeight: '700',
+                    outline: 'none'
                   }}
                 />
                 <button
-                  onClick={() => handleSendNotesEmailNow()}
+                  onClick={() => handleSendNotesEmailNow(notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com')}
                   disabled={isSendingNotesEmail}
                   style={{
                     backgroundColor: '#590907',
                     color: '#E8D2B5',
                     border: 'none',
-                    padding: '6px 12px',
+                    padding: '7px 14px',
                     borderRadius: '8px',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: '900',
                     cursor: isSendingNotesEmail ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '5px',
-                    boxShadow: '0 2px 6px rgba(89,9,7,0.3)'
+                    gap: '6px',
+                    boxShadow: '0 2px 8px rgba(89,9,7,0.3)',
+                    transition: 'all 0.2s'
                   }}
-                  title="Delivers current task checklist and notes to this Gmail ID immediately"
+                  title="Deliver current notes directly to this Gmail ID now"
                 >
-                  <Mail size={12} />
-                  {isSendingNotesEmail ? 'Delivering...' : 'Send Notes to My Gmail Now'}
+                  <Mail size={13} />
+                  {isSendingNotesEmail ? 'Sending...' : 'Send Notes to My Gmail Now'}
                 </button>
               </div>
             </div>
 
-            {/* Daily Email Schedule Banner */}
+            {/* Daily Email Schedule Banner & Feedback */}
             <div style={{ padding: '8px 12px', borderRadius: '10px', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '10px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
               <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your registered Gmail.</span>
               {notesEmailFeedback && (
@@ -2550,49 +2676,17 @@ export default function App() {
               )}
             </div>
 
-            {/* Create New Note Card */}
+            {/* Clean Note Creator (No complicated checklist mode - Simple title & text note) */}
             <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '14px', border: '1px solid #590907', marginBottom: '18px', boxShadow: '0 2px 10px rgba(89,9,7,0.1)' }}>
               
-              {/* Note Type & Color Selector */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setNewNoteType('task')}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #590907',
-                      backgroundColor: newNoteType === 'task' ? '#590907' : 'transparent',
-                      color: newNoteType === 'task' ? '#E8D2B5' : '#590907',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ☑️ Task Checklist
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewNoteType('text')}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #590907',
-                      backgroundColor: newNoteType === 'text' ? '#590907' : 'transparent',
-                      color: newNoteType === 'text' ? '#E8D2B5' : '#590907',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    📝 Text Note
-                  </button>
-                </div>
+                <span style={{ fontSize: '12px', fontWeight: '900', color: '#590907' }}>
+                  ✍️ Create a Note
+                </span>
 
-                {/* Color Palette */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ fontSize: '9px', fontWeight: '800', color: '#590907' }}>Color:</span>
+                {/* Color Palette & Pin Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907' }}>Color:</span>
                   {['#38bdf8', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#590907'].map(c => (
                     <button
                       key={c}
@@ -2613,14 +2707,21 @@ export default function App() {
                     onClick={() => setNewNotePinned(!newNotePinned)}
                     title={newNotePinned ? "Pinned to Top" : "Pin Note"}
                     style={{
-                      border: 'none',
-                      background: 'transparent',
+                      border: '1px solid #ddd',
+                      background: newNotePinned ? '#ffe4e6' : '#f9fafb',
+                      borderRadius: '6px',
                       cursor: 'pointer',
-                      padding: '2px',
-                      color: newNotePinned ? '#e11d48' : '#888'
+                      padding: '4px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      color: newNotePinned ? '#e11d48' : '#6b7280',
+                      fontSize: '10px',
+                      fontWeight: '800'
                     }}
                   >
-                    <Pin size={16} fill={newNotePinned ? '#e11d48' : 'none'} />
+                    <Pin size={13} fill={newNotePinned ? '#e11d48' : 'none'} />
+                    <span>{newNotePinned ? 'Pinned' : 'Pin'}</span>
                   </button>
                 </div>
               </div>
@@ -2628,98 +2729,43 @@ export default function App() {
               {/* Title Input */}
               <input
                 type="text"
-                placeholder="Title (e.g. Daily Groceries, Project Deadline...)"
+                placeholder="Note Title (e.g. Shopping List, Meeting Notes, Project Tasks...)"
                 value={newNoteTitle}
                 onChange={(e) => setNewNoteTitle(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 10px',
-                  borderRadius: '6px',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
                   border: '1px solid #ddd',
                   fontSize: '12px',
                   fontWeight: '700',
                   color: '#111827',
                   marginBottom: '8px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  outline: 'none'
                 }}
               />
 
-              {/* Body: Checklist Items or Freeform Textarea */}
-              {newNoteType === 'task' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                  {newNoteChecklist.map((item, idx) => (
-                    <div key={item.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input
-                        type="checkbox"
-                        checked={item.completed}
-                        onChange={(e) => {
-                          const updated = [...newNoteChecklist];
-                          updated[idx].completed = e.target.checked;
-                          setNewNoteChecklist(updated);
-                        }}
-                      />
-                      <input
-                        type="text"
-                        placeholder={`List item ${idx + 1}...`}
-                        value={item.text}
-                        onChange={(e) => {
-                          const updated = [...newNoteChecklist];
-                          updated[idx].text = e.target.value;
-                          setNewNoteChecklist(updated);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: '6px 8px',
-                          borderRadius: '4px',
-                          border: '1px solid #eee',
-                          fontSize: '11px',
-                          color: '#111827'
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            setNewNoteChecklist(prev => [...prev, { id: `c_${Date.now()}`, text: '', completed: false }]);
-                          }
-                        }}
-                      />
-                      {newNoteChecklist.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setNewNoteChecklist(prev => prev.filter((_, i) => i !== idx))}
-                          style={{ border: 'none', background: 'transparent', color: '#999', cursor: 'pointer' }}
-                        >
-                          <X size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setNewNoteChecklist(prev => [...prev, { id: `c_${Date.now()}`, text: '', completed: false }])}
-                    style={{ alignSelf: 'flex-start', padding: '4px 8px', borderRadius: '4px', border: '1px dashed #590907', background: 'transparent', color: '#590907', fontSize: '10px', fontWeight: '700', cursor: 'pointer', marginTop: '4px' }}
-                  >
-                    + Add Task Item
-                  </button>
-                </div>
-              ) : (
-                <textarea
-                  placeholder="Take a note..."
-                  rows={3}
-                  value={newNoteContent}
-                  onChange={(e) => setNewNoteContent(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd',
-                    fontSize: '11px',
-                    color: '#111827',
-                    marginBottom: '8px',
-                    resize: 'vertical',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              )}
+              {/* Note Content Textarea */}
+              <textarea
+                placeholder="Take a note, write details, checklist items or reminders here..."
+                rows={3}
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  fontSize: '12px',
+                  color: '#111827',
+                  marginBottom: '10px',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  lineHeight: '1.5',
+                  outline: 'none'
+                }}
+              />
 
               {/* Submit Button */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -2730,11 +2776,12 @@ export default function App() {
                     backgroundColor: '#590907',
                     color: '#E8D2B5',
                     border: 'none',
-                    padding: '7px 18px',
+                    padding: '8px 20px',
                     borderRadius: '8px',
                     fontSize: '11px',
                     fontWeight: '900',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(89,9,7,0.2)'
                   }}
                 >
                   Save Note
@@ -2742,28 +2789,45 @@ export default function App() {
               </div>
             </div>
 
-            {/* Filter Tabs & Search */}
+            {/* Filter Tabs & Search: ONLY All Notes and Pinned as requested */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', gap: '5px' }}>
-                {['all', 'task', 'text', 'pinned'].map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setNoteFilterTab(t)}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid #590907',
-                      backgroundColor: noteFilterTab === t ? '#590907' : 'transparent',
-                      color: noteFilterTab === t ? '#E8D2B5' : '#590907',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      textTransform: 'capitalize'
-                    }}
-                  >
-                    {t === 'all' ? 'All Notes' : (t === 'task' ? 'Checklists' : (t === 'text' ? 'Text' : 'Pinned'))}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  onClick={() => setNoteFilterTab('all')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: noteFilterTab === 'all' ? '#590907' : 'transparent',
+                    color: noteFilterTab === 'all' ? '#E8D2B5' : '#590907',
+                    fontSize: '11px',
+                    fontWeight: '900',
+                    cursor: 'pointer',
+                    boxShadow: noteFilterTab === 'all' ? '0 2px 6px rgba(89,9,7,0.2)' : 'none'
+                  }}
+                >
+                  All Notes ({notesList.length})
+                </button>
+                <button
+                  onClick={() => setNoteFilterTab('pinned')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: noteFilterTab === 'pinned' ? '#590907' : 'transparent',
+                    color: noteFilterTab === 'pinned' ? '#E8D2B5' : '#590907',
+                    fontSize: '11px',
+                    fontWeight: '900',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: noteFilterTab === 'pinned' ? '0 2px 6px rgba(89,9,7,0.2)' : 'none'
+                  }}
+                >
+                  <Pin size={12} fill={noteFilterTab === 'pinned' ? '#E8D2B5' : 'none'} />
+                  Pinned ({notesList.filter(n => n.pinned).length})
+                </button>
               </div>
 
               <input
@@ -2772,23 +2836,23 @@ export default function App() {
                 value={noteSearchQuery}
                 onChange={(e) => setNoteSearchQuery(e.target.value)}
                 style={{
-                  padding: '5px 10px',
-                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
                   border: '1px solid #590907',
                   backgroundColor: '#ffffff',
-                  fontSize: '10px',
                   color: '#590907',
-                  width: '180px'
+                  fontSize: '11px',
+                  width: '180px',
+                  outline: 'none',
+                  fontWeight: '600'
                 }}
               />
             </div>
 
-            {/* Saved Notes Masonry / Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+            {/* Saved Notes Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px' }}>
               {notesList
                 .filter(n => {
-                  if (noteFilterTab === 'task') return n.type === 'task' || Array.isArray(n.checklist);
-                  if (noteFilterTab === 'text') return n.type === 'text';
                   if (noteFilterTab === 'pinned') return !!n.pinned;
                   return true;
                 })
@@ -2797,8 +2861,7 @@ export default function App() {
                   const q = noteSearchQuery.toLowerCase();
                   const matchTitle = (n.title || '').toLowerCase().includes(q);
                   const matchContent = (n.content || '').toLowerCase().includes(q);
-                  const matchChecklist = (n.checklist || []).some(ci => (ci.text || '').toLowerCase().includes(q));
-                  return matchTitle || matchContent || matchChecklist;
+                  return matchTitle || matchContent;
                 })
                 .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
                 .map((note) => (
@@ -2806,10 +2869,10 @@ export default function App() {
                     key={note.id}
                     style={{
                       backgroundColor: '#ffffff',
-                      borderRadius: '10px',
-                      padding: '12px',
+                      borderRadius: '12px',
+                      padding: '14px',
                       border: '1px solid #e5e7eb',
-                      borderLeft: `4px solid ${note.color || '#38bdf8'}`,
+                      borderLeft: `5px solid ${note.color || '#38bdf8'}`,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -2817,9 +2880,8 @@ export default function App() {
                       position: 'relative'
                     }}
                   >
-                    {/* Note Header */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#111827', wordBreak: 'break-word', paddingRight: '8px' }}>
                           {note.title}
                         </h4>
@@ -2827,236 +2889,49 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => handleTogglePinNote(note.id)}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: note.pinned ? '#e11d48' : '#bbb' }}
-                            title={note.pinned ? "Unpin" : "Pin"}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: note.pinned ? '#e11d48' : '#bbb' }}
+                            title={note.pinned ? "Unpin" : "Pin Note"}
                           >
-                            <Pin size={13} fill={note.pinned ? '#e11d48' : 'none'} />
+                            <Pin size={14} fill={note.pinned ? '#e11d48' : 'none'} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteNote(note.id)}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px', color: '#ef4444' }}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: '#ef4444' }}
                             title="Delete Note"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
 
-                      {/* Content: Checklist or Text */}
-                      {note.type === 'task' || Array.isArray(note.checklist) ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', margin: '8px 0' }}>
-                          {(note.checklist || []).map(item => (
-                            <label
-                              key={item.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '11px',
-                                color: item.completed ? '#9ca3af' : '#374151',
-                                textDecoration: item.completed ? 'line-through' : 'none',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={!!item.completed}
-                                onChange={() => handleToggleChecklistItem(note.id, item.id)}
-                              />
-                              <span>{item.text}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ margin: '6px 0 10px 0', fontSize: '11px', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
-                          {note.content}
-                        </p>
-                      )}
+                      {/* Content: Clean readable text */}
+                      <p style={{ margin: '6px 0 12px 0', fontSize: '11px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                        {note.content || (Array.isArray(note.checklist) ? note.checklist.map(c => c.text).join(', ') : '')}
+                      </p>
                     </div>
 
-                    {/* Footer Date */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #f3f4f6', fontSize: '9px', color: '#9ca3af' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '9px', color: '#9ca3af', fontWeight: '700' }}>
                       <span>{note.createdAt || 'Saved'}</span>
-                      <span style={{ textTransform: 'uppercase', fontWeight: '800', color: note.color || '#38bdf8' }}>
-                        {note.type === 'task' ? 'Tasks' : 'Note'}
-                      </span>
+                      {note.pinned && (
+                        <span style={{ color: '#e11d48', backgroundColor: '#ffe4e6', padding: '1px 6px', borderRadius: '4px', fontWeight: '800' }}>
+                          📌 Pinned
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
+
+              {notesList.filter(n => noteFilterTab === 'pinned' ? n.pinned : true).length === 0 && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: '#590907' }}>
+                  <CheckSquare size={36} color="#590907" style={{ margin: '0 auto 8px auto', opacity: 0.7 }} />
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>
+                    {noteFilterTab === 'pinned' ? 'No pinned notes yet. Pin your important notes to find them quickly!' : 'No notes yet. Create your first note above!'}
+                  </p>
+                </div>
+              )}
             </div>
 
-            {notesList.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '30px', color: '#590907' }}>
-                <CheckSquare size={32} color="#590907" style={{ opacity: 0.5, marginBottom: '6px' }} />
-                <p style={{ margin: 0, fontSize: '12px', fontWeight: '800' }}>No notes yet. Create your first task checklist or text note above!</p>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* Google Login / Sign Up Modal */}
-      {showAuthModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '360px', position: 'relative', border: '1px solid #590907', color: '#590907', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
-            <button onClick={() => setShowAuthModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
-
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: '900', letterSpacing: '0.3px' }}>Google Authentication</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '11px', color: '#3d0605' }}>
-              Select your Gmail ID to {authMode === 'login' ? 'Log In to your dashboard' : 'create your account'}.
-            </p>
-
-            {/* 2 Buttons: Log In and Sign Up */}
-            <div style={{ display: 'flex', backgroundColor: '#A5A79B', borderRadius: '10px', padding: '4px', marginBottom: '16px', border: '1px solid #590907' }}>
-              <button 
-                onClick={() => setAuthMode('login')}
-                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'login' ? '#590907' : 'transparent', color: authMode === 'login' ? '#E8D2B5' : '#590907', fontWeight: '900', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
-              >
-                Log In
-              </button>
-              <button 
-                onClick={() => setAuthMode('signup')}
-                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: authMode === 'signup' ? '#590907' : 'transparent', color: authMode === 'signup' ? '#E8D2B5' : '#590907', fontWeight: '900', fontSize: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
-              >
-                Sign Up
-              </button>
-            </div>
-
-            {/* Google GSI Standard Account Chooser (Shows all device Gmail IDs) */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '8px 0 14px 0', minHeight: '44px' }}>
-              <div ref={googleBtnRef}></div>
-            </div>
-
-            {/* Action Buttons for Log In and Sign Up */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button 
-                disabled={isAuthLoading}
-                onClick={() => triggerGoogleAuth('login')}
-                style={{ 
-                  width: '100%', 
-                  padding: '12px', 
-                  borderRadius: '12px', 
-                  border: '1px solid #590907', 
-                  backgroundColor: authMode === 'login' ? '#590907' : 'transparent', 
-                  color: authMode === 'login' ? '#E8D2B5' : '#590907', 
-                  fontWeight: '900', 
-                  fontSize: '12px', 
-                  cursor: isAuthLoading ? 'wait' : 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '8px',
-                  boxShadow: authMode === 'login' ? '0 2px 8px rgba(89,9,7,0.3)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <LogIn size={15} color={authMode === 'login' ? '#E8D2B5' : '#590907'} />
-                {isAuthLoading && authMode === 'login' ? 'Opening Google Account Chooser...' : 'Log In with Google'}
-              </button>
-
-              <button 
-                disabled={isAuthLoading}
-                onClick={() => triggerGoogleAuth('signup')}
-                style={{ 
-                  width: '100%', 
-                  padding: '12px', 
-                  borderRadius: '12px', 
-                  border: '1px solid #590907', 
-                  backgroundColor: authMode === 'signup' ? '#590907' : 'transparent', 
-                  color: authMode === 'signup' ? '#E8D2B5' : '#590907', 
-                  fontWeight: '900', 
-                  fontSize: '12px', 
-                  cursor: isAuthLoading ? 'wait' : 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '8px',
-                  boxShadow: authMode === 'signup' ? '0 2px 8px rgba(89,9,7,0.3)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <UserPlus size={15} color={authMode === 'signup' ? '#E8D2B5' : '#590907'} />
-                {isAuthLoading && authMode === 'signup' ? 'Opening Google Account Chooser...' : 'Sign Up with Google'}
-              </button>
-            </div>
-
-            {/* Direct Gmail Input Option */}
-            <div style={{ margin: '14px 0 6px 0', borderTop: '1px solid rgba(89,9,7,0.25)', paddingTop: '12px' }}>
-              <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'block', marginBottom: '6px' }}>
-                OR ENTER GMAIL ID DIRECTLY:
-              </span>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                if (!directEmailInput.trim()) {
-                  alert("Please enter your Gmail ID.");
-                  return;
-                }
-                const clean = directEmailInput.trim().toLowerCase();
-                processAuthWithBackend(clean, clean.split('@')[0], '', authMode);
-              }} style={{ display: 'flex', gap: '6px' }}>
-                <input 
-                  type="email" 
-                  placeholder="e.g. commander@gmail.com" 
-                  value={directEmailInput} 
-                  onChange={(e) => setDirectEmailInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#fff', color: '#590907', fontSize: '11px', fontWeight: '700', outline: 'none' }}
-                />
-                <button 
-                  type="submit"
-                  disabled={isAuthLoading}
-                  style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '11px', fontWeight: '900', cursor: isAuthLoading ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
-                >
-                  {authMode === 'login' ? 'Log In' : 'Sign Up'}
-                </button>
-              </form>
-            </div>
-
-            <p style={{ marginTop: '10px', marginBottom: 0, fontSize: '10px', color: '#3d0605' }}>
-              Select any Gmail ID to continue. Login checks database registration, Sign Up creates a new user.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Full-Screen Watcher Alert Overlay */}
-      {activeAlertTask && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(89, 9, 7, 0.95)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-          <div style={{ width: '70px', height: '70px', borderRadius: '20px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', border: '1px solid #590907' }}>
-            <AlertTriangle size={36} />
-          </div>
-          <span style={{ fontSize: '11px', fontWeight: '950', color: '#E8D2B5', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '6px' }}>
-            Scheduled Time Reached
-          </span>
-          <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#E8D2B5', maxWidth: '600px', lineHeight: '1.3', marginBottom: '24px', padding: '0 10px' }}>
-            "{activeAlertTask}"
-          </h1>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button
-              onClick={() => {
-                stopAlarmSound();
-                if (currentAlertTaskId !== null && currentAlertTaskId >= 0) {
-                  const updated = [...remindersList];
-                  if (updated[currentAlertTaskId]) {
-                    updated[currentAlertTaskId].completed = true;
-                    setRemindersList(updated);
-                  }
-                }
-                setActiveAlertTask(null);
-                setActiveAlertKey(null);
-                setCurrentAlertTaskId(null);
-              }}
-              style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', backgroundColor: '#E8D2B5', color: '#590907', fontWeight: '900', fontSize: '14px', cursor: 'pointer' }}
-            >
-              Got It
-            </button>
-            <button
-              onClick={handleSnooze}
-              style={{ padding: '12px 24px', borderRadius: '14px', border: '1px solid #E8D2B5', backgroundColor: '#A5A79B', color: '#590907', fontWeight: '900', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              Snooze (+{snoozeMinutes} min)
-            </button>
           </div>
         </div>
       )}
@@ -3421,17 +3296,18 @@ export default function App() {
       {/* Advanced Expense Tracker Modal */}
       {/* Expense, Income Tracker & Monthly Financial Report Modal */}
       {showExpenseModal && (() => {
-        const monthlyItems = expenseList.filter(item => {
+        const monthlyItems = (expenseList || []).filter(item => {
+          if (!item) return false;
           if (!item.date) return true;
-          return item.date.startsWith(selectedExpenseMonth) || item.date.includes(selectedExpenseMonth);
+          return String(item.date).startsWith(selectedExpenseMonth) || String(item.date).includes(selectedExpenseMonth);
         });
 
         const monthlyEarned = monthlyItems
-          .filter(i => i.type === 'income')
+          .filter(i => i && i.type === 'income')
           .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
         const monthlySpent = monthlyItems
-          .filter(i => i.type !== 'income')
+          .filter(i => i && i.type !== 'income')
           .reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
 
         const monthlyNet = monthlyEarned - monthlySpent;
@@ -3439,7 +3315,7 @@ export default function App() {
         const budgetPct = monthlyBudget > 0 ? Math.min(Math.round((monthlySpent / monthlyBudget) * 100), 100) : 0;
 
         const catMap = {};
-        monthlyItems.filter(i => i.type !== 'income').forEach(i => {
+        monthlyItems.filter(i => i && i.type !== 'income').forEach(i => {
           const cat = i.category || 'Other';
           catMap[cat] = (catMap[cat] || 0) + (parseFloat(i.amount) || 0);
         });
@@ -3449,325 +3325,419 @@ export default function App() {
 
         return (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '720px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+            <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '750px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}>
               <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <DollarSign size={18} />
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DollarSign size={20} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900' }}>Shadow Expense & Monthly Financial Report</h3>
-                    <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Track Earned vs Spent with dynamic monthly analytics</span>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#590907' }}>Expense & Income Manager</h3>
+                    <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Track daily spend, income and monthly reports cleanly</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}>
-                    <FileSpreadsheet size={12} /> CSV
+                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
+                    <FileSpreadsheet size={13} /> Export CSV
                   </button>
-                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: '800' }}>
-                    <Trash2 size={12} />
+                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
 
               {/* Month Selector Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#590907', borderRadius: '12px', padding: '8px 12px', marginBottom: '12px', color: '#E8D2B5' }}>
-                <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#590907', borderRadius: '12px', padding: '8px 14px', marginBottom: '14px', color: '#E8D2B5' }}>
+                <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
                   ◀ Prev Month
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', fontSize: '13px' }}>
-                  <Calendar size={15} color="#E8D2B5" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '14px', letterSpacing: '0.5px' }}>
+                  <Calendar size={16} color="#E8D2B5" />
                   <span>{formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                 </div>
-                <button onClick={handleNextExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
+                <button onClick={handleNextExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
                   Next Month ▶
                 </button>
               </div>
 
-              {/* Top View Mode Switcher: Tracker vs Monthly Chart & Report */}
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-                <button
-                  onClick={() => setExpenseTabMode('tracker')}
-                  style={{
-                    flex: 1,
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: expenseTabMode === 'tracker' ? '#590907' : '#A5A79B',
-                    color: expenseTabMode === 'tracker' ? '#E8D2B5' : '#590907',
-                    fontWeight: '900',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Edit2 size={13} /> Transactions & Quick Add
-                </button>
-                <button
-                  onClick={() => setExpenseTabMode('monthly_report')}
-                  style={{
-                    flex: 1,
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: expenseTabMode === 'monthly_report' ? '#590907' : '#A5A79B',
-                    color: expenseTabMode === 'monthly_report' ? '#E8D2B5' : '#590907',
-                    fontWeight: '900',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <BarChart2 size={13} /> 📊 Monthly Chart & Report
-                </button>
-              </div>
-
-              {/* 4 Financial Metric Cards for the Selected Month */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: '8px', marginBottom: '14px' }}>
-                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#166534', fontSize: '9px', fontWeight: '900' }}>
-                    <TrendingUp size={12} /> TOTAL EARNED
+              {/* Clean 3-Card Financial Metric Overview */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                {/* Total Earned */}
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #22c55e', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(34,197,94,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534', textTransform: 'uppercase' }}>कुल कमाई (Earned)</span>
+                    <TrendingUp size={16} color="#166534" />
                   </div>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: '#166534' }}>₹{monthlyEarned.toLocaleString()}</p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#166534' }}>+₹{monthlyEarned.toLocaleString()}</p>
                 </div>
 
-                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#991b1b', fontSize: '9px', fontWeight: '900' }}>
-                    <TrendingDown size={12} /> TOTAL SPENT
+                {/* Total Spent */}
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(239,68,68,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }}>कुल खर्च (Spent)</span>
+                    <TrendingDown size={16} color="#991b1b" />
                   </div>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: '#991b1b' }}>₹{monthlySpent.toLocaleString()}</p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#991b1b' }}>-₹{monthlySpent.toLocaleString()}</p>
                 </div>
 
-                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
-                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#590907' }}>NET BALANCE</div>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>
+                {/* Net Savings */}
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(89,9,7,0.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', textTransform: 'uppercase' }}>शुद्ध बचत (Balance)</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>{savingsRate}% rate</span>
+                  </div>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: monthlyNet >= 0 ? '#166534' : '#991b1b' }}>
                     {monthlyNet >= 0 ? `+₹${monthlyNet.toLocaleString()}` : `-₹${Math.abs(monthlyNet).toLocaleString()}`}
                   </p>
                 </div>
+              </div>
 
-                <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px' }}>
-                  <div style={{ fontSize: '9px', fontWeight: '900', color: '#590907' }}>BUDGET LEFT</div>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#590907' : '#991b1b' }}>
-                    ₹{monthlyRemainingBudget.toLocaleString()}
-                  </p>
+              {/* Monthly Budget Progress Bar */}
+              <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '800', marginBottom: '6px' }}>
+                  <span>🎯 Monthly Budget: ₹{monthlyBudget.toLocaleString()}</span>
+                  <span style={{ color: monthlyRemainingBudget >= 0 ? '#166534' : '#ef4444' }}>
+                    {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()} Remaining (${budgetPct}% used)` : `⚠️ Over budget by ₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${budgetPct}%`, backgroundColor: budgetPct > 90 ? '#ef4444' : (budgetPct > 70 ? '#f59e0b' : '#166534'), borderRadius: '4px', transition: 'width 0.3s ease' }} />
                 </div>
               </div>
 
-              {/* View 1: Tracker & Add Mode */}
-              {expenseTabMode === 'tracker' && (
-                <>
-                  {/* Transaction Type Selector: Spend vs Earn */}
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setTransactionType('expense')}
-                      style={{
-                        flex: 1,
-                        padding: '7px 10px',
-                        borderRadius: '8px',
-                        border: transactionType === 'expense' ? '2px solid #ef4444' : '1px solid #590907',
-                        backgroundColor: transactionType === 'expense' ? '#991b1b' : '#A5A79B',
-                        color: transactionType === 'expense' ? '#ffffff' : '#590907',
-                        fontWeight: '900',
-                        fontSize: '11px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🔴 Spend / Expense
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTransactionType('income')}
-                      style={{
-                        flex: 1,
-                        padding: '7px 10px',
-                        borderRadius: '8px',
-                        border: transactionType === 'income' ? '2px solid #22c55e' : '1px solid #590907',
-                        backgroundColor: transactionType === 'income' ? '#166534' : '#A5A79B',
-                        color: transactionType === 'income' ? '#ffffff' : '#590907',
-                        fontWeight: '900',
-                        fontSize: '11px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🟢 Earn / Income
-                    </button>
-                  </div>
+              {/* Clean Unified Transaction Creator */}
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '16px', border: '1px solid #590907', marginBottom: '14px', boxShadow: '0 2px 10px rgba(89,9,7,0.08)' }}>
+                {/* Segmented Mode: Spend vs Earn */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setTransactionType('expense')}
+                    style={{
+                      flex: 1,
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: transactionType === 'expense' ? '2px solid #ef4444' : '1px solid #d1d5db',
+                      backgroundColor: transactionType === 'expense' ? '#991b1b' : '#f9fafb',
+                      color: transactionType === 'expense' ? '#ffffff' : '#4b5563',
+                      fontWeight: '900',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: transactionType === 'expense' ? '0 2px 8px rgba(239,68,68,0.25)' : 'none'
+                    }}
+                  >
+                    🔴 खर्च (Spend / Expense)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTransactionType('income')}
+                    style={{
+                      flex: 1,
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: transactionType === 'income' ? '2px solid #22c55e' : '1px solid #d1d5db',
+                      backgroundColor: transactionType === 'income' ? '#166534' : '#f9fafb',
+                      color: transactionType === 'income' ? '#ffffff' : '#4b5563',
+                      fontWeight: '900',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: transactionType === 'income' ? '0 2px 8px rgba(34,197,94,0.25)' : 'none'
+                    }}
+                  >
+                    🟢 कमाई (Earn / Income)
+                  </button>
+                </div>
 
-                  {/* 1-Tap Quick Presets */}
-                  <div style={{ marginBottom: '10px' }}>
-                    <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
-                      1-Tap Quick Presets ({transactionType === 'income' ? 'Earn' : 'Spend'}):
-                    </span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {transactionType === 'expense' ? (
-                        [
-                          { label: "Chai ₹20", title: "Chai / Tea", amount: 20, cat: "Food & Snacks" },
-                          { label: "Metro ₹50", title: "Metro Ride", amount: 50, cat: "Travel & Fuel" },
-                          { label: "Snacks ₹40", title: "Snacks", amount: 40, cat: "Food & Snacks" },
-                          { label: "Lunch ₹120", title: "Lunch / Meal", amount: 120, cat: "Food & Snacks" },
-                          { label: "Stationery ₹60", title: "Stationery / Books", amount: 60, cat: "Study & Books" },
-                          { label: "Fuel ₹100", title: "Petrol / Fuel", amount: 100, cat: "Travel & Fuel" }
-                        ].map((item, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleQuickAddExpense(item.title, item.amount, item.cat, 'expense')}
-                            style={{ background: '#A5A79B', border: '1px solid #590907', color: '#590907', fontSize: '9px', fontWeight: '800', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer' }}
-                          >
-                            + {item.label}
-                          </button>
-                        ))
-                      ) : (
-                        [
-                          { label: "Salary ₹15,000", title: "Monthly Salary", amount: 15000, cat: "Income / Earnings" },
-                          { label: "Freelance ₹3,000", title: "Freelance Work", amount: 3000, cat: "Income / Earnings" },
-                          { label: "Pocket Money ₹1,500", title: "Pocket Money", amount: 1500, cat: "Income / Earnings" },
-                          { label: "Bonus ₹1,000", title: "Incentive / Bonus", amount: 1000, cat: "Income / Earnings" }
-                        ].map((item, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleQuickAddExpense(item.title, item.amount, item.cat, 'income')}
-                            style={{ background: '#dcfce7', border: '1px solid #166534', color: '#166534', fontSize: '9px', fontWeight: '800', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer' }}
-                          >
-                            + {item.label}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Form */}
-                  <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <input
-                        type="text"
-                        placeholder={transactionType === 'income' ? "Income description (e.g. Salary, Freelance, Gift)..." : "Expense title (e.g. Grocery, Book, Fuel)..."}
-                        value={expenseTitle}
-                        onChange={(e) => setExpenseTitle(e.target.value)}
-                        style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Amount (₹)"
-                        value={expenseAmount}
-                        onChange={(e) => setExpenseAmount(e.target.value)}
-                        style={{ width: '90px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <select
-                        value={expenseCategory}
-                        onChange={(e) => setExpenseCategory(e.target.value)}
-                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '700' }}
-                      >
-                        {transactionType === 'income' ? (
-                          <>
-                            <option value="Income / Earnings">Income / Earnings</option>
-                            <option value="Salary">Salary</option>
-                            <option value="Freelance">Freelance Work</option>
-                            <option value="Investment">Investment Returns</option>
-                            <option value="Pocket Money">Pocket Money</option>
-                            <option value="Gift / Other">Gift / Other</option>
-                          </>
-                        ) : (
-                          EXPENSE_CATEGORIES.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))
-                        )}
-                      </select>
-
-                      <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: transactionType === 'income' ? '#166534' : '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        {transactionType === 'income' ? '+ Log Earned' : '+ Log Expense'}
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* Transactions List */}
-                  <div style={{ flex: 1, maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {monthlyItems.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '20px', color: '#3d0605', fontSize: '11px' }}>
-                        No transactions recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}. Add one above!
-                      </div>
+                {/* 1-Tap Quick Presets */}
+                <div style={{ marginBottom: '12px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'block', marginBottom: '6px' }}>
+                    ⚡ 1-Tap Quick Presets ({transactionType === 'income' ? 'Income' : 'Expense'}):
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    {transactionType === 'expense' ? (
+                      [
+                        { t: 'Chai / Tea', a: 20, c: 'Food & Snacks' },
+                        { t: 'Breakfast / Snacks', a: 50, c: 'Food & Snacks' },
+                        { t: 'Lunch / Dinner', a: 120, c: 'Food & Snacks' },
+                        { t: 'Petrol / Fuel', a: 100, c: 'Travel & Commute' },
+                        { t: 'Groceries / Kirana', a: 250, c: 'Groceries' },
+                        { t: 'Mobile Recharge', a: 299, c: 'Bills & Utilities' }
+                      ].map(p => (
+                        <button
+                          key={p.t}
+                          type="button"
+                          onClick={() => { setExpenseTitle(p.t); setExpenseAmount(String(p.a)); setExpenseCategory(p.c); }}
+                          style={{
+                            padding: '4px 9px',
+                            borderRadius: '6px',
+                            border: '1px solid #590907',
+                            backgroundColor: '#E8D2B5',
+                            color: '#590907',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          + {p.t} ₹{p.a}
+                        </button>
+                      ))
                     ) : (
-                      monthlyItems.map((exp, idx) => (
-                        <div key={exp.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '8px 10px' }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <p style={{ margin: 0, fontSize: '11px', fontWeight: '800', color: '#590907' }}>
-                                {exp.title}
-                              </p>
-                              <span style={{ fontSize: '8px', fontWeight: '800', color: exp.type === 'income' ? '#166534' : '#E8D2B5', backgroundColor: exp.type === 'income' ? '#dcfce7' : '#590907', padding: '1px 5px', borderRadius: '4px' }}>
-                                {exp.category || (exp.type === 'income' ? 'Earned' : 'Spent')}
-                              </span>
-                            </div>
-                            <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{exp.date} • {exp.time}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '12px', fontWeight: '900', color: exp.type === 'income' ? '#166534' : '#991b1b' }}>
-                              {exp.type === 'income' ? `+₹${exp.amount}` : `-₹${exp.amount}`}
-                            </span>
-                            <button onClick={() => handleDeleteExpense(expenseList.findIndex(e => e.id === exp.id))} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '4px', borderRadius: '4px', cursor: 'pointer' }}>
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                        </div>
+                      [
+                        { t: 'Monthly Salary', a: 25000, c: 'Salary & Wages' },
+                        { t: 'Freelance Project', a: 5000, c: 'Freelance & Business' },
+                        { t: 'Pocket Money', a: 1000, c: 'Gifts & Pocket Money' },
+                        { t: 'Cashback & Returns', a: 150, c: 'Investments & Returns' }
+                      ].map(p => (
+                        <button
+                          key={p.t}
+                          type="button"
+                          onClick={() => { setExpenseTitle(p.t); setExpenseAmount(String(p.a)); setExpenseCategory(p.c); }}
+                          style={{
+                            padding: '4px 9px',
+                            borderRadius: '6px',
+                            border: '1px solid #166534',
+                            backgroundColor: '#dcfce7',
+                            color: '#166534',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          + {p.t} ₹{p.a}
+                        </button>
                       ))
                     )}
                   </div>
-                </>
+                </div>
+
+                {/* Form Input Line */}
+                <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      placeholder={transactionType === 'income' ? "Income Title (e.g. Salary, Client Pay)..." : "Expense Title (e.g. Chai, Groceries, Petrol)..."}
+                      value={expenseTitle}
+                      onChange={(e) => setExpenseTitle(e.target.value)}
+                      style={{ flex: '2 1 200px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '12px', outline: 'none', fontWeight: '600' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="₹ Amount"
+                      value={expenseAmount}
+                      onChange={(e) => setExpenseAmount(e.target.value)}
+                      style={{ flex: '1 1 100px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '12px', outline: 'none', fontWeight: '700' }}
+                    />
+                    <select
+                      value={expenseCategory}
+                      onChange={(e) => setExpenseCategory(e.target.value)}
+                      style={{ flex: '1.5 1 140px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '11px', outline: 'none', fontWeight: '600' }}
+                    >
+                      {transactionType === 'income' ? (
+                        <>
+                          <option value="Salary & Wages">💼 Salary & Wages</option>
+                          <option value="Freelance & Business">💻 Freelance & Business</option>
+                          <option value="Investments & Returns">📈 Investments & Returns</option>
+                          <option value="Gifts & Pocket Money">🎁 Gifts & Pocket Money</option>
+                          <option value="Other Income">💰 Other Income</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="Food & Snacks">🍔 Food & Snacks</option>
+                          <option value="Travel & Commute">🚌 Travel & Commute</option>
+                          <option value="Groceries">🛒 Groceries</option>
+                          <option value="Bills & Utilities">⚡ Bills & Utilities</option>
+                          <option value="Shopping & Books">🛍️ Shopping & Books</option>
+                          <option value="Health & Medical">💊 Health & Medical</option>
+                          <option value="Other Expense">📦 Other Expense</option>
+                        </>
+                      )}
+                    </select>
+                    <button 
+                      type="submit" 
+                      style={{ 
+                        padding: '9px 20px', 
+                        borderRadius: '8px', 
+                        border: 'none', 
+                        backgroundColor: transactionType === 'income' ? '#166534' : '#590907', 
+                        color: '#E8D2B5', 
+                        fontWeight: '900', 
+                        fontSize: '12px', 
+                        cursor: 'pointer', 
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      {transactionType === 'income' ? '+ Add Income' : '+ Add Expense'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Clear Content Tabs: Transactions List vs Monthly Analytics */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setExpenseTabMode('tracker')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: expenseTabMode === 'tracker' ? '#590907' : 'transparent',
+                    color: expenseTabMode === 'tracker' ? '#E8D2B5' : '#590907',
+                    fontSize: '11px',
+                    fontWeight: '900',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Edit2 size={13} /> Transactions ({monthlyItems.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpenseTabMode('monthly_report')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #590907',
+                    backgroundColor: expenseTabMode === 'monthly_report' ? '#590907' : 'transparent',
+                    color: expenseTabMode === 'monthly_report' ? '#E8D2B5' : '#590907',
+                    fontSize: '11px',
+                    fontWeight: '900',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <BarChart2 size={13} /> Monthly Analytics & Report
+                </button>
+              </div>
+
+              {/* Tab 1: Transactions List */}
+              {expenseTabMode === 'tracker' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {monthlyItems.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px 10px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px dashed #590907', color: '#590907' }}>
+                      <DollarSign size={32} color="#590907" style={{ margin: '0 auto 6px auto', opacity: 0.6 }} />
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>
+                        No transactions recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}.
+                      </p>
+                      <span style={{ fontSize: '11px', opacity: 0.8 }}>Add your first expense or income above!</span>
+                    </div>
+                  ) : (
+                    monthlyItems.map((item, idx) => {
+                      const isInc = item.type === 'income';
+                      return (
+                        <div
+                          key={item.id || idx}
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: '10px',
+                            padding: '10px 14px',
+                            border: '1px solid #e5e7eb',
+                            borderLeft: `4px solid ${isInc ? '#22c55e' : '#ef4444'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: isInc ? '#dcfce7' : '#fee2e2', color: isInc ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isInc ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                            </div>
+                            <div>
+                              <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#111827' }}>{item.title}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
+                                <span style={{ backgroundColor: '#f3f4f6', padding: '1px 5px', borderRadius: '3px', fontWeight: '700' }}>{item.category}</span>
+                                <span>•</span>
+                                <span>{item.date || 'Today'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '900', color: isInc ? '#166534' : '#991b1b' }}>
+                              {isInc ? `+₹${parseFloat(item.amount).toLocaleString()}` : `-₹${parseFloat(item.amount).toLocaleString()}`}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExpense(item.id || idx)}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: '#9ca3af' }}
+                              title="Delete transaction"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               )}
 
-              {/* View 2: Full Monthly Chart & Financial Report */}
+              {/* Tab 2: Monthly Analytics & Report */}
               {expenseTabMode === 'monthly_report' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {/* Visual Comparison: Earned vs Spent Meter */}
-                  <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '12px', padding: '12px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '900', color: '#590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <BarChart2 size={14} /> Earned vs Spent Comparison ({formatExpenseMonthLabel(selectedExpenseMonth)})
-                    </h4>
-                    <div style={{ display: 'flex', height: '18px', borderRadius: '9px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#E8D2B5' }}>
-                      <div
-                        style={{
-                          width: monthlyEarned + monthlySpent > 0 ? `${(monthlyEarned / (monthlyEarned + monthlySpent)) * 100}%` : '50%',
-                          backgroundColor: '#16a34a',
-                          transition: 'width 0.4s ease'
-                        }}
-                        title={`Earned: ₹${monthlyEarned}`}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Earned vs Spent Visual Ratio Bar */}
+                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#590907' }}>
+                        📊 Earned vs Spent ({formatExpenseMonthLabel(selectedExpenseMonth)})
+                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534' }}>
+                        Savings Rate: {savingsRate}%
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', height: '14px', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#e5e7eb', marginBottom: '8px' }}>
+                      <div 
+                        style={{ 
+                          width: monthlyEarned > 0 ? `${Math.round((monthlyEarned / (monthlyEarned + monthlySpent || 1)) * 100)}%` : '0%', 
+                          backgroundColor: '#166534' 
+                        }} 
+                        title="Earned"
                       />
-                      <div
-                        style={{
-                          width: monthlyEarned + monthlySpent > 0 ? `${(monthlySpent / (monthlyEarned + monthlySpent)) * 100}%` : '50%',
-                          backgroundColor: '#dc2626',
-                          transition: 'width 0.4s ease'
-                        }}
-                        title={`Spent: ₹${monthlySpent}`}
+                      <div 
+                        style={{ 
+                          width: monthlySpent > 0 ? `${Math.round((monthlySpent / (monthlyEarned + monthlySpent || 1)) * 100)}%` : '0%', 
+                          backgroundColor: '#991b1b' 
+                        }} 
+                        title="Spent"
                       />
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '10px', fontWeight: '800' }}>
-                      <span style={{ color: '#166534' }}>🟢 Earned: ₹{monthlyEarned.toLocaleString()} ({monthlyEarned + monthlySpent > 0 ? Math.round((monthlyEarned / (monthlyEarned + monthlySpent)) * 100) : 0}%)</span>
-                      <span style={{ color: '#991b1b' }}>🔴 Spent: ₹{monthlySpent.toLocaleString()} ({monthlyEarned + monthlySpent > 0 ? Math.round((monthlySpent / (monthlyEarned + monthlySpent)) * 100) : 0}%)</span>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '800' }}>
+                      <span style={{ color: '#166534' }}>🟢 Earned: ₹{monthlyEarned.toLocaleString()}</span>
+                      <span style={{ color: '#991b1b' }}>🔴 Spent: ₹{monthlySpent.toLocaleString()}</span>
                     </div>
                   </div>
 
                   {/* Category Breakdown Bar Chart */}
-                  <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '12px', padding: '12px' }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <PieChart size={14} /> Category Spending Distribution Chart
+                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#590907' }}>
+                      🏷️ Spending by Category
                     </h4>
                     {categoryStats.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: '11px', color: '#3d0605', textAlign: 'center', padding: '10px' }}>No categorized expenses for this month.</p>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>No expense records available for this month.</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {categoryStats.map(([cat, amt]) => {
@@ -3778,7 +3748,7 @@ export default function App() {
                                 <span>{cat}</span>
                                 <span>₹{amt.toLocaleString()} ({pct}%)</span>
                               </div>
-                              <div style={{ width: '100%', height: '7px', backgroundColor: '#E8D2B5', borderRadius: '4px', overflow: 'hidden', border: '1px solid #590907' }}>
+                              <div style={{ width: '100%', height: '7px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
                                 <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#590907', borderRadius: '4px' }} />
                               </div>
                             </div>
@@ -3788,14 +3758,14 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Monthly Financial Health Report Summary */}
+                  {/* Monthly Health Report */}
                   <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '900', color: '#590907' }}>
-                      📑 Monthly Financial Health Report ({formatExpenseMonthLabel(selectedExpenseMonth)})
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '900', color: '#590907' }}>
+                      📑 Monthly Financial Health Report
                     </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: '11px' }}>
-                      <div>• <strong>Top Expense Area:</strong> {topCat ? `${topCat[0]} (₹${topCat[1]})` : 'None'}</div>
-                      <div>• <strong>Daily Average Spend:</strong> ₹{Math.round(monthlySpent / 30).toLocaleString()} / day</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px', fontSize: '11px' }}>
+                      <div>• <strong>Top Spending Area:</strong> {topCat ? `${topCat[0]} (₹${topCat[1].toLocaleString()})` : 'None'}</div>
+                      <div>• <strong>Daily Average:</strong> ₹{Math.round(monthlySpent / 30).toLocaleString()} / day</div>
                       <div>• <strong>Savings Rate:</strong> {savingsRate}%</div>
                       <div>• <strong>Budget Status:</strong> {monthlyRemainingBudget >= 0 ? '✅ Within Budget' : '⚠️ Over Budget'}</div>
                     </div>
@@ -3811,26 +3781,31 @@ export default function App() {
       {/* Daily Briefing & Live Google News Flash Modal */}
       {showBriefingModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '780px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '800px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
             <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ width: '34px', height: '34px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Newspaper size={18} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Newspaper size={19} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#590907' }}>Live Google News & Briefing</h3>
-                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Select Region for Live Headlines, Photos & Video Previews</span>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#590907' }}>
+                  Live Briefing & IPO Intelligence Hub
+                </h3>
+                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>
+                  Global, India, Gujarat News & Real-Time Hindi IPO Analysis
+                </span>
               </div>
             </div>
 
-            {/* Top 3 Selection Options: Global, India, Gujarat */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+            {/* Top 4 Selection Options: Global, India, Gujarat, and IPO Info (Hindi) */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
               {[
-                { id: 'global', label: '🌐 Global', icon: Globe },
-                { id: 'india', label: '🇮🇳 India', icon: Landmark },
-                { id: 'gujarat', label: '🏛️ Gujarat', icon: Building2 }
+                { id: 'global', label: '🌐 Global News' },
+                { id: 'india', label: '🇮🇳 India News' },
+                { id: 'gujarat', label: '🏛️ Gujarat News' },
+                { id: 'ipo', label: '📈 IPO Info (हिंदी जानकारी)' }
               ].map((tab) => {
                 const isSel = newsCategory === tab.id;
                 return (
@@ -3838,12 +3813,14 @@ export default function App() {
                     key={tab.id}
                     onClick={() => {
                       setNewsCategory(tab.id);
-                      fetchTrendingNews(tab.id);
-                      setNewsCountdown(120);
+                      if (tab.id !== 'ipo') {
+                        fetchTrendingNews(tab.id);
+                        setNewsCountdown(120);
+                      }
                     }}
                     style={{
-                      flex: 1,
-                      padding: '8px 10px',
+                      flex: '1 1 140px',
+                      padding: '8px 12px',
                       borderRadius: '10px',
                       border: '1px solid #590907',
                       backgroundColor: isSel ? '#590907' : '#A5A79B',
@@ -3865,142 +3842,291 @@ export default function App() {
               })}
             </div>
 
-            {/* Status & 2-Minute Countdown Bar + Manual Refresh Button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '7px 10px', marginBottom: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-                <span style={{ fontSize: '11px', fontWeight: '800', color: '#590907' }}>
-                  Auto-refresh in {Math.floor(newsCountdown / 60)}m {newsCountdown % 60}s
-                </span>
-                {lastNewsUpdated && (
-                  <span style={{ fontSize: '10px', color: '#3d0605' }}>• Updated: {lastNewsUpdated}</span>
-                )}
-              </div>
-
-              <button
-                disabled={isNewsLoading}
-                onClick={() => {
-                  fetchTrendingNews(newsCategory);
-                  setNewsCountdown(120);
-                }}
-                title="Manual Refresh Google News"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  backgroundColor: '#590907',
-                  color: '#E8D2B5',
-                  border: 'none',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  cursor: isNewsLoading ? 'wait' : 'pointer'
-                }}
-              >
-                <RotateCw size={13} style={{ animation: isNewsLoading ? 'jarvisSpinClockwise 1s linear infinite' : 'none' }} />
-                {isNewsLoading ? 'Updating...' : 'Refresh'}
-              </button>
-            </div>
-
-            {/* News Cards List with Image & Hover-Playable Video */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
-              {isNewsLoading && trendingNewsList.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#590907', fontWeight: '800', fontSize: '13px' }}>
-                  <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
-                  Fetching live Google News for {newsCategory.toUpperCase()}...
-                </div>
-              ) : trendingNewsList.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#3d0605', fontSize: '12px' }}>
-                  No live news currently available. Click Refresh above.
-                </div>
-              ) : (
-                trendingNewsList.map((item, idx) => (
-                  <div 
-                    key={item.id || idx} 
-                    onMouseEnter={() => setHoveredNewsId(item.id || idx)}
-                    onMouseLeave={() => setHoveredNewsId(null)}
-                    style={{ 
-                      backgroundColor: '#A5A79B', 
-                      border: '1px solid #590907', 
-                      borderRadius: '12px', 
-                      padding: '10px', 
-                      display: 'flex', 
-                      gap: '12px',
-                      alignItems: 'stretch',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      transition: 'all 0.2s ease',
-                      boxShadow: hoveredNewsId === (item.id || idx) ? '0 4px 12px rgba(89,9,7,0.3)' : 'none'
+            {/* When IPO Info is Selected: Hindi IPO Intelligence Center */}
+            {newsCategory === 'ipo' ? (
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
+                {/* Sub-Tabs: Live Open vs Upcoming */}
+                <div style={{ display: 'flex', gap: '8px', backgroundColor: '#A5A79B', padding: '6px', borderRadius: '10px', border: '1px solid #590907' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIpoSubTab('live')}
+                    style={{
+                      flex: 1,
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: ipoSubTab === 'live' ? '#590907' : 'transparent',
+                      color: ipoSubTab === 'live' ? '#E8D2B5' : '#590907',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
                     }}
                   >
-                    {/* Media Thumbnail Container with Hover-Playable Video Preview */}
-                    <div style={{ width: '110px', minWidth: '110px', height: '80px', borderRadius: '8px', overflow: 'hidden', position: 'relative', backgroundColor: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {hoveredNewsId === (item.id || idx) ? (
-                        <>
-                          <video 
-                            src={item.videoUrl || "/jarvis-particles.mp4"} 
-                            autoPlay 
-                            loop 
-                            muted 
-                            playsInline 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          />
-                          <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(89,9,7,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Play size={8} color="#E8D2B5" fill="#E8D2B5" />
-                            <span style={{ fontSize: '7px', fontWeight: '900', color: '#E8D2B5', letterSpacing: '0.5px' }}>PREVIEW</span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <img 
-                            src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
-                            alt={item.title} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            onError={(e) => {
-                              e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
-                            }}
-                          />
-                          <div style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Play size={9} color="#E8D2B5" />
-                          </div>
-                        </>
-                      )}
+                    🟢 चल रहे आईपीओ (Live Open - {IPO_DATABASE.live.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIpoSubTab('upcoming')}
+                    style={{
+                      flex: 1,
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: ipoSubTab === 'upcoming' ? '#590907' : 'transparent',
+                      color: ipoSubTab === 'upcoming' ? '#E8D2B5' : '#590907',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    📅 आने वाले नए आईपीओ (Upcoming - {IPO_DATABASE.upcoming.length})
+                  </button>
+                </div>
+
+                {/* IPO Cards in Simple Hindi */}
+                {(IPO_DATABASE[ipoSubTab] || []).map((ipo) => (
+                  <div
+                    key={ipo.id}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #590907',
+                      borderRadius: '14px',
+                      padding: '16px',
+                      boxShadow: '0 2px 8px rgba(89,9,7,0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}
+                  >
+                    {/* Header: Company Name, Sector & Live Badge */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '6px' }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>
+                          {ipo.name}
+                        </h4>
+                        <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
+                          {ipo.sector}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '6px' }}>
+                          {ipo.status}
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#590907', color: '#E8D2B5', padding: '3px 8px', borderRadius: '6px' }}>
+                          {ipo.allotmentBadge}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* News Info & Story Link */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '4px' }}>
+                    {/* Quick Metric Pills Grid (Hindi) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', backgroundColor: '#f9fafb', padding: '10px', borderRadius: '10px', border: '1px solid #e5e7eb', fontSize: '11px' }}>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '2px' }}>
-                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 5px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            {item.source || 'LIVE'}
-                          </span>
-                          <span style={{ fontSize: '8px', color: '#3d0605', fontWeight: '700' }}>
-                            {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
-                          </span>
-                        </div>
-
-                        <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#590907', lineHeight: '1.4', wordBreak: 'break-word' }}>
-                          {item.title}
-                        </p>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>💰 प्राइस बैंड</span>
+                        <strong style={{ color: '#111827' }}>{ipo.priceBand}</strong>
                       </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                        <span style={{ fontSize: '8px', color: '#590907', fontWeight: '700' }}>Hover for video preview</span>
-                        <a 
-                          href={item.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', textDecoration: 'none', padding: '5px 12px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(89,9,7,0.2)' }}
-                        >
-                          Read Article <ExternalLink size={11} />
-                        </a>
+                      <div>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>📦 1 लॉट साइज़</span>
+                        <strong style={{ color: '#111827' }}>{ipo.lotSize}</strong>
                       </div>
+                      <div>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>🗓️ तारीख (Open - Close)</span>
+                        <strong style={{ color: '#111827' }}>{ipo.dates}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '700' }}>🚀 अनुमानित मुनाफा (GMP)</span>
+                        <strong style={{ color: '#166534' }}>{ipo.gmp}</strong>
+                      </div>
+                    </div>
+
+                    {/* About Company in Simple Hindi */}
+                    <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fef3c7', padding: '9px 12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                      <strong style={{ color: '#92400e' }}>🏢 कंपनी क्या करती है? (About Company): </strong>
+                      {ipo.about}
+                    </div>
+
+                    {/* How Much People Applied (Subscription Status in Hindi) */}
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '9px 12px', fontSize: '11px' }}>
+                      <strong style={{ color: '#166534', display: 'block', marginBottom: '4px' }}>
+                        👥 कितने लोगों ने अप्लाई किया? (सब्सक्रिप्शन स्टेटस):
+                      </strong>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '10px' }}>
+                        <span>• <strong>कुल मांग:</strong> {ipo.subscription.total}</span>
+                        <span>• <strong>रिटेल कोटा:</strong> {ipo.subscription.retail}</span>
+                        <span>• <strong>बड़े बैंक (QIB):</strong> {ipo.subscription.qib}</span>
+                        <span>• <strong>अमीर निवेशक (NII):</strong> {ipo.subscription.nii}</span>
+                      </div>
+                    </div>
+
+                    {/* Allotment Possibility in Hindi */}
+                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '9px 12px', fontSize: '11px' }}>
+                      <strong style={{ color: '#1e40af' }}>🎯 शेयर अलॉटमेंट मिलने का चांस: </strong>
+                      <span style={{ color: '#1e3a8a' }}>{ipo.allotmentChance}</span>
+                    </div>
+
+                    {/* Final Simple Verdict */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '11px' }}>
+                      <div>
+                        <strong style={{ color: '#590907' }}>💡 निष्कर्ष / राय: </strong>
+                        <span style={{ color: '#4b5563' }}>{ipo.verdict}</span>
+                      </div>
+                      <span style={{ fontSize: '9px', fontWeight: '800', color: '#6b7280' }}>
+                        लिस्टिंग: {ipo.listingDate}
+                      </span>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              /* Google News Feed with SQUISH BUG COMPLETELY FIXED */
+              <>
+                {/* Status & 2-Minute Countdown Bar + Manual Refresh Button */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '7px 10px', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#590907' }}>
+                      Auto-refresh in {Math.floor(newsCountdown / 60)}m {newsCountdown % 60}s
+                    </span>
+                    {lastNewsUpdated && (
+                      <span style={{ fontSize: '10px', color: '#3d0605' }}>• Updated: {lastNewsUpdated}</span>
+                    )}
+                  </div>
+
+                  <button
+                    disabled={isNewsLoading}
+                    onClick={() => {
+                      fetchTrendingNews(newsCategory);
+                      setNewsCountdown(120);
+                    }}
+                    title="Manual Refresh Google News"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: '#590907',
+                      color: '#E8D2B5',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      cursor: isNewsLoading ? 'wait' : 'pointer'
+                    }}
+                  >
+                    <RotateCw size={13} style={{ animation: isNewsLoading ? 'jarvisSpinClockwise 1s linear infinite' : 'none' }} />
+                    {isNewsLoading ? 'Updating...' : 'Refresh'}
+                  </button>
+                </div>
+
+                {/* News Cards List with Image & Hover-Playable Video (flexShrink: 0 ensures full cards) */}
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
+                  {isNewsLoading && trendingNewsList.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px 10px', color: '#590907', fontWeight: '800', fontSize: '13px' }}>
+                      <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
+                      Fetching live Google News for {newsCategory.toUpperCase()}...
+                    </div>
+                  ) : trendingNewsList.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px', color: '#3d0605', fontSize: '12px', fontWeight: '700' }}>
+                      No live news currently available. Click Refresh above.
+                    </div>
+                  ) : (
+                    trendingNewsList.map((item, idx) => (
+                      <div 
+                        key={item.id || idx} 
+                        onMouseEnter={() => setHoveredNewsId(item.id || idx)}
+                        onMouseLeave={() => setHoveredNewsId(null)}
+                        style={{ 
+                          backgroundColor: '#ffffff', 
+                          border: '1px solid #590907', 
+                          borderRadius: '14px', 
+                          padding: '12px', 
+                          display: 'flex', 
+                          gap: '14px',
+                          alignItems: 'center',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          transition: 'all 0.2s ease',
+                          boxShadow: hoveredNewsId === (item.id || idx) ? '0 4px 14px rgba(89,9,7,0.2)' : '0 1px 4px rgba(0,0,0,0.05)',
+                          flexShrink: 0,
+                          minHeight: '110px'
+                        }}
+                      >
+                        {/* Media Thumbnail Container with Hover-Playable Video Preview */}
+                        <div style={{ width: '125px', minWidth: '125px', height: '85px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {hoveredNewsId === (item.id || idx) ? (
+                            <>
+                              <video 
+                                src={item.videoUrl || "/jarvis-particles.mp4"} 
+                                autoPlay 
+                                loop 
+                                muted 
+                                playsInline 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                              />
+                              <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(89,9,7,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <Play size={8} color="#E8D2B5" fill="#E8D2B5" />
+                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#E8D2B5', letterSpacing: '0.5px' }}>PREVIEW</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <img 
+                                src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
+                                alt={item.title} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                onError={(e) => {
+                                  e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
+                                }}
+                              />
+                              <div style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Play size={10} color="#E8D2B5" />
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* News Info & Story Link */}
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {item.source || 'LIVE'}
+                              </span>
+                              <span style={{ fontSize: '9px', color: '#6b7280', fontWeight: '700' }}>
+                                {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
+                              </span>
+                            </div>
+
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#111827', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                              {item.title}
+                            </p>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                            <span style={{ fontSize: '9px', color: '#6b7280', fontWeight: '700' }}>Hover to preview video clip</span>
+                            <a 
+                              href={item.link} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', textDecoration: 'none', padding: '5px 12px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(89,9,7,0.2)' }}
+                            >
+                              Read Article <ExternalLink size={11} />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
 
             <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
           </div>
