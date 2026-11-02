@@ -329,6 +329,263 @@ const IPO_DATABASE = {
   ]
 };
 
+
+// Custom High-Tech Cybernetic Neural Full-Screen Startup Animation (Canvas + Sci-Fi HUD)
+const ShadowStartupAnimation = ({ onComplete }) => {
+  const canvasRef = useRef(null);
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('INITIALIZING NEURAL PATHWAYS...');
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    const handleResize = () => {
+      if (!canvas) return;
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Particle Swarm
+    const particleCount = Math.min(120, Math.floor(width / 8));
+    const particles = [];
+    const colors = ['#38bdf8', '#0284c7', '#2563eb', '#60a5fa', '#a855f7', '#ffffff'];
+
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 60 + Math.random() * (Math.min(width, height) * 0.45);
+      particles.push({
+        x: width / 2 + Math.cos(angle) * dist,
+        y: height / 2 + Math.sin(angle) * dist,
+        baseAngle: angle,
+        baseDist: dist,
+        speed: 0.01 + Math.random() * 0.02,
+        size: 1 + Math.random() * 2.2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        pulse: Math.random() * Math.PI
+      });
+    }
+
+    let ringRotation1 = 0;
+    let ringRotation2 = 0;
+    let corePulse = 0;
+    let startTime = Date.now();
+    const duration = 2800; // 2.8 seconds total
+
+    const render = () => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, Math.floor((elapsed / duration) * 100));
+      setProgress(pct);
+
+      if (pct < 25) {
+        setStatusText('INITIALIZING NEURAL SYNAPSE MATRIX...');
+      } else if (pct < 55) {
+        setStatusText('CONNECTING GUJARAT RADAR & WATCHER...');
+      } else if (pct < 85) {
+        setStatusText('SYNCHRONIZING CLOUD TELEMETRY...');
+      } else {
+        setStatusText('SYSTEM ARMED • ACCESS GRANTED COMMANDER');
+      }
+
+      if (elapsed >= duration) {
+        onComplete();
+        return;
+      }
+
+      ctx.fillStyle = 'rgba(5, 7, 14, 0.28)';
+      ctx.fillRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2;
+
+      ringRotation1 += 0.015;
+      ringRotation2 -= 0.02;
+      corePulse += 0.05;
+
+      // 1. Draw outer dashed HUD Ring
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(ringRotation1);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([8, 12]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 110, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 2. Draw inner segmented cybernetic ring
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(ringRotation2);
+      ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([20, 30, 5, 20]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 80, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 3. Central Glowing Pulsing Core
+      const glowR = 34 + Math.sin(corePulse) * 6;
+      const gradient = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowR * 1.8);
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(0.3, '#38bdf8');
+      gradient.addColorStop(0.7, 'rgba(37, 99, 235, 0.5)');
+      gradient.addColorStop(1, 'rgba(5, 7, 14, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(cx, cy, glowR * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core Solid Center
+      ctx.fillStyle = '#0ea5e9';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4. Update & Draw Swarm Particles & Connecting Constellations
+      particles.forEach((p, idx) => {
+        p.baseAngle += p.speed;
+        p.pulse += 0.04;
+        const currentDist = p.baseDist + Math.sin(p.pulse) * 15;
+        p.x = cx + Math.cos(p.baseAngle) * currentDist;
+        p.y = cy + Math.sin(p.baseAngle) * currentDist;
+
+        // Draw particle
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Connect nearby particles
+        for (let j = idx + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 45) {
+            ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - d / 45) * 0.3})`;
+            ctx.lineWidth = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [onComplete]);
+
+  return (
+    <div
+      onClick={onComplete}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999999,
+        backgroundColor: '#05070e',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        overflow: 'hidden'
+      }}
+    >
+      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+
+      {/* Top Cyber Telemetry */}
+      <div style={{ position: 'absolute', top: '24px', left: '24px', display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'none', zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }} />
+          <span style={{ fontSize: '10px', fontWeight: '900', color: '#38bdf8', letterSpacing: '1.5px', fontFamily: 'monospace' }}>
+            SYSTEM: ONLINE // SHADOW v2.4
+          </span>
+        </div>
+        <span style={{ fontSize: '9px', fontWeight: '700', color: '#64748b', fontFamily: 'monospace' }}>
+          SECURE QUANTUM TELEMETRY ACTIVE
+        </span>
+      </div>
+
+      {/* Skip Button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onComplete(); }}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          zIndex: 20,
+          padding: '6px 14px',
+          borderRadius: '16px',
+          background: 'rgba(15, 23, 42, 0.7)',
+          border: '1px solid #334155',
+          color: '#38bdf8',
+          fontSize: '10px',
+          fontWeight: '800',
+          cursor: 'pointer',
+          backdropFilter: 'blur(8px)',
+          letterSpacing: '0.5px'
+        }}
+      >
+        SKIP ❯❯
+      </button>
+
+      {/* Center Branding Overlay */}
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', marginTop: '160px' }}>
+        <h1 style={{
+          margin: '0 0 4px 0',
+          fontSize: '26px',
+          fontWeight: '900',
+          color: '#f8fafc',
+          letterSpacing: '10px',
+          textShadow: '0 0 25px rgba(56, 189, 248, 0.8), 0 0 45px rgba(37, 99, 235, 0.5)',
+          fontFamily: 'system-ui, sans-serif',
+          textTransform: 'uppercase'
+        }}>
+          SHADOW
+        </h1>
+
+        <div style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8', letterSpacing: '1.5px', marginBottom: '14px', fontFamily: 'monospace' }}>
+          {statusText}
+        </div>
+
+        {/* High-tech Loading Progress Bar */}
+        <div style={{ width: '220px', height: '4px', backgroundColor: '#1e293b', borderRadius: '2px', overflow: 'hidden', border: '1px solid #334155', position: 'relative' }}>
+          <div style={{
+            width: `${progress}%`,
+            height: '100%',
+            background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+            boxShadow: '0 0 10px #38bdf8',
+            transition: 'width 0.1s linear'
+          }} />
+        </div>
+        
+        <span style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', marginTop: '6px', fontFamily: 'monospace' }}>
+          {progress}% INITIALIZED • TAP TO ENTER
+        </span>
+      </div>
+    </div>
+  );
+};
+
+
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -3188,83 +3445,10 @@ export default function App() {
 
   return (
     <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
-      {/* Full-Screen Startup Cinematic Intro Video Animation (Plays Shadow.mp4 on app start) */}
+      {/* Custom Full-Screen Startup Animation (Code-Driven Cybernetic Particle & HUD Engine) */}
       {showStartupSplash && (
-        <div 
-          onClick={() => setShowStartupSplash(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 999999,
-            backgroundColor: '#05070e',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            cursor: 'pointer',
-            transition: 'opacity 0.4s ease'
-          }}
-        >
-          <div style={{
-            position: 'relative',
-            maxWidth: '440px',
-            width: '88vw',
-            maxHeight: '70vh',
-            borderRadius: '24px',
-            overflow: 'hidden',
-            boxShadow: '0 0 60px rgba(56, 189, 248, 0.4), 0 0 100px rgba(37, 99, 235, 0.25)',
-            border: '1px solid rgba(56, 189, 248, 0.35)',
-            backgroundColor: '#000000'
-          }}>
-            <video
-              src="/shadow-intro.mp4"
-              autoPlay
-              muted
-              playsInline
-              onEnded={() => setShowStartupSplash(false)}
-              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-            />
-          </div>
-
-          <div style={{ marginTop: '22px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '900', color: '#f8fafc', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-              SHADOW AI COMMAND CENTER
-            </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowStartupSplash(false); }}
-              style={{
-                padding: '8px 22px',
-                borderRadius: '20px',
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid #38bdf8',
-                color: '#38bdf8',
-                fontSize: '11px',
-                fontWeight: '900',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)',
-                transition: 'all 0.2s'
-              }}
-            >
-              Enter Dashboard →
-            </button>
-          </div>
-        </div>
+        <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
-
-      
-      <style>{`
-        * { box-sizing: border-box; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #090d16; }
-        @media (max-width: 768px) {
-          aside { width: 56px !important; }
-          header h1 { font-size: 13px !important; }
-          .jarvis-heart { width: 180px !important; height: 180px !important; }
-        }
-      `}</style>
 
       {/* Left Side Thin Navigation Sidebar - Muted Sage Grey & Burgundy */}
       <aside className="app-sidebar" style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
@@ -3738,34 +3922,26 @@ export default function App() {
                   transition: 'all 0.25s ease'
                 }}
               >
-                <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <video
-                    src="/shadow-intro.mp4"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isListening ? 0.9 : 0.7 }}
-                  />
-                  <div style={{ position: 'absolute', inset: 0, backgroundColor: isListening ? 'rgba(2, 132, 199, 0.3)' : 'rgba(15, 23, 42, 0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(1px)' }}>
-                    <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '50%',
-                      backgroundColor: isListening ? '#0284c7' : 'rgba(15, 23, 42, 0.75)',
-                      border: '1px solid #38bdf8',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '3px'
-                    }}>
-                      <Mic size={20} color="#ffffff" />
-                    </div>
-                    <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-                      {isListening ? 'LISTENING' : 'SHADOW AI'}
-                    </span>
-                  </div>
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: isListening ? '#0284c7' : 'rgba(56, 189, 248, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '6px',
+                  transition: 'all 0.2s ease',
+                  border: isListening ? '2px solid #38bdf8' : '1px solid rgba(56, 189, 248, 0.3)'
+                }}>
+                  <Mic size={26} color={isListening ? '#ffffff' : '#38bdf8'} />
                 </div>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' }}>
+                  {isListening ? 'SPEAK NOW' : 'SHADOW AI'}
+                </span>
+                <span style={{ fontSize: '8px', color: '#94a3b8', fontWeight: '700', marginTop: '2px' }}>
+                  {isListening ? 'Listening...' : 'Tap to Speak'}
+                </span>
               </div>
 
               {/* Live Voice Transcript Feedback Pill */}
