@@ -470,39 +470,61 @@ export default function App() {
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
-  const [converterStatus, setConverterStatus] = useState(null); // { type: 'loading' | 'success' | 'error', message: '' }
+  const [converterStatus, setConverterStatus] = useState(null);
   const [uploadedFilePreview, setUploadedFilePreview] = useState(null);
   const [uploadedFileMeta, setUploadedFileMeta] = useState(null);
+  const toolsFileInputRef = useRef(null);
 
-  // Auto-detect & generate preview for uploaded file
+  // Startup Intro Video Splash State (Plays user's shadow-intro.mp4 on start)
+  const [showStartupSplash, setShowStartupSplash] = useState(true);
+
   useEffect(() => {
-    if (!uploadedFile) {
-      setUploadedFilePreview(null);
-      setUploadedFileMeta(null);
-      return;
+    // Auto-dismiss splash screen smoothly after 3.8s
+    const timer = setTimeout(() => {
+      setShowStartupSplash(false);
+    }, 3800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Safe direct file selection handler (100% crash-proof, no wipeouts)
+  const handleToolsFileSelect = (file) => {
+    if (!file) return;
+    try {
+      setUploadedFile(file);
+      setConverterStatus(null);
+
+      const isImg = file.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg|avif)$/i.test(file.name || '');
+      if (isImg) {
+        try {
+          const previewUrl = URL.createObjectURL(file);
+          setUploadedFilePreview(previewUrl);
+
+          const img = new Image();
+          img.onload = () => {
+            setUploadedFileMeta({
+              width: img.naturalWidth || img.width || 800,
+              height: img.naturalHeight || img.height || 600,
+              sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0'
+            });
+          };
+          img.onerror = () => {
+            setUploadedFileMeta({ sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0' });
+          };
+          img.src = previewUrl;
+        } catch (urlErr) {
+          console.warn('URL.createObjectURL non-fatal:', urlErr);
+          setUploadedFilePreview(null);
+          setUploadedFileMeta({ sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0' });
+        }
+      } else {
+        setUploadedFilePreview(null);
+        setUploadedFileMeta({ sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0' });
+      }
+    } catch (err) {
+      console.error('File selection error:', err);
+      setConverterStatus({ type: 'error', message: 'Could not load selected file.' });
     }
-    const isImg = uploadedFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg|avif)$/i.test(uploadedFile.name);
-    if (isImg) {
-      const url = URL.createObjectURL(uploadedFile);
-      setUploadedFilePreview(url);
-      const img = new Image();
-      img.onload = () => {
-        setUploadedFileMeta({
-          width: img.naturalWidth || img.width,
-          height: img.naturalHeight || img.height,
-          sizeKb: (uploadedFile.size / 1024).toFixed(1)
-        });
-      };
-      img.onerror = () => {
-        setUploadedFileMeta({ sizeKb: (uploadedFile.size / 1024).toFixed(1) });
-      };
-      img.src = url;
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setUploadedFilePreview(null);
-      setUploadedFileMeta({ sizeKb: (uploadedFile.size / 1024).toFixed(1) });
-    }
-  }, [uploadedFile]);
+  };
 
   // Comprehensive multi-format conversion engine (WEBP -> PNG, JPG, PDF, TXT, CSV, etc.)
   const handleExecuteConversion = async (targetFormat) => {
@@ -3165,7 +3187,74 @@ export default function App() {
   });
 
   return (
-    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Full-Screen Startup Cinematic Intro Video Animation (Plays Shadow.mp4 on app start) */}
+      {showStartupSplash && (
+        <div 
+          onClick={() => setShowStartupSplash(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            backgroundColor: '#05070e',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            cursor: 'pointer',
+            transition: 'opacity 0.4s ease'
+          }}
+        >
+          <div style={{
+            position: 'relative',
+            maxWidth: '440px',
+            width: '88vw',
+            maxHeight: '70vh',
+            borderRadius: '24px',
+            overflow: 'hidden',
+            boxShadow: '0 0 60px rgba(56, 189, 248, 0.4), 0 0 100px rgba(37, 99, 235, 0.25)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            backgroundColor: '#000000'
+          }}>
+            <video
+              src="/shadow-intro.mp4"
+              autoPlay
+              muted
+              playsInline
+              onEnded={() => setShowStartupSplash(false)}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+            />
+          </div>
+
+          <div style={{ marginTop: '22px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '900', color: '#f8fafc', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+              SHADOW AI COMMAND CENTER
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowStartupSplash(false); }}
+              style={{
+                padding: '8px 22px',
+                borderRadius: '20px',
+                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid #38bdf8',
+                color: '#38bdf8',
+                fontSize: '11px',
+                fontWeight: '900',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 4px 15px rgba(56, 189, 248, 0.3)',
+                transition: 'all 0.2s'
+              }}
+            >
+              Enter Dashboard →
+            </button>
+          </div>
+        </div>
+      )}
+
       
       <style>{`
         * { box-sizing: border-box; }
@@ -3178,7 +3267,7 @@ export default function App() {
       `}</style>
 
       {/* Left Side Thin Navigation Sidebar - Muted Sage Grey & Burgundy */}
-      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+      <aside className="app-sidebar" style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
         <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
         </div>
@@ -3337,10 +3426,10 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
+      <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
         {/* Top Header - Warm Cream Beige & Burgundy */}
-        <header style={{ padding: '12px 16px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <header className="app-header" style={{ padding: '12px 16px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
             <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
             <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
@@ -3649,22 +3738,34 @@ export default function App() {
                   transition: 'all 0.25s ease'
                 }}
               >
-                <div style={{
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '50%',
-                  backgroundColor: isListening ? '#0284c7' : 'rgba(56, 189, 248, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '4px',
-                  transition: 'all 0.2s ease'
-                }}>
-                  <Mic size={24} color={isListening ? '#ffffff' : '#38bdf8'} />
+                <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <video
+                    src="/shadow-intro.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isListening ? 0.9 : 0.7 }}
+                  />
+                  <div style={{ position: 'absolute', inset: 0, backgroundColor: isListening ? 'rgba(2, 132, 199, 0.3)' : 'rgba(15, 23, 42, 0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(1px)' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      backgroundColor: isListening ? '#0284c7' : 'rgba(15, 23, 42, 0.75)',
+                      border: '1px solid #38bdf8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '3px'
+                    }}>
+                      <Mic size={20} color="#ffffff" />
+                    </div>
+                    <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+                      {isListening ? 'LISTENING' : 'SHADOW AI'}
+                    </span>
+                  </div>
                 </div>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' }}>
-                  {isListening ? 'SPEAK NOW' : 'TAP TO SPEAK'}
-                </span>
               </div>
 
               {/* Live Voice Transcript Feedback Pill */}
@@ -3781,27 +3882,29 @@ export default function App() {
 
             {/* File Drop & Preview Section */}
             <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', gap: '14px', marginBottom: '16px', alignItems: 'stretch' }}>
-              
+              {/* Hidden Permanent File Input */}
+              <input
+                type="file"
+                ref={toolsFileInputRef}
+                style={{ display: 'none' }}
+                accept="image/*,.pdf,.txt,.csv,.json,.webp,.png,.jpg,.jpeg,.doc,.docx"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleToolsFileSelect(e.target.files[0]);
+                    e.target.value = '';
+                  }
+                }}
+              />
+
               <div 
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
                   if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    setUploadedFile(e.dataTransfer.files[0]);
-                    setConverterStatus(null);
+                    handleToolsFileSelect(e.dataTransfer.files[0]);
                   }
                 }}
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.onchange = (e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setUploadedFile(e.target.files[0]);
-                      setConverterStatus(null);
-                    }
-                  };
-                  input.click();
-                }}
+                onClick={() => toolsFileInputRef.current?.click()}
                 style={{ 
                   flex: 1, 
                   minHeight: '180px', 
@@ -3822,8 +3925,13 @@ export default function App() {
                 {uploadedFile ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
                     {uploadedFilePreview ? (
-                      <div style={{ width: '80px', height: '80px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #334155', backgroundColor: '#0f172a' }}>
-                        <img src={uploadedFilePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{ width: '84px', height: '84px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #334155', backgroundColor: '#0f172a' }}>
+                        <img 
+                          src={uploadedFilePreview} 
+                          alt="Preview" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
                       </div>
                     ) : (
                       <FileText size={40} color="#38bdf8" />
@@ -3831,16 +3939,33 @@ export default function App() {
                     
                     <div>
                       <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#f8fafc', wordBreak: 'break-all' }}>
-                        {uploadedFile.name}
+                        {uploadedFile?.name || 'Selected File'}
                       </p>
                       <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>
-                        {uploadedFileMeta?.sizeKb || (uploadedFile.size / 1024).toFixed(1)} KB {uploadedFileMeta?.width ? `• ${uploadedFileMeta.width} × ${uploadedFileMeta.height} px` : ''}
+                        {uploadedFileMeta?.sizeKb || (uploadedFile?.size ? (uploadedFile.size / 1024).toFixed(1) : '0')} KB 
+                        {uploadedFileMeta?.width ? ` • ${uploadedFileMeta.width} × ${uploadedFileMeta.height} px` : ''}
                       </span>
                     </div>
 
-                    <span style={{ fontSize: '10px', color: '#94a3b8', textDecoration: 'underline' }}>
-                      Click or drop another file to change
-                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toolsFileInputRef.current?.click();
+                      }}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        background: '#334155',
+                        color: '#f8fafc',
+                        border: 'none',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Change Photo / File
+                    </button>
                   </div>
                 ) : (
                   <div>
@@ -3852,7 +3977,7 @@ export default function App() {
                       Supports WEBP, PNG, JPG, JPEG, GIF, PDF, TXT, CSV, JSON
                     </p>
                     <span style={{ fontSize: '11px', color: '#38bdf8', textDecoration: 'underline', fontWeight: '700' }}>
-                      Or browse from this device
+                      Or tap to browse from device
                     </span>
                   </div>
                 )}

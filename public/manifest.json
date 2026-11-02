@@ -1,6 +1,6 @@
 {
   "short_name": "Shadow",
-  "name": "Shadow Dashboard",
+  "name": "Shadow AI Dashboard",
   "icons": [
     {
       "src": "/logo.png",
@@ -14,7 +14,7 @@
     }
   ],
   "start_url": "/",
-  "background_color": "#000000",
+  "background_color": "#070a12",
   "display": "standalone",
-  "theme_color": "#000000"
+  "theme_color": "#070a12"
 }
