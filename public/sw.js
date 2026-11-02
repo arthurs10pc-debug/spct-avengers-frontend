@@ -1,5 +1,5 @@
 // Shadow Dashboard Service Worker (Mobile PWA & Desktop Notifications)
-const CACHE_VERSION = 'shadow-v3';
+const CACHE_VERSION = 'shadow-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -8,9 +8,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))
-      );
+      return Promise.all(keys.map((key) => caches.delete(key)));
     }).then(() => clients.claim())
   );
 });
@@ -28,8 +26,8 @@ self.addEventListener('push', function(event) {
 
   const options = {
     body: data.body || 'Scheduled reminder due now.',
-    icon: '/shadow-logo.png?v=3',
-    badge: '/shadow-logo.png?v=3',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     vibrate: [250, 100, 250, 100, 250],
     tag: data.tag || 'shadow-reminder-alert',
     renotify: true,
@@ -47,8 +45,8 @@ self.addEventListener('message', function(event) {
     const { title, options } = event.data;
     const notificationOptions = {
       body: options?.body || 'Scheduled reminder due now.',
-      icon: '/shadow-logo.png?v=3',
-      badge: '/shadow-logo.png?v=3',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       vibrate: [250, 100, 250, 100, 250],
       tag: options?.tag || 'shadow-reminder-alert',
       renotify: true,

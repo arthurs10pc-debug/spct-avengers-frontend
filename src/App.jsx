@@ -365,6 +365,8 @@ const ShadowStartupAnimation = ({ onComplete }) => {
       style={{
         position: 'fixed',
         inset: 0,
+        width: '100vw',
+        height: '100dvh',
         zIndex: 999999,
         backgroundColor: '#000000',
         display: 'flex',
@@ -386,11 +388,14 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         onEnded={handleFinish}
         onError={handleFinish}
         style={{
-          width: '100vw',
-          height: '100vh',
-          objectFit: 'cover',
+          width: '100%',
+          height: '100%',
+          maxWidth: '100vw',
+          maxHeight: '100dvh',
+          objectFit: 'contain',
           display: 'block',
-          backgroundColor: '#000000'
+          backgroundColor: '#000000',
+          margin: 'auto'
         }}
       />
 
@@ -1047,9 +1052,9 @@ export default function App() {
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
-  // Live Countdown Timer String for Sidebar (Upcoming Time & Remaining Minutes)
-  const [nextCountdownStr, setNextCountdownStr] = useState('29m');
-  const [nextRemTimeStr, setNextRemTimeStr] = useState('15:28');
+  // Live Countdown Timer String for Sidebar (Negative Countdown Timer "-MM:SS")
+  const [nextCountdownStr, setNextCountdownStr] = useState('-00:00');
+  const [nextRemTimeStr, setNextRemTimeStr] = useState('14:28');
   const [nextRemTitle, setNextRemTitle] = useState('Daily Focus & Routine');
 
   // Advanced Expense Tracker State with Top-First Order
@@ -2677,9 +2682,9 @@ export default function App() {
 
       if (remindersList.length === 0) {
         setRemindersList(DEFAULT_REMINDERS);
-        setNextRemTimeStr('15:28');
+        setNextRemTimeStr('14:28');
         setNextRemTitle('Daily Focus & Routine');
-        setNextCountdownStr('29m');
+        setNextCountdownStr('-00:00');
       } else if (nearestFutureDiffSec !== Infinity && nearestFutureDiffSec > 0) {
         setNextRemTimeStr(upcomingTime);
         setNextRemTitle(upcomingTitle);
@@ -2687,11 +2692,9 @@ export default function App() {
         const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
         const remS = nearestFutureDiffSec % 60;
         if (remH > 0) {
-          setNextCountdownStr(`${remH}h ${remM}m`);
-        } else if (remM > 0) {
-          setNextCountdownStr(`${remM}m`);
+          setNextCountdownStr(`-${String(remH).padStart(2, '0')}:${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
         } else {
-          setNextCountdownStr(`${remS}s`);
+          setNextCountdownStr(`-${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
         }
       } else {
         // All reminders for today have completed; continuously count down to tomorrow's first reminder
@@ -2705,11 +2708,8 @@ export default function App() {
         const totalTomSec = secUntilMidnight + secAfterMidnight;
         const tomH = Math.floor(totalTomSec / 3600);
         const tomM = Math.floor((totalTomSec % 3600) / 60);
-        if (tomH > 0) {
-          setNextCountdownStr(`${tomH}h left`);
-        } else {
-          setNextCountdownStr(`${tomM}m left`);
-        }
+        const tomS = totalTomSec % 60;
+        setNextCountdownStr(`-${String(tomH).padStart(2, '0')}:${String(tomM).padStart(2, '0')}:${String(tomS).padStart(2, '0')}`);
       }
 
       // 2. Synchronize: Triggered reminders marked completed (✔), future ones pending
@@ -3355,10 +3355,17 @@ export default function App() {
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
           }}>
             <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#3d0605', letterSpacing: '0.2px' }}>
-              {nextRemTimeStr || '15:28'}
+              {nextRemTimeStr || '14:28'}
             </span>
-            <span style={{ fontSize: '8px', fontWeight: '800', color: '#881337', letterSpacing: '0.2px' }}>
-              {nextCountdownStr || '29m'}
+            <span style={{ 
+              fontSize: '8.5px', 
+              fontWeight: '900', 
+              color: '#881337', 
+              letterSpacing: '0.2px',
+              fontFamily: 'monospace, system-ui',
+              fontVariantNumeric: 'tabular-nums'
+            }}>
+              {nextCountdownStr || '-00:00'}
             </span>
           </span>
           <span style={{ fontSize: '9px', fontWeight: '700', color: '#E8D2B5' }}>Watcher</span>

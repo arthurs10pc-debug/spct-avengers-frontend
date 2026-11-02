@@ -17,7 +17,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title || 'SPCT Alert';
   const notificationOptions = {
     body: payload.notification.body || 'New Ride Request Available',
-    icon: '/logo.png',
+    icon: '/icon-192.png',
     vibrate: [200, 100, 200, 100, 200],
     tag: 'spct-high-priority'
   };
