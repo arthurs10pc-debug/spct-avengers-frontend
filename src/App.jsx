@@ -330,256 +330,113 @@ const IPO_DATABASE = {
 };
 
 
-// Custom High-Tech Cybernetic Neural Full-Screen Startup Animation (Canvas + Sci-Fi HUD)
+// Full-Screen Edge-to-Edge Cinematic Startup Animation with User's Shadow Video
 const ShadowStartupAnimation = ({ onComplete }) => {
-  const canvasRef = useRef(null);
-  const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState('INITIALIZING NEURAL PATHWAYS...');
+  const videoRef = useRef(null);
+  const [fadingOut, setFadingOut] = useState(false);
 
+  const handleFinish = useCallback(() => {
+    if (fadingOut) return;
+    setFadingOut(true);
+    setTimeout(() => {
+      onComplete();
+    }, 350);
+  }, [fadingOut, onComplete]);
+
+  // Safety fallback: if video doesn't end or fails to autoplay, dismiss after 4.5s
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animationFrameId;
+    const timer = setTimeout(() => {
+      handleFinish();
+    }, 4500);
 
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Particle Swarm
-    const particleCount = Math.min(120, Math.floor(width / 8));
-    const particles = [];
-    const colors = ['#38bdf8', '#0284c7', '#2563eb', '#60a5fa', '#a855f7', '#ffffff'];
-
-    for (let i = 0; i < particleCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 60 + Math.random() * (Math.min(width, height) * 0.45);
-      particles.push({
-        x: width / 2 + Math.cos(angle) * dist,
-        y: height / 2 + Math.sin(angle) * dist,
-        baseAngle: angle,
-        baseDist: dist,
-        speed: 0.01 + Math.random() * 0.02,
-        size: 1 + Math.random() * 2.2,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        pulse: Math.random() * Math.PI
+    const vid = videoRef.current;
+    if (vid) {
+      vid.play().catch(() => {
+        // Fallback timer handles or user tap
       });
     }
 
-    let ringRotation1 = 0;
-    let ringRotation2 = 0;
-    let corePulse = 0;
-    let startTime = Date.now();
-    const duration = 2800; // 2.8 seconds total
-
-    const render = () => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min(100, Math.floor((elapsed / duration) * 100));
-      setProgress(pct);
-
-      if (pct < 25) {
-        setStatusText('INITIALIZING NEURAL SYNAPSE MATRIX...');
-      } else if (pct < 55) {
-        setStatusText('CONNECTING GUJARAT RADAR & WATCHER...');
-      } else if (pct < 85) {
-        setStatusText('SYNCHRONIZING CLOUD TELEMETRY...');
-      } else {
-        setStatusText('SYSTEM ARMED • ACCESS GRANTED COMMANDER');
-      }
-
-      if (elapsed >= duration) {
-        onComplete();
-        return;
-      }
-
-      ctx.fillStyle = 'rgba(5, 7, 14, 0.28)';
-      ctx.fillRect(0, 0, width, height);
-
-      const cx = width / 2;
-      const cy = height / 2;
-
-      ringRotation1 += 0.015;
-      ringRotation2 -= 0.02;
-      corePulse += 0.05;
-
-      // 1. Draw outer dashed HUD Ring
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(ringRotation1);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([8, 12]);
-      ctx.beginPath();
-      ctx.arc(0, 0, 110, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // 2. Draw inner segmented cybernetic ring
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(ringRotation2);
-      ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([20, 30, 5, 20]);
-      ctx.beginPath();
-      ctx.arc(0, 0, 80, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // 3. Central Glowing Pulsing Core
-      const glowR = 34 + Math.sin(corePulse) * 6;
-      const gradient = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowR * 1.8);
-      gradient.addColorStop(0, '#ffffff');
-      gradient.addColorStop(0.3, '#38bdf8');
-      gradient.addColorStop(0.7, 'rgba(37, 99, 235, 0.5)');
-      gradient.addColorStop(1, 'rgba(5, 7, 14, 0)');
-
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(cx, cy, glowR * 1.8, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Core Solid Center
-      ctx.fillStyle = '#0ea5e9';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 4. Update & Draw Swarm Particles & Connecting Constellations
-      particles.forEach((p, idx) => {
-        p.baseAngle += p.speed;
-        p.pulse += 0.04;
-        const currentDist = p.baseDist + Math.sin(p.pulse) * 15;
-        p.x = cx + Math.cos(p.baseAngle) * currentDist;
-        p.y = cy + Math.sin(p.baseAngle) * currentDist;
-
-        // Draw particle
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Connect nearby particles
-        for (let j = idx + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dx = p.x - p2.x;
-          const dy = p.y - p2.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < 45) {
-            ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - d / 45) * 0.3})`;
-            ctx.lineWidth = 0.6;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      });
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [onComplete]);
+    return () => clearTimeout(timer);
+  }, [handleFinish]);
 
   return (
     <div
-      onClick={onComplete}
+      onClick={handleFinish}
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 999999,
-        backgroundColor: '#05070e',
+        backgroundColor: '#000000',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        opacity: fadingOut ? 0 : 1,
+        transition: 'opacity 0.35s ease-out'
       }}
     >
-      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+      <video
+        ref={videoRef}
+        src="/shadow-intro.mp4"
+        autoPlay
+        muted
+        playsInline
+        preload="auto"
+        onEnded={handleFinish}
+        onError={handleFinish}
+        style={{
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'cover',
+          display: 'block',
+          backgroundColor: '#000000'
+        }}
+      />
 
-      {/* Top Cyber Telemetry */}
-      <div style={{ position: 'absolute', top: '24px', left: '24px', display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'none', zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#38bdf8', boxShadow: '0 0 8px #38bdf8' }} />
-          <span style={{ fontSize: '10px', fontWeight: '900', color: '#38bdf8', letterSpacing: '1.5px', fontFamily: 'monospace' }}>
-            SYSTEM: ONLINE // SHADOW v2.4
-          </span>
-        </div>
-        <span style={{ fontSize: '9px', fontWeight: '700', color: '#64748b', fontFamily: 'monospace' }}>
-          SECURE QUANTUM TELEMETRY ACTIVE
-        </span>
-      </div>
-
-      {/* Skip Button */}
+      {/* Subtle Skip Button */}
       <button
-        onClick={(e) => { e.stopPropagation(); onComplete(); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleFinish();
+        }}
         style={{
           position: 'absolute',
           top: '20px',
           right: '20px',
-          zIndex: 20,
+          zIndex: 10,
           padding: '6px 14px',
-          borderRadius: '16px',
-          background: 'rgba(15, 23, 42, 0.7)',
-          border: '1px solid #334155',
-          color: '#38bdf8',
-          fontSize: '10px',
-          fontWeight: '800',
-          cursor: 'pointer',
+          borderRadius: '20px',
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
           backdropFilter: 'blur(8px)',
-          letterSpacing: '0.5px'
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          color: '#ffffff',
+          fontSize: '11px',
+          fontWeight: '800',
+          letterSpacing: '1px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
         }}
       >
         SKIP ❯❯
       </button>
 
-      {/* Center Branding Overlay */}
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', marginTop: '160px' }}>
-        <h1 style={{
-          margin: '0 0 4px 0',
-          fontSize: '26px',
-          fontWeight: '900',
-          color: '#f8fafc',
-          letterSpacing: '10px',
-          textShadow: '0 0 25px rgba(56, 189, 248, 0.8), 0 0 45px rgba(37, 99, 235, 0.5)',
-          fontFamily: 'system-ui, sans-serif',
-          textTransform: 'uppercase'
-        }}>
-          SHADOW
-        </h1>
-
-        <div style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8', letterSpacing: '1.5px', marginBottom: '14px', fontFamily: 'monospace' }}>
-          {statusText}
-        </div>
-
-        {/* High-tech Loading Progress Bar */}
-        <div style={{ width: '220px', height: '4px', backgroundColor: '#1e293b', borderRadius: '2px', overflow: 'hidden', border: '1px solid #334155', position: 'relative' }}>
-          <div style={{
-            width: `${progress}%`,
-            height: '100%',
-            background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
-            boxShadow: '0 0 10px #38bdf8',
-            transition: 'width 0.1s linear'
-          }} />
-        </div>
-        
-        <span style={{ fontSize: '9px', fontWeight: '800', color: '#64748b', marginTop: '6px', fontFamily: 'monospace' }}>
-          {progress}% INITIALIZED • TAP TO ENTER
-        </span>
+      {/* Subtle bottom hint */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '24px',
+          color: 'rgba(255, 255, 255, 0.5)',
+          fontSize: '11px',
+          fontWeight: '600',
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          pointerEvents: 'none'
+        }}
+      >
+        Tap Anywhere to Enter
       </div>
     </div>
   );
@@ -619,8 +476,8 @@ export default function App() {
       }
 
       const notifOptions = {
-        icon: '/logo.png',
-        badge: '/logo.png',
+        icon: '/shadow-logo.png?v=3',
+        badge: '/shadow-logo.png?v=3',
         vibrate: [250, 100, 250, 100, 250],
         tag: options?.tag || 'shadow-reminder-alert',
         renotify: true,
@@ -1190,10 +1047,10 @@ export default function App() {
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
-  // Live Countdown Timer String for Sidebar ("MM:SS")
-  const [nextCountdownStr, setNextCountdownStr] = useState('-00:00');
-  const [nextRemTimeStr, setNextRemTimeStr] = useState('09:00');
-  const [nextRemTitle, setNextRemTitle] = useState('Morning Review & Focus');
+  // Live Countdown Timer String for Sidebar (Upcoming Time & Remaining Minutes)
+  const [nextCountdownStr, setNextCountdownStr] = useState('29m');
+  const [nextRemTimeStr, setNextRemTimeStr] = useState('15:28');
+  const [nextRemTitle, setNextRemTitle] = useState('Daily Focus & Routine');
 
   // Advanced Expense Tracker State with Top-First Order
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -2820,9 +2677,9 @@ export default function App() {
 
       if (remindersList.length === 0) {
         setRemindersList(DEFAULT_REMINDERS);
-        setNextRemTimeStr('09:00');
-        setNextRemTitle('Morning Review & Focus');
-        setNextCountdownStr('-00:00');
+        setNextRemTimeStr('15:28');
+        setNextRemTitle('Daily Focus & Routine');
+        setNextCountdownStr('29m');
       } else if (nearestFutureDiffSec !== Infinity && nearestFutureDiffSec > 0) {
         setNextRemTimeStr(upcomingTime);
         setNextRemTitle(upcomingTitle);
@@ -2830,9 +2687,11 @@ export default function App() {
         const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
         const remS = nearestFutureDiffSec % 60;
         if (remH > 0) {
-          setNextCountdownStr(`-${String(remH).padStart(2, '0')}:${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
+          setNextCountdownStr(`${remH}h ${remM}m`);
+        } else if (remM > 0) {
+          setNextCountdownStr(`${remM}m`);
         } else {
-          setNextCountdownStr(`-${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
+          setNextCountdownStr(`${remS}s`);
         }
       } else {
         // All reminders for today have completed; continuously count down to tomorrow's first reminder
@@ -2846,8 +2705,11 @@ export default function App() {
         const totalTomSec = secUntilMidnight + secAfterMidnight;
         const tomH = Math.floor(totalTomSec / 3600);
         const tomM = Math.floor((totalTomSec % 3600) / 60);
-        const tomS = totalTomSec % 60;
-        setNextCountdownStr(`-${String(tomH).padStart(2, '0')}:${String(tomM).padStart(2, '0')}:${String(tomS).padStart(2, '0')}`);
+        if (tomH > 0) {
+          setNextCountdownStr(`${tomH}h left`);
+        } else {
+          setNextCountdownStr(`${tomM}m left`);
+        }
       }
 
       // 2. Synchronize: Triggered reminders marked completed (✔), future ones pending
@@ -2889,7 +2751,7 @@ export default function App() {
 
           showSystemNotification("Shadow Watcher Alert", {
             body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
-            icon: "/logo.png"
+            icon: "/shadow-logo.png?v=3"
           });
         }
       });
@@ -2915,7 +2777,7 @@ export default function App() {
     }
     showSystemNotification("Shadow Watcher Alert", {
       body: "Scheduled Reminder: Team Review Meeting due now!",
-      icon: "/logo.png"
+      icon: "/shadow-logo.png?v=3"
     });
   }, [isMuted, startJailerFluteAlarm]);
 
@@ -3463,27 +3325,43 @@ export default function App() {
 
         <button 
           onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
-          title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '09:00'} (${nextCountdownStr} remaining)`} 
-          style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '54px' }}
+          title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '15:28'} (${nextCountdownStr} remaining)`} 
+          style={{ 
+            background: 'transparent', 
+            border: 'none', 
+            color: '#E8D2B5', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '2px', 
+            cursor: 'pointer', 
+            padding: '3px 2px', 
+            borderRadius: '8px', 
+            width: '52px' 
+          }}
         >
-          <Clock size={18} />
+          <Clock size={17} color="#E8D2B5" />
           <span style={{ 
-            fontSize: '9px', 
-            fontWeight: '900', 
-            color: '#38bdf8',
-            background: '#131d33', 
-            padding: '2px 5px', 
-            borderRadius: '5px', 
-            border: '1px solid #334155', 
+            backgroundColor: '#E8D2B5', 
+            padding: '2px 4px', 
+            borderRadius: '6px', 
+            border: '1px solid #cbb294', 
             whiteSpace: 'nowrap',
-            fontFamily: 'monospace, system-ui',
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '0.3px',
-            textAlign: 'center'
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            lineHeight: 1.15,
+            minWidth: '40px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
           }}>
-            {nextCountdownStr}
+            <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#3d0605', letterSpacing: '0.2px' }}>
+              {nextRemTimeStr || '15:28'}
+            </span>
+            <span style={{ fontSize: '8px', fontWeight: '800', color: '#881337', letterSpacing: '0.2px' }}>
+              {nextCountdownStr || '29m'}
+            </span>
           </span>
-          <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
+          <span style={{ fontSize: '9px', fontWeight: '700', color: '#E8D2B5' }}>Watcher</span>
         </button>
 
         <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>

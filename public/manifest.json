@@ -3,18 +3,18 @@
   "name": "Shadow AI Dashboard",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/shadow-logo.png?v=3",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "/logo.png",
+      "src": "/shadow-logo.png?v=3",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": "/",
-  "background_color": "#070a12",
+  "background_color": "#000000",
   "display": "standalone",
-  "theme_color": "#070a12"
+  "theme_color": "#000000"
 }
