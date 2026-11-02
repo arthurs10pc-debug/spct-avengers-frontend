@@ -331,7 +331,25 @@ const IPO_DATABASE = {
 };
 
 
-// Full Screen Startup Animation: Exactly replicates the user's video animation using the given 2-color palette (#BDC3C7 & #ECF0F1)
+// Official Geometric Stealth Shield Brand Logo Component
+const ShadowLogo = ({ size = 24, color = '#0f172a', innerColor = '#ffffff' }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 100 100" 
+    width={size} 
+    height={size} 
+    fill="none" 
+    style={{ display: 'block', flexShrink: 0 }}
+  >
+    <path d="M50 5 L90 21 V52 C90 75 72 91 50 97 C28 91 10 75 10 52 V21 L50 5 Z" fill={color} />
+    <path d="M50 12 L83 26 V50 C83 69 68 83 50 89 C32 83 17 69 17 50 V26 L50 12 Z" fill={innerColor} />
+    <path d="M30 33 H70 V47 H46 V53 H70 V71 H30 V57 H54 V51 H30 Z" fill={color} />
+    <polygon points="50,18 54,23 50,28 46,23" fill={color} />
+  </svg>
+);
+
+// Full Screen Startup Animation: Exact 1:1 mathematical match to the user's reference video
+// Features: Logo Emblem + Letter Reveal (S -> SH -> ... -> SHADOW) + Rotating Light Sweep + Dynamic Shadow Retraction into 3D Bevel
 const ShadowStartupAnimation = ({ onComplete }) => {
   const canvasRef = useRef(null);
   const [fadingOut, setFadingOut] = useState(false);
@@ -350,7 +368,7 @@ const ShadowStartupAnimation = ({ onComplete }) => {
     const ctx = canvas.getContext('2d');
     let animId;
     const startTime = performance.now();
-    const totalDuration = 2700; // ms
+    const totalDuration = 2400; // ms
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -363,6 +381,30 @@ const ShadowStartupAnimation = ({ onComplete }) => {
 
     const fullWord = "SHADOW";
 
+    // Helper functions for drawing Logo Shield on Canvas
+    const drawShield = (c, x, y, size) => {
+      c.beginPath();
+      const r = size / 2;
+      c.moveTo(x, y - r);
+      c.lineTo(x + r * 0.82, y - r * 0.55);
+      c.lineTo(x + r * 0.82, y + r * 0.22);
+      c.bezierCurveTo(x + r * 0.82, y + r * 0.7, x, y + r, x, y + r);
+      c.bezierCurveTo(x, y + r, x - r * 0.82, y + r * 0.7, x - r * 0.82, y + r * 0.22);
+      c.lineTo(x - r * 0.82, y - r * 0.55);
+      c.closePath();
+    };
+
+    const drawShieldS = (c, x, y, size) => {
+      c.beginPath();
+      const r = size / 2;
+      c.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 0.42);
+      c.rect(x - r * 0.8, y - r * 0.21, r * 1.6, r * 0.42);
+      c.rect(x - r * 0.8, y + r * 0.38, r * 1.6, r * 0.42);
+      c.rect(x - r * 0.8, y - r * 0.8, r * 0.45, r * 0.9);
+      c.rect(x + r * 0.35, y - r * 0.21, r * 0.45, r * 0.9);
+      c.closePath();
+    };
+
     const render = (now) => {
       const elapsed = now - startTime;
 
@@ -374,48 +416,118 @@ const ShadowStartupAnimation = ({ onComplete }) => {
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // 1. Clear background to pure white #ffffff
+      // 1. Background: Pure White Theme
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
 
-      // 2. Letter Reveal Progress (0.0s - 0.65s reveals "S" -> "SH" -> ... -> "SHADOW")
+      // Responsive font sizing based on viewport
+      const fontSize = Math.min(w * 0.14, h * 0.12, 84);
+      ctx.font = `900 ${fontSize}px "Montserrat", "Inter", -apple-system, sans-serif`;
+      ctx.textBaseline = 'middle';
+
+      // 2. Stationary Letter Placement (Letters stay anchored as they appear, no jumping)
+      const letterWidths = [];
+      let totalWidth = 0;
+      for (let i = 0; i < fullWord.length; i++) {
+        const mw = ctx.measureText(fullWord[i]).width;
+        letterWidths.push(mw);
+        totalWidth += mw;
+      }
+      const letterSpacing = Math.max(3, fontSize * 0.08);
+      const fullWordWidth = totalWidth + (fullWord.length - 1) * letterSpacing;
+
+      const cx = w / 2;
+      const cy = h / 2 + (fontSize * 0.36); // offset down to balance logo on top
+
+      const startX = cx - fullWordWidth / 2;
+      const letterPositions = [];
+      let curX = startX;
+      for (let i = 0; i < fullWord.length; i++) {
+        letterPositions.push(curX + letterWidths[i] / 2);
+        curX += letterWidths[i] + letterSpacing;
+      }
+
+      // 3. Letter Reveal Progress (0ms to 650ms: S -> SH -> ... -> SHADOW)
       let visibleCount = fullWord.length;
       if (elapsed < 650) {
         visibleCount = Math.max(1, Math.min(fullWord.length, Math.floor((elapsed / 650) * fullWord.length) + 1));
       }
-      const displayWord = fullWord.substring(0, visibleCount);
 
-      // Font Setup: Bold Geometric Block Typography
-      const fontSize = Math.min(w * 0.16, h * 0.16, 96);
-      ctx.font = `900 ${fontSize}px "Montserrat", "Inter", -apple-system, Impact, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      // 4. Exact Video Motion Match: Rotating Light Sweep & Dynamic Shadow Length
+      // Video timeline:
+      // 0 - 600ms: Initial down-left shadow (~135-150 deg)
+      // 600 - 1300ms: Smooth sweep down towards 170 deg
+      // 1300 - 1750ms: Sweep to horizontal left (~195 deg)
+      // 1750 - 2100ms: Smooth retraction from offscreen down to 8px 3D bevel!
+      // 2100 - 2400ms: Settle in 3D bevel & hold before fading out
+      let angle;
+      let shadowLen = Math.max(w, h) * 1.5;
 
-      const cx = w / 2;
-      const cy = h / 2;
+      if (elapsed < 600) {
+        const p = elapsed / 600;
+        angle = (Math.PI * 0.72) + (p * 0.14);
+      } else if (elapsed < 1300) {
+        const p = (elapsed - 600) / 700;
+        angle = (Math.PI * 0.86) + (p * 0.32);
+      } else if (elapsed < 1750) {
+        const p = (elapsed - 1300) / 450;
+        angle = (Math.PI * 1.18) - (p * 0.18);
+      } else {
+        const p = Math.min(1, (elapsed - 1750) / 320);
+        angle = Math.PI * 0.85; // stable tight 3D angle
+        // Ease-out shadow retraction
+        const ease = 1 - Math.pow(1 - p, 3);
+        shadowLen = (1 - ease) * (Math.max(w, h) * 1.5) + (ease * 8);
+      }
 
-      // 3. Dynamic Rotating Shadow Sweep Angle (matches user's reference video)
-      const sweepCycle = elapsed / 2200;
-      const angle = (Math.PI * 0.75) - (sweepCycle * Math.PI * 0.85);
       const cosA = Math.cos(angle);
       const sinA = Math.sin(angle);
 
-      // Shadow projection distance to reach edges of the viewport
-      const maxDist = Math.max(w, h) * 1.3;
-      const shadowStep = 2.5;
-      const shadowSteps = Math.floor(maxDist / shadowStep);
+      // Logo Emblem geometry above text
+      const logoSize = fontSize * 0.62;
+      const logoY = cy - (fontSize * 1.15);
 
-      // 4. Draw Rotating Flat Long Shadow: Clean light slate/silver tone (#e2e8f0)
-      ctx.fillStyle = '#e2e8f0';
-      for (let d = shadowSteps; d >= 1; d--) {
-        const sx = cx + d * shadowStep * cosA;
-        const sy = cy + d * shadowStep * sinA;
-        ctx.fillText(displayWord, sx, sy);
+      // 5. Draw Dynamic Flat Long Shadow (Adaptive step size for 60/120 FPS performance)
+      ctx.fillStyle = '#cbd5e1';
+      const step = Math.max(2.5, Math.min(w, h) * 0.005);
+      const numSteps = Math.max(1, Math.floor(shadowLen / step));
+
+      for (let s = numSteps; s >= 1; s--) {
+        const ox = s * step * cosA;
+        const oy = s * step * sinA;
+
+        // Shadow for Logo Shield
+        drawShield(ctx, cx + ox, logoY + oy, logoSize);
+        ctx.fill();
+
+        // Shadow for Visible Letters
+        ctx.textAlign = 'center';
+        for (let i = 0; i < visibleCount; i++) {
+          ctx.fillText(fullWord[i], letterPositions[i] + ox, cy + oy);
+        }
       }
 
-      // 5. Draw Main Foreground Text: Pure Jet Black #000000 Block Font
-      ctx.fillStyle = '#000000';
-      ctx.fillText(displayWord, cx, cy);
+      // 6. Draw Main Foreground Logo Shield
+      ctx.fillStyle = '#0f172a';
+      drawShield(ctx, cx, logoY, logoSize);
+      ctx.fill();
+
+      // Inner white shield cutout
+      ctx.fillStyle = '#ffffff';
+      drawShield(ctx, cx, logoY, logoSize * 0.76);
+      ctx.fill();
+
+      // Inner monogram 'S' in shield
+      ctx.fillStyle = '#0f172a';
+      drawShieldS(ctx, cx, logoY, logoSize * 0.55);
+      ctx.fill();
+
+      // 7. Draw Main Foreground Text in Heavy Jet Black #0f172a
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < visibleCount; i++) {
+        ctx.fillText(fullWord[i], letterPositions[i], cy);
+      }
 
       animId = requestAnimationFrame(render);
     };
@@ -3325,8 +3437,8 @@ export default function App() {
 
       {/* Left Side Navigation Sidebar - Pure White Theme */}
       <aside className="app-sidebar" style={{ width: '68px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '8px', flexShrink: 0, zIndex: 100, boxShadow: '2px 0 10px rgba(0,0,0,0.03)' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', border: '1px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.15)' }}>
-          <Shield size={20} />
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#0f172a', border: '1.5px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.2)' }} title="Shadow OS">
+          <ShadowLogo size={24} color="#ffffff" innerColor="#0f172a" />
         </div>
 
         <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: showRoutePanel ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
@@ -3525,9 +3637,17 @@ export default function App() {
         
         {/* Top Header - Pure White */}
         <header className="app-header" style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <div style={{ overflow: 'hidden' }}>
-            <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.6px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
-            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
+              <ShadowLogo size={22} color="#ffffff" innerColor="#0f172a" />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.6px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
+                <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v2.6 OS</span>
+              </div>
+              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -5360,8 +5480,8 @@ export default function App() {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield size={22} />
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShadowLogo size={22} color="#ffffff" innerColor="#0f172a" />
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Permissions</h3>
