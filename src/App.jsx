@@ -330,10 +330,11 @@ const IPO_DATABASE = {
 };
 
 
-// Full-Screen Edge-to-Edge Cinematic Startup Animation with User's Shadow Video
+// Full Mobile Screen Cinematic "SHADOW" Animation (Edge-to-Edge Volumetric Smoke & Shadow Reveal)
 const ShadowStartupAnimation = ({ onComplete }) => {
-  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const [fadingOut, setFadingOut] = useState(false);
+  const [revealPhase, setRevealPhase] = useState(0); // 0 = shrouded in shadows, 1 = shockwave/reveal, 2 = full glow
 
   const handleFinish = useCallback(() => {
     if (fadingOut) return;
@@ -343,21 +344,155 @@ const ShadowStartupAnimation = ({ onComplete }) => {
     }, 350);
   }, [fadingOut, onComplete]);
 
-  // Safety fallback: if video doesn't end or fails to autoplay, dismiss after 4.5s
+  // Fallback safety timeout (3.6s total cinematic sequence)
   useEffect(() => {
     const timer = setTimeout(() => {
       handleFinish();
-    }, 4500);
+    }, 3600);
 
-    const vid = videoRef.current;
-    if (vid) {
-      vid.play().catch(() => {
-        // Fallback timer handles or user tap
+    const phaseTimer1 = setTimeout(() => setRevealPhase(1), 600);
+    const phaseTimer2 = setTimeout(() => setRevealPhase(2), 1400);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(phaseTimer1);
+      clearTimeout(phaseTimer2);
+    };
+  }, [handleFinish]);
+
+  // Full-Screen Procedural Shadow Mist & Smoke Simulator
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    const handleResize = () => {
+      if (!canvas) return;
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Initialize volumetric shadow clouds and floating cyan embers
+    const smokePuffs = [];
+    for (let i = 0; i < 75; i++) {
+      smokePuffs.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: 70 + Math.random() * 150,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: -0.3 - Math.random() * 0.7,
+        alpha: 0.12 + Math.random() * 0.22,
+        alphaPulse: Math.random() * Math.PI * 2,
+        colorType: Math.random() > 0.4 ? 'charcoal' : 'cyanTint'
       });
     }
 
-    return () => clearTimeout(timer);
-  }, [handleFinish]);
+    const embers = [];
+    for (let i = 0; i < 50; i++) {
+      embers.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: 1 + Math.random() * 2.5,
+        speedY: -0.6 - Math.random() * 1.4,
+        speedX: (Math.random() - 0.5) * 0.5,
+        alpha: 0.3 + Math.random() * 0.7,
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+
+    const startTime = Date.now();
+
+    const render = () => {
+      const elapsed = Date.now() - startTime;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // 1. Central Ambient Shadow Vortex Glow
+      const vortexGlow = ctx.createRadialGradient(cx, cy, 20, cx, cy, Math.min(width, height) * 0.75);
+      vortexGlow.addColorStop(0, 'rgba(2, 132, 199, 0.22)');
+      vortexGlow.addColorStop(0.4, 'rgba(15, 23, 42, 0.45)');
+      vortexGlow.addColorStop(0.8, 'rgba(3, 7, 18, 0.85)');
+      vortexGlow.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      ctx.fillStyle = vortexGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Render Volumetric Swirling Smoke Puffs Across Full Screen
+      smokePuffs.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alphaPulse += 0.02;
+
+        if (p.x < -p.radius) p.x = width + p.radius;
+        if (p.x > width + p.radius) p.x = -p.radius;
+        if (p.y < -p.radius) p.y = height + p.radius;
+        if (p.y > height + p.radius) p.y = -p.radius;
+
+        const currentAlpha = Math.max(0.04, Math.min(0.35, p.alpha + Math.sin(p.alphaPulse) * 0.08));
+        const grad = ctx.createRadialGradient(p.x, p.y, p.radius * 0.1, p.x, p.y, p.radius);
+        if (p.colorType === 'cyanTint') {
+          grad.addColorStop(0, `rgba(56, 189, 248, ${currentAlpha * 0.4})`);
+          grad.addColorStop(0.4, `rgba(2, 132, 199, ${currentAlpha * 0.2})`);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else {
+          grad.addColorStop(0, `rgba(18, 24, 38, ${currentAlpha * 0.9})`);
+          grad.addColorStop(0.6, `rgba(8, 12, 22, ${currentAlpha * 0.5})`);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 3. Render Floating Cybernetic Shadow Embers
+      embers.forEach((emb) => {
+        emb.y += emb.speedY;
+        emb.x += emb.speedX;
+        emb.pulse += 0.04;
+        if (emb.y < -10) {
+          emb.y = height + 10;
+          emb.x = Math.random() * width;
+        }
+        const currentAlpha = Math.max(0.2, Math.min(1, emb.alpha + Math.sin(emb.pulse) * 0.3));
+        ctx.fillStyle = `rgba(56, 189, 248, ${currentAlpha})`;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(emb.x, emb.y, emb.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // 4. Center Shockwave Expansion (Triggers around 600ms - 2000ms)
+      if (elapsed > 600 && elapsed < 2200) {
+        const shockProgress = (elapsed - 600) / 1600;
+        const shockRadius = shockProgress * Math.max(width, height) * 0.85;
+        const shockAlpha = (1 - shockProgress) * 0.6;
+        ctx.strokeStyle = `rgba(56, 189, 248, ${shockAlpha})`;
+        ctx.lineWidth = 2.5 * (1 - shockProgress);
+        ctx.beginPath();
+        ctx.arc(cx, cy, shockRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   return (
     <div
@@ -370,6 +505,7 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         zIndex: 999999,
         backgroundColor: '#000000',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
@@ -378,24 +514,14 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         transition: 'opacity 0.35s ease-out'
       }}
     >
-      <video
-        ref={videoRef}
-        src="/shadow-intro.mp4"
-        autoPlay
-        muted
-        playsInline
-        preload="auto"
-        onEnded={handleFinish}
-        onError={handleFinish}
+      <canvas
+        ref={canvasRef}
         style={{
+          position: 'absolute',
+          inset: 0,
           width: '100%',
           height: '100%',
-          maxWidth: '100vw',
-          maxHeight: '100dvh',
-          objectFit: 'contain',
-          display: 'block',
-          backgroundColor: '#000000',
-          margin: 'auto'
+          display: 'block'
         }}
       />
 
@@ -409,7 +535,7 @@ const ShadowStartupAnimation = ({ onComplete }) => {
           position: 'absolute',
           top: '20px',
           right: '20px',
-          zIndex: 10,
+          zIndex: 30,
           padding: '6px 14px',
           borderRadius: '20px',
           backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -428,15 +554,106 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         SKIP ❯❯
       </button>
 
+      {/* Full Screen Stylized "SHADOW" Reveal Overlay */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          pointerEvents: 'none',
+          padding: '0 16px',
+          width: '100%',
+          maxWidth: '500px'
+        }}
+      >
+        {/* Top Mini HUD Status */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '18px',
+            opacity: revealPhase >= 1 ? 1 : 0,
+            transform: revealPhase >= 1 ? 'none' : 'translateY(-10px)',
+            transition: 'all 0.6s ease-out'
+          }}
+        >
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#38bdf8', boxShadow: '0 0 10px #38bdf8' }} />
+          <span style={{ fontSize: '10px', fontWeight: '900', color: '#38bdf8', letterSpacing: '2px', fontFamily: 'monospace' }}>
+            SHADOW MATRIX // ONLINE
+          </span>
+        </div>
+
+        {/* Cinematic "SHADOW" Word with Dark Shadow Smoke Effect */}
+        <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <h1
+            style={{
+              margin: '0',
+              fontSize: 'clamp(38px, 12vw, 76px)',
+              fontWeight: '900',
+              fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              letterSpacing: 'clamp(6px, 2.8vw, 16px)',
+              textTransform: 'uppercase',
+              color: '#ffffff',
+              background: 'linear-gradient(180deg, #ffffff 15%, #cbd5e1 50%, #38bdf8 90%, #0284c7 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              filter: revealPhase >= 1 
+                ? 'drop-shadow(0 0 25px rgba(56, 189, 248, 0.9)) drop-shadow(0 0 50px rgba(2, 132, 199, 0.6)) drop-shadow(0 15px 35px rgba(0, 0, 0, 0.95))'
+                : 'drop-shadow(0 0 10px rgba(2, 132, 199, 0.3))',
+              transform: revealPhase >= 1 ? 'scale(1)' : 'scale(0.92)',
+              opacity: revealPhase >= 1 ? 1 : 0.15,
+              transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+              paddingLeft: 'clamp(6px, 2.8vw, 16px)'
+            }}
+          >
+            SHADOW
+          </h1>
+        </div>
+
+        {/* Glowing Horizon Pulse Line */}
+        <div
+          style={{
+            width: revealPhase >= 1 ? '70%' : '0%',
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, #38bdf8, #ffffff, #38bdf8, transparent)',
+            boxShadow: '0 0 14px #38bdf8',
+            marginTop: '12px',
+            marginBottom: '16px',
+            transition: 'width 0.8s ease-out'
+          }}
+        />
+
+        {/* Bottom Subtitle / Status */}
+        <div
+          style={{
+            fontSize: '10px',
+            fontWeight: '800',
+            color: '#94a3b8',
+            letterSpacing: '2px',
+            fontFamily: 'monospace',
+            opacity: revealPhase >= 2 ? 0.9 : 0,
+            transform: revealPhase >= 2 ? 'none' : 'translateY(8px)',
+            transition: 'all 0.6s ease-out'
+          }}
+        >
+          NEURAL MATRIX ARMED • TAP TO ENTER
+        </div>
+      </div>
+
       {/* Subtle bottom hint */}
       <div
         style={{
           position: 'absolute',
           bottom: '24px',
-          color: 'rgba(255, 255, 255, 0.5)',
-          fontSize: '11px',
-          fontWeight: '600',
-          letterSpacing: '1px',
+          color: 'rgba(255, 255, 255, 0.45)',
+          fontSize: '10px',
+          fontWeight: '700',
+          letterSpacing: '1.5px',
           textTransform: 'uppercase',
           pointerEvents: 'none'
         }}
