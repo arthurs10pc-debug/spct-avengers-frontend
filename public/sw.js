@@ -1,5 +1,16 @@
+// Shadow Dashboard Service Worker (Mobile PWA & Desktop Notifications)
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
+// Real-time Push Notification Listener
 self.addEventListener('push', function(event) {
-  let data = { title: 'SPCT Avengers', body: 'New commute update received.' };
+  let data = { title: 'Shadow Dashboard Alert', body: 'Scheduled reminder or system update.' };
   if (event.data) {
     try {
       data = event.data.json();
@@ -9,19 +20,41 @@ self.addEventListener('push', function(event) {
   }
 
   const options = {
-    body: data.body,
+    body: data.body || 'Scheduled reminder due now.',
     icon: '/logo.png',
     badge: '/logo.png',
-    vibrate: [200, 100, 200],
-    tag: 'spct-ride-alert',
-    renotify: true
+    vibrate: [250, 100, 250, 100, 250],
+    tag: data.tag || 'shadow-reminder-alert',
+    renotify: true,
+    data: data.data || { url: '/' }
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(data.title || 'Shadow Watcher Alert', options)
   );
 });
 
+// Local Message Notification Listener (Triggered by frontend on mobile PWA)
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    const notificationOptions = {
+      body: options?.body || 'Scheduled reminder due now.',
+      icon: '/logo.png',
+      badge: '/logo.png',
+      vibrate: [250, 100, 250, 100, 250],
+      tag: options?.tag || 'shadow-reminder-alert',
+      renotify: true,
+      ...options
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title || 'Shadow Watcher Alert', notificationOptions)
+    );
+  }
+});
+
+// Notification Click Handler: Focus app or open standalone window
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(

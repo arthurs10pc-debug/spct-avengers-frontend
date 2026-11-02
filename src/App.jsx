@@ -337,6 +337,118 @@ export default function App() {
   const [assistantStatus, setAssistantStatus] = useState("Shadow System Active...");
 
   // Real Database Google Auth State (Login / Sign Up with Backend verification)
+  // Mobile & Desktop System Permissions State
+  const [mobilePermissions, setMobilePermissions] = useState(() => {
+    try {
+      return {
+        mic: localStorage.getItem('jarvis_perm_mic') || 'prompt',
+        location: localStorage.getItem('jarvis_perm_loc') || 'prompt',
+        notifications: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+      };
+    } catch {
+      return { mic: 'prompt', location: 'prompt', notifications: 'prompt' };
+    }
+  });
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [isRequestingPerms, setIsRequestingPerms] = useState(false);
+
+  // Cross-Platform Native System Notification (Supports Android PWA, iOS, Desktop)
+  const showSystemNotification = useCallback(async (title, options = {}) => {
+    try {
+      if (!('Notification' in window)) return;
+      if (Notification.permission !== 'granted') {
+        const perm = await Notification.requestPermission().catch(() => {});
+        if (perm !== 'granted') return;
+      }
+
+      const notifOptions = {
+        icon: '/logo.png',
+        badge: '/logo.png',
+        vibrate: [250, 100, 250, 100, 250],
+        tag: options?.tag || 'shadow-reminder-alert',
+        renotify: true,
+        ...options
+      };
+
+      // 1. Try active Service Worker (Required for mobile PWA standalone and Android Chrome)
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready || await navigator.serviceWorker.getRegistration();
+          if (reg && reg.showNotification) {
+            await reg.showNotification(title, notifOptions);
+            return;
+          }
+        } catch (swErr) {
+          console.warn('[PWA Notification SW fallback]:', swErr);
+        }
+
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title,
+            options: notifOptions
+          });
+          return;
+        }
+      }
+
+      // 2. Desktop notification fallback
+      new Notification(title, notifOptions);
+    } catch (e) {
+      console.warn('[Notification Error handled]:', e);
+    }
+  }, []);
+
+  // Real Mobile Permissions Requester (Prompts native browser dialogs on user gesture)
+  const requestAllMobilePermissions = useCallback(async () => {
+    setIsRequestingPerms(true);
+    const results = { ...mobilePermissions };
+
+    // 1. Notifications
+    if ('Notification' in window) {
+      try {
+        const p = await Notification.requestPermission();
+        results.notifications = p;
+      } catch (e) {}
+    }
+
+    // 2. Microphone (Real native prompt)
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        results.mic = 'granted';
+        try { localStorage.setItem('jarvis_perm_mic', 'granted'); } catch (e) {}
+        stream.getTracks().forEach(t => t.stop());
+      } catch (e) {
+        results.mic = 'denied';
+      }
+    }
+
+    // 3. Geolocation (Real native prompt)
+    if (navigator.geolocation) {
+      try {
+        await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            () => {
+              results.location = 'granted';
+              try { localStorage.setItem('jarvis_perm_loc', 'granted'); } catch (e) {}
+              resolve();
+            },
+            () => {
+              results.location = 'denied';
+              resolve();
+            },
+            { timeout: 7000, enableHighAccuracy: true }
+          );
+        });
+      } catch (e) {}
+    }
+
+    setMobilePermissions(results);
+    setIsRequestingPerms(false);
+    return results;
+  }, [mobilePermissions]);
+
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
@@ -746,6 +858,55 @@ export default function App() {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
   }, [remindersList, snoozeMinutes, expenseList, monthlyBudget, notesList, userProfile?.email]);
+
+  // Instant Mobile & Multi-Device Re-Sync on Tab Focus or Mobile Screen Unlock
+  useEffect(() => {
+    const handleReSyncOnForeground = () => {
+      if (document.visibilityState === 'visible' && userProfileRef.current?.email) {
+        if (!socketRef.current?.connected) {
+          socketRef.current?.connect();
+        }
+        // Fetch fresh cloud state immediately
+        const email = userProfileRef.current.email;
+        fetch(`${BACKEND_URL}/api/user/sync-data?email=${encodeURIComponent(email)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.success) {
+              isRemoteSyncRef.current = true;
+              if (Array.isArray(data.reminders) && data.reminders.length > 0) setRemindersList(data.reminders);
+              if (Array.isArray(data.notes)) {
+                setNotesList(data.notes);
+                try { localStorage.setItem(`jarvis_notes_${email.trim().toLowerCase()}`, JSON.stringify(data.notes)); } catch (e) {}
+              }
+              if (Array.isArray(data.expenses)) setExpenseList(data.expenses);
+              if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
+              setTimeout(() => { isRemoteSyncRef.current = false; }, 600);
+            }
+          })
+          .catch(() => {});
+
+        // Ping 3x daily automated email scheduler catch-up
+        fetch(`${BACKEND_URL}/api/notes-scheduler/check-and-dispatch`).catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleReSyncOnForeground);
+    window.addEventListener('focus', handleReSyncOnForeground);
+    return () => {
+      document.removeEventListener('visibilitychange', handleReSyncOnForeground);
+      window.removeEventListener('focus', handleReSyncOnForeground);
+    };
+  }, []);
+
+  // Periodic 5-minute automated mail check while app is open
+  useEffect(() => {
+    const check3x = () => {
+      fetch(`${BACKEND_URL}/api/notes-scheduler/check-and-dispatch`).catch(() => {});
+    };
+    check3x();
+    const inv = setInterval(check3x, 300000);
+    return () => clearInterval(inv);
+  }, []);
 
   // Live Header Clock, Date & Day Updater
   useEffect(() => {
@@ -1939,15 +2100,32 @@ export default function App() {
       if (data.email && data.email.toLowerCase() !== userProfileRef.current.email.toLowerCase()) return;
 
       isRemoteSyncRef.current = true;
-      if (Array.isArray(data.reminders) && data.reminders.length > 0) setRemindersList(data.reminders);
-      if (typeof data.snoozeMinutes === 'number') setSnoozeMinutes(data.snoozeMinutes);
-      if (Array.isArray(data.expenses)) setExpenseList(data.expenses);
-      if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
-      if (Array.isArray(data.notes)) setNotesList(data.notes);
+      const cleanEmail = userProfileRef.current.email.trim().toLowerCase();
+
+      if (Array.isArray(data.reminders) && data.reminders.length > 0) {
+        setRemindersList(data.reminders);
+        try { localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(data.reminders)); } catch (e) {}
+      }
+      if (typeof data.snoozeMinutes === 'number') {
+        setSnoozeMinutes(data.snoozeMinutes);
+        try { localStorage.setItem('jarvis_snooze_duration', data.snoozeMinutes.toString()); } catch (e) {}
+      }
+      if (Array.isArray(data.expenses)) {
+        setExpenseList(data.expenses);
+        try { localStorage.setItem('jarvis_expenses', JSON.stringify(data.expenses)); } catch (e) {}
+      }
+      if (typeof data.monthlyBudget === 'number') {
+        setMonthlyBudget(data.monthlyBudget);
+        try { localStorage.setItem('jarvis_monthly_budget', data.monthlyBudget.toString()); } catch (e) {}
+      }
+      if (Array.isArray(data.notes)) {
+        setNotesList(data.notes);
+        try { localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(data.notes)); } catch (e) {}
+      }
 
       setTimeout(() => {
         isRemoteSyncRef.current = false;
-      }, 400);
+      }, 600);
     });
     
     if ('speechSynthesis' in window) {
@@ -2124,14 +2302,10 @@ export default function App() {
             startJailerFluteAlarm();
           }
 
-          if ('Notification' in window && Notification.permission === 'granted') {
-            try {
-              new Notification("Shadow Watcher Alert", {
-                body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
-                icon: "/logo.png"
-              });
-            } catch (e) {}
-          }
+          showSystemNotification("Shadow Watcher Alert", {
+            body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
+            icon: "/logo.png"
+          });
         }
       });
     };
@@ -2154,23 +2328,10 @@ export default function App() {
     if (!isMuted) {
       startJailerFluteAlarm();
     }
-    if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        new Notification("Shadow Watcher Alert", {
-          body: "Scheduled Reminder: Team Review Meeting due now!",
-          icon: "/logo.png"
-        });
-      } else if (Notification.permission === 'default') {
-        Notification.requestPermission().then(p => {
-          if (p === 'granted') {
-            new Notification("Shadow Watcher Alert", {
-              body: "Scheduled Reminder: Team Review Meeting due now!",
-              icon: "/logo.png"
-            });
-          }
-        });
-      }
-    }
+    showSystemNotification("Shadow Watcher Alert", {
+      body: "Scheduled Reminder: Team Review Meeting due now!",
+      icon: "/logo.png"
+    });
   }, [isMuted, startJailerFluteAlarm]);
 
   const handleManualResetToday = useCallback(() => {
@@ -2479,16 +2640,16 @@ export default function App() {
   const handleSendNotesEmailNow = async (explicitEmail = null) => {
     const targetEmail = (explicitEmail || notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com').trim().toLowerCase();
     setIsSendingNotesEmail(true);
-    setNotesEmailFeedback(`Sending notes to ${targetEmail}...`);
+    setNotesEmailFeedback(`Connecting to mail server... Sending to ${targetEmail}...`);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: targetEmail,
-          slotLabel: 'Instant Notes & Tasks Reminder',
+          slotLabel: 'Manual Notes & Tasks Reminder',
           notes: notesList
         }),
         signal: controller.signal
@@ -2498,13 +2659,17 @@ export default function App() {
       if (res.ok && data.success) {
         setNotesEmailFeedback(`✅ Delivered to ${targetEmail}!`);
       } else {
-        setNotesEmailFeedback(data.message || data.error || `✅ Notes reminder delivered to ${targetEmail}!`);
+        setNotesEmailFeedback(`❌ ${data.error || data.message || 'Failed to dispatch email'}`);
       }
     } catch (e) {
-      setNotesEmailFeedback(`✅ Notes reminder delivered to ${targetEmail}!`);
+      if (e.name === 'AbortError') {
+        setNotesEmailFeedback(`⚠️ Email dispatch is processing in background. Check ${targetEmail} shortly.`);
+      } else {
+        setNotesEmailFeedback(`❌ Mail error: ${e.message}`);
+      }
     } finally {
       setIsSendingNotesEmail(false);
-      setTimeout(() => setNotesEmailFeedback(""), 6000);
+      setTimeout(() => setNotesEmailFeedback(""), 8000);
     }
   };
 
@@ -2694,11 +2859,11 @@ export default function App() {
   });
 
   return (
-    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#A5A79B', color: '#590907', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
       
       <style>{`
         * { box-sizing: border-box; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #A5A79B; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #090d16; }
         @media (max-width: 768px) {
           aside { width: 56px !important; }
           header h1 { font-size: 13px !important; }
@@ -2707,12 +2872,12 @@ export default function App() {
       `}</style>
 
       {/* Left Side Thin Navigation Sidebar - Muted Sage Grey & Burgundy */}
-      <aside style={{ width: '64px', backgroundColor: '#590907', borderRight: '1px solid #3d0605', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
-        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#E8D2B5', color: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
+      <aside style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
@@ -2720,17 +2885,17 @@ export default function App() {
         <button 
           onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
           title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '09:00'} (${nextCountdownStr} remaining)`} 
-          style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '54px' }}
+          style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '54px' }}
         >
           <Clock size={18} />
           <span style={{ 
             fontSize: '9px', 
             fontWeight: '900', 
-            color: '#590907', 
-            background: '#E8D2B5', 
+            color: '#38bdf8',
+            background: '#131d33', 
             padding: '2px 5px', 
             borderRadius: '5px', 
-            border: '1px solid #590907', 
+            border: '1px solid #334155', 
             whiteSpace: 'nowrap',
             fontFamily: 'monospace, system-ui',
             fontVariantNumeric: 'tabular-nums',
@@ -2742,17 +2907,17 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Newspaper size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#E8D2B5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Wrench size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
         </button>
@@ -2761,9 +2926,9 @@ export default function App() {
           onClick={() => setShowNotesModal(true)} 
           title="Google Keep Style Notes & Task Reminders" 
           style={{ 
-            background: showNotesModal ? '#590907' : 'transparent', 
+            background: showNotesModal ? '#0284c7' : 'transparent', 
             border: 'none', 
-            color: '#E8D2B5', 
+            color: '#cbd5e1', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
@@ -2812,9 +2977,9 @@ export default function App() {
             title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
             style={{ 
               position: 'relative',
-              background: userProfile ? '#E8D2B5' : '#3d0605', 
-              border: '1px solid #E8D2B5', 
-              color: userProfile ? '#590907' : '#E8D2B5', 
+              background: userProfile ? '#1e293b' : '#0f172a', 
+              border: '1px solid #334155',
+              color: userProfile ? '#38bdf8' : '#cbd5e1', 
               padding: userProfile && userProfile.photo ? '2px' : '8px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -2836,7 +3001,7 @@ export default function App() {
               <UserCircle size={20} />
             )}
             {userProfile && (
-              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', border: '1px solid #590907' }} />
+              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', border: '1px solid #334155' }} />
             )}
           </button>
 
@@ -2844,9 +3009,9 @@ export default function App() {
             onClick={handleStopAll} 
             title="Shadow Standby / Emergency Audio & Route Stop" 
             style={{ 
-              background: '#590907', 
-              border: '1px solid #E8D2B5', 
-              color: '#E8D2B5', 
+              background: '#0284c7',
+              border: '1px solid #334155', 
+              color: '#cbd5e1', 
               padding: '6px 4px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -2860,7 +3025,7 @@ export default function App() {
             }}
           >
             <Power size={15} color="#ef4444" />
-            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: '#E8D2B5' }}>STANDBY</span>
+            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: '#cbd5e1' }}>STANDBY</span>
           </button>
         </div>
       </aside>
@@ -2869,20 +3034,43 @@ export default function App() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
         {/* Top Header - Warm Cream Beige & Burgundy */}
-        <header style={{ padding: '12px 16px', backgroundColor: '#E8D2B5', borderBottom: '1px solid #A5A79B', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <header style={{ padding: '12px 16px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
-            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#590907', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
-            <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
+            <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                        {/* Real Mobile & Desktop Permissions Setup Button */}
+            <button
+              onClick={() => setShowPermissionsModal(true)}
+              title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
+              style={{
+                border: '1px solid #334155',
+                background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#132e27' : '#1e293b',
+                color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#34d399' : '#38bdf8',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '800',
+                fontSize: '11px',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Shield size={14} />
+              <span>{(mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? "PERMISSIONS OK" : "SETUP PERMISSIONS"}</span>
+            </button>
+
             <button 
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
               style={{
-                border: isMuted ? '2px solid #ef4444' : '1px solid #590907',
-                background: isMuted ? '#991b1b' : '#590907',
-                color: isMuted ? '#ffffff' : '#E8D2B5',
+                border: isMuted ? '2px solid #ef4444' : '1px solid #334155',
+                background: isMuted ? '#991b1b' : '#1e293b',
+                color: isMuted ? '#ffffff' : '#f8fafc',
                 padding: '6px 12px',
                 borderRadius: '10px',
                 cursor: 'pointer',
@@ -2903,7 +3091,7 @@ export default function App() {
         </header>
 
         {/* Main Jarvis Heart Center - Only moving middle particle dots animation video (No spinning circles or perimeter rings) */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative', overflow: 'hidden', backgroundColor: '#A5A79B' }}>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', position: 'relative', overflow: 'hidden', backgroundColor: '#090d16', background: 'radial-gradient(ellipse at center, #111e3b 0%, #090d16 70%)' }}>
           
           <style>{`
             @keyframes jarvisPulseCore {
@@ -2926,11 +3114,11 @@ export default function App() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#590907',
-              border: `3px solid ${isListening ? '#38bdf8' : '#E8D2B5'}`,
+              backgroundColor: '#0f172a',
+              border: `3px solid ${isListening ? '#38bdf8' : '#2563eb'}`,
               boxShadow: isListening 
-                ? '0 0 35px rgba(56, 189, 248, 0.8), 0 8px 30px rgba(0,0,0,0.3)' 
-                : '0 8px 28px rgba(89, 9, 7, 0.45)',
+                ? '0 0 45px rgba(56, 189, 248, 0.9), inset 0 0 25px rgba(56, 189, 248, 0.4)' 
+                : '0 10px 35px rgba(2, 132, 199, 0.35), inset 0 0 15px rgba(15, 23, 42, 0.6)',
               transition: 'all 0.25s ease',
               textAlign: 'center',
               padding: '16px',
@@ -2941,20 +3129,20 @@ export default function App() {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              backgroundColor: isListening ? '#0284c7' : 'rgba(232, 210, 181, 0.15)',
+              backgroundColor: isListening ? '#0284c7' : 'rgba(56, 189, 248, 0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: '6px',
               transition: 'all 0.2s ease'
             }}>
-              <Mic size={28} color={isListening ? '#ffffff' : '#E8D2B5'} />
+              <Mic size={28} color={isListening ? '#ffffff' : '#38bdf8'} />
             </div>
 
             <span style={{ 
               fontSize: '11px', 
               fontWeight: '900', 
-              color: '#E8D2B5', 
+              color: '#cbd5e1', 
               letterSpacing: '1px',
               textTransform: 'uppercase'
             }}>
@@ -2963,7 +3151,7 @@ export default function App() {
 
             <span style={{ 
               fontSize: '8px', 
-              color: 'rgba(232, 210, 181, 0.75)', 
+              color: '#94a3b8', 
               fontWeight: '700',
               marginTop: '2px'
             }}>
@@ -2977,7 +3165,7 @@ export default function App() {
               marginTop: '16px', 
               padding: '10px 16px', 
               borderRadius: '14px', 
-              backgroundColor: trafficAlertBanner ? '#590907' : '#111827', 
+              backgroundColor: trafficAlertBanner ? '#991b1b' : '#0f172a', 
               border: `2px solid ${trafficAlertBanner ? '#ef4444' : '#38bdf8'}`, 
               color: '#ffffff', 
               display: 'flex', 
@@ -3036,12 +3224,12 @@ export default function App() {
 
       {/* Tools / Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(6px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '700px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowToolsModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#590907' }}>
-              <Wrench size={18} color="#590907" /> Tools & Clean PDF Exporter Converter
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#f8fafc' }}>
+              <Wrench size={18} color="#38bdf8" /> Tools & Clean PDF Exporter Converter
             </h3>
 
             {/* Top Size Circles */}
@@ -3054,9 +3242,9 @@ export default function App() {
                     width: sz === 'Original' ? '64px' : '48px',
                     height: '28px',
                     borderRadius: '14px',
-                    border: selectedSize === sz ? '2px solid #590907' : '1px solid #A5A79B',
-                    backgroundColor: selectedSize === sz ? 'rgba(89,9,7,0.2)' : '#A5A79B',
-                    color: selectedSize === sz ? '#590907' : '#590907',
+                    border: selectedSize === sz ? '2px solid #38bdf8' : '1px solid #334155',
+                    backgroundColor: selectedSize === sz ? '#0284c7' : '#1e293b',
+                    color: selectedSize === sz ? '#ffffff' : '#94a3b8',
                     fontSize: sz === 'Original' ? '8px' : '9px',
                     fontWeight: '900',
                     cursor: 'pointer'
@@ -3081,9 +3269,9 @@ export default function App() {
                 style={{ 
                   flex: 1, 
                   minHeight: '200px', 
-                  border: '2px dashed #590907', 
+                  border: '2px dashed #38bdf8', 
                   borderRadius: '14px', 
-                  backgroundColor: '#A5A79B', 
+                  backgroundColor: '#1e293b', 
                   display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
@@ -3105,16 +3293,16 @@ export default function App() {
               >
                 {uploadedFile ? (
                   <div>
-                    <FileText size={36} color="#590907" style={{ marginBottom: '6px' }} />
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#590907' }}>{uploadedFile.name}</p>
-                    <span style={{ fontSize: '9px', color: '#3d0605' }}>File loaded! Tap format for clean text PDF download.</span>
+                    <FileText size={36} color="#38bdf8" style={{ marginBottom: '6px' }} />
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>{uploadedFile.name}</p>
+                    <span style={{ fontSize: '9px', color: '#94a3b8' }}>File loaded! Tap format for clean text PDF download.</span>
                   </div>
                 ) : (
                   <div>
-                    <Upload size={32} color="#590907" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: '800', color: '#590907' }}>Drag and Drop</p>
-                    <p style={{ margin: '0 0 4px 0', fontSize: '10px', color: '#3d0605' }}>or</p>
-                    <span style={{ fontSize: '10px', color: '#590907', textDecoration: 'underline' }}>Browse from Device</span>
+                    <Upload size={32} color="#38bdf8" style={{ marginBottom: '8px' }} />
+                    <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: '800', color: '#f8fafc' }}>Drag and Drop</p>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '10px', color: '#94a3b8' }}>or</p>
+                    <span style={{ fontSize: '10px', color: '#f8fafc', textDecoration: 'underline' }}>Browse from Device</span>
                   </div>
                 )}
               </div>
@@ -3311,9 +3499,9 @@ export default function App() {
                       flex: window.innerWidth < 640 ? '1 1 45%' : 'none',
                       padding: '7px 8px',
                       borderRadius: '8px',
-                      backgroundColor: fmt === 'Original Format' ? '#590907' : '#A5A79B',
-                      border: '1px solid #590907',
-                      color: fmt === 'Original Format' ? '#E8D2B5' : '#590907',
+                      backgroundColor: fmt === 'Original Format' ? '#0284c7' : '#1e293b',
+                      border: '1px solid #334155',
+                      color: fmt === 'Original Format' ? '#ffffff' : '#94a3b8',
                       fontSize: '9px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -3336,12 +3524,12 @@ export default function App() {
 
       {/* Google Keep Style Notes Modal */}
       {showNotesModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(6px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '780px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(6px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '780px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
             
             <button 
               onClick={() => setShowNotesModal(false)} 
-              style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} />
             </button>
@@ -3349,10 +3537,10 @@ export default function App() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#590907' }}>
-                  <CheckSquare size={19} color="#590907" /> Google Keep Style Notes
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#f8fafc' }}>
+                  <CheckSquare size={19} color="#38bdf8" /> Google Keep Style Notes
                 </h3>
-                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '600' }}>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '600' }}>
                   All notes and pinned notes synced across devices ({userProfile?.email || 'Guest Mode - Login to Sync'})
                 </span>
               </div>
@@ -3367,11 +3555,11 @@ export default function App() {
                   style={{
                     padding: '6px 10px',
                     borderRadius: '8px',
-                    border: '1px solid #590907',
+                    border: '1px solid #334155',
                     fontSize: '11px',
                     width: '180px',
                     backgroundColor: '#ffffff',
-                    color: '#590907',
+                    color: '#f8fafc',
                     fontWeight: '700',
                     outline: 'none'
                   }}
@@ -3380,8 +3568,8 @@ export default function App() {
                   onClick={() => handleSendNotesEmailNow(notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com')}
                   disabled={isSendingNotesEmail}
                   style={{
-                    backgroundColor: '#590907',
-                    color: '#E8D2B5',
+                    backgroundColor: '#0284c7',
+                    color: '#cbd5e1',
                     border: 'none',
                     padding: '7px 14px',
                     borderRadius: '8px',
@@ -3403,7 +3591,7 @@ export default function App() {
             </div>
 
             {/* Daily Email Schedule Banner & Feedback */}
-            <div style={{ padding: '8px 12px', borderRadius: '10px', backgroundColor: '#590907', color: '#E8D2B5', fontSize: '10px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ padding: '8px 12px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#cbd5e1', fontSize: '10px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
               <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your registered Gmail.</span>
               {notesEmailFeedback && (
                 <span style={{ color: '#38bdf8', fontWeight: '900' }}>{notesEmailFeedback}</span>
@@ -3411,17 +3599,17 @@ export default function App() {
             </div>
 
             {/* Clean Note Creator (No complicated checklist mode - Simple title & text note) */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '14px', border: '1px solid #590907', marginBottom: '18px', boxShadow: '0 2px 10px rgba(89,9,7,0.1)' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '14px', border: '1px solid #334155', marginBottom: '18px', boxShadow: '0 2px 10px rgba(89,9,7,0.1)' }}>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '900', color: '#590907' }}>
+                <span style={{ fontSize: '12px', fontWeight: '900', color: '#f8fafc' }}>
                   ✍️ Create a Note
                 </span>
 
                 {/* Color Palette & Pin Toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907' }}>Color:</span>
-                  {['#38bdf8', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#590907'].map(c => (
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Color:</span>
+                  {['#38bdf8', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#0284c7'].map(c => (
                     <button
                       key={c}
                       type="button"
@@ -3504,7 +3692,7 @@ export default function App() {
               {/* Multimedia Attachment Buttons Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <Paperclip size={12} /> Attach:
                   </span>
 
@@ -3526,7 +3714,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Photos / Images (.jpg, .png, .webp)"
                   >
                     <Image size={12} /> Photo
@@ -3541,7 +3729,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Videos (.mp4, .webm, .mov)"
                   >
                     <Video size={12} /> Video
@@ -3556,7 +3744,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Audio files (.mp3, .wav, .m4a)"
                   >
                     <Music size={12} /> Audio
@@ -3571,7 +3759,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #590907', backgroundColor: '#E8D2B5', color: '#590907', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach PDF Documents (.pdf)"
                   >
                     <FileText size={12} /> PDF
@@ -3584,9 +3772,9 @@ export default function App() {
                     style={{
                       padding: '4px 9px',
                       borderRadius: '6px',
-                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : '#590907'),
-                      backgroundColor: isRecordingAudio ? '#fee2e2' : '#E8D2B5',
-                      color: isRecordingAudio ? '#dc2626' : '#590907',
+                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : '#334155'),
+                      backgroundColor: isRecordingAudio ? '#7f1d1d' : '#1e293b',
+                      color: isRecordingAudio ? '#fca5a5' : '#38bdf8',
                       fontSize: '10px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -3596,7 +3784,7 @@ export default function App() {
                     }}
                     title={isRecordingAudio ? "Click to stop and attach voice recording" : "Record Voice Note directly from microphone"}
                   >
-                    <Mic size={12} color={isRecordingAudio ? '#dc2626' : '#590907'} />
+                    <Mic size={12} color={isRecordingAudio ? '#dc2626' : '#38bdf8'} />
                     {isRecordingAudio ? `Stop (${recordingDuration}s)` : 'Voice Record'}
                   </button>
                 </div>
@@ -3606,8 +3794,8 @@ export default function App() {
                   type="button"
                   onClick={handleSaveNote}
                   style={{
-                    backgroundColor: '#590907',
-                    color: '#E8D2B5',
+                    backgroundColor: '#0284c7',
+                    color: '#cbd5e1',
                     border: 'none',
                     padding: '8px 20px',
                     borderRadius: '8px',
@@ -3623,8 +3811,8 @@ export default function App() {
 
               {/* Staged Attachments Preview Strip */}
               {stagedAttachments.length > 0 && (
-                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px dashed #590907' }}>
-                  <div style={{ fontSize: '10px', fontWeight: '800', color: '#590907', marginBottom: '6px' }}>
+                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px dashed #38bdf8' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', marginBottom: '6px' }}>
                     📎 Ready to Save ({stagedAttachments.length} Attachment{stagedAttachments.length > 1 ? 's' : ''}):
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -3673,9 +3861,9 @@ export default function App() {
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: noteFilterTab === 'all' ? '#590907' : 'transparent',
-                    color: noteFilterTab === 'all' ? '#E8D2B5' : '#590907',
+                    border: '1px solid #334155',
+                    backgroundColor: noteFilterTab === 'all' ? '#0284c7' : 'transparent',
+                    color: noteFilterTab === 'all' ? '#ffffff' : '#94a3b8',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -3689,9 +3877,9 @@ export default function App() {
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: noteFilterTab === 'pinned' ? '#590907' : 'transparent',
-                    color: noteFilterTab === 'pinned' ? '#E8D2B5' : '#590907',
+                    border: '1px solid #334155',
+                    backgroundColor: noteFilterTab === 'pinned' ? '#0284c7' : 'transparent',
+                    color: noteFilterTab === 'pinned' ? '#ffffff' : '#94a3b8',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -3701,7 +3889,7 @@ export default function App() {
                     boxShadow: noteFilterTab === 'pinned' ? '0 2px 6px rgba(89,9,7,0.2)' : 'none'
                   }}
                 >
-                  <Pin size={12} fill={noteFilterTab === 'pinned' ? '#E8D2B5' : 'none'} />
+                  <Pin size={12} fill={noteFilterTab === 'pinned' ? '#ffffff' : 'none'} />
                   Pinned ({notesList.filter(n => n.pinned).length})
                 </button>
               </div>
@@ -3714,9 +3902,9 @@ export default function App() {
                 style={{
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #590907',
+                  border: '1px solid #334155',
                   backgroundColor: '#ffffff',
-                  color: '#590907',
+                  color: '#f8fafc',
                   fontSize: '11px',
                   width: '180px',
                   outline: 'none',
@@ -3912,8 +4100,8 @@ export default function App() {
                 ))}
 
               {notesList.filter(n => noteFilterTab === 'pinned' ? n.pinned : true).length === 0 && (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: '#590907' }}>
-                  <CheckSquare size={36} color="#590907" style={{ margin: '0 auto 8px auto', opacity: 0.7 }} />
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: '#f8fafc' }}>
+                  <CheckSquare size={36} color="#38bdf8" style={{ margin: '0 auto 8px auto', opacity: 0.7 }} />
                   <p style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>
                     {noteFilterTab === 'pinned' ? 'No pinned notes yet. Pin your important notes to find them quickly!' : 'No notes yet. Create your first note above!'}
                   </p>
@@ -3927,21 +4115,21 @@ export default function App() {
 
       {/* Route Setup Modal - Strictly Gujarat, India with POI Direct Search & Real-Time Traffic Feed */}
       {showRoutePanel && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.7)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#E8D2B5', width: '100%', maxWidth: '520px', height: '100%', padding: '16px', borderLeft: '1px solid #590907', display: 'flex', flexDirection: 'column', color: '#590907', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ backgroundColor: '#0f172a', width: '100%', maxWidth: '520px', height: '100%', padding: '16px', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>Gujarat Live Route & Real-Time Radar</h3>
-                <span style={{ fontSize: '9px', fontWeight: '800', color: '#590907', backgroundColor: '#A5A79B', padding: '1px 5px', borderRadius: '4px' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>Gujarat Live Route & Real-Time Radar</h3>
+                <span style={{ fontSize: '9px', fontWeight: '800', color: '#f8fafc', backgroundColor: '#1e293b', padding: '1px 5px', borderRadius: '4px' }}>
                   Strictly Gujarat • Direct Search Circles, Mandir, Hospitals, Hostels
                 </span>
               </div>
-              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
             {/* Gujarat Landmark Category Quick Filters */}
             <div style={{ marginBottom: '8px' }}>
-              <span style={{ fontSize: '9px', fontWeight: '800', color: '#3d0605', display: 'block', marginBottom: '4px' }}>
+              <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
                 Direct Gujarat Landmark Selector:
               </span>
               <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '3px' }}>
@@ -3957,9 +4145,9 @@ export default function App() {
                     type="button"
                     onClick={() => setSelectedPoiCategory(selectedPoiCategory === cat.id ? 'all' : cat.id)}
                     style={{
-                      background: selectedPoiCategory === cat.id ? '#590907' : '#A5A79B',
-                      color: selectedPoiCategory === cat.id ? '#E8D2B5' : '#590907',
-                      border: '1px solid #590907',
+                      background: selectedPoiCategory === cat.id ? '#0284c7' : '#1e293b',
+                      color: selectedPoiCategory === cat.id ? '#ffffff' : '#94a3b8',
+                      border: '1px solid #334155',
                       padding: '3px 7px',
                       borderRadius: '6px',
                       fontSize: '9px',
@@ -3975,24 +4163,24 @@ export default function App() {
 
               {/* Scrollable POI Quick Selection Bar when category selected */}
               {selectedPoiCategory !== 'all' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', padding: '6px', margin: '6px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '6px', margin: '6px 0' }}>
                   {GUJARAT_POI_DATABASE.filter(p => p.category === selectedPoiCategory).map((poi, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px', borderBottom: '1px solid rgba(89,9,7,0.2)' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
                         {poi.name}
                       </span>
                       <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
                         <button 
                           type="button" 
                           onClick={() => { setFromInput(poi.name); setActiveRoute(prev => ({ ...prev, fromName: poi.name, fromCoords: poi.coords })); }} 
-                          style={{ background: '#590907', color: '#E8D2B5', border: 'none', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                          style={{ background: '#0284c7', color: '#cbd5e1', border: 'none', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
                         >
                           From
                         </button>
                         <button 
                           type="button" 
                           onClick={() => { setToInput(poi.name); setActiveRoute(prev => ({ ...prev, toName: poi.name, toCoords: poi.coords })); }} 
-                          style={{ background: '#3d0605', color: '#E8D2B5', border: 'none', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                          style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
                         >
                           To
                         </button>
@@ -4012,14 +4200,15 @@ export default function App() {
                     placeholder="Search From (e.g. Iskcon, Civil, Akshardham)..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#0284c7',
+              border: '1px solid #334155', color: '#cbd5e1', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 4px', borderRadius: '3px' }}>
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', padding: '1px 4px', borderRadius: '3px' }}>
                             {item.category ? item.category.toUpperCase() : 'GUJARAT'}
                           </span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.display_name}</span>
@@ -4035,14 +4224,15 @@ export default function App() {
                     placeholder="Search To (e.g. Pakwan, Nirma, Hospital)..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#0284c7',
+              border: '1px solid #334155', color: '#cbd5e1', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #590907', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '1px 4px', borderRadius: '3px' }}>
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', padding: '1px 4px', borderRadius: '3px' }}>
                             {item.category ? item.category.toUpperCase() : 'GUJARAT'}
                           </span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.display_name}</span>
@@ -4063,7 +4253,7 @@ export default function App() {
                     <StopCircle size={15} /> Stop Route Navigation
                   </button>
                 ) : (
-                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
                     Start Live Navigation & Traffic Radar
                   </button>
                 )}
@@ -4073,9 +4263,9 @@ export default function App() {
                   style={{
                     padding: '10px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: isSimulatedTraffic ? '#ef4444' : '#A5A79B',
-                    color: isSimulatedTraffic ? '#ffffff' : '#590907',
+                    border: '1px solid #334155',
+                    backgroundColor: isSimulatedTraffic ? '#ef4444' : '#1e293b',
+                    color: isSimulatedTraffic ? '#ffffff' : '#94a3b8',
                     fontWeight: '900',
                     fontSize: '10px',
                     cursor: 'pointer'
@@ -4088,30 +4278,30 @@ export default function App() {
             </form>
 
             {/* Leaflet Map (Clear segment in Green, Traffic segment in RED) */}
-            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #590907', backgroundColor: '#A5A79B', minHeight: '220px', height: '220px', marginBottom: '8px' }}>
+            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #334155', backgroundColor: '#1e293b', minHeight: '220px', height: '220px', marginBottom: '8px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
 
             {/* Live Real-Time Traffic Telemetry Messages Stream */}
-            <div style={{ backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #590907', paddingBottom: '4px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#590907', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Radio size={12} color="#590907" /> Real-Time Traffic Dispatch Feed
+            <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '4px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Radio size={12} color="#38bdf8" /> Real-Time Traffic Dispatch Feed
                 </span>
-                <span style={{ fontSize: '9px', fontWeight: '800', color: isMonitoringActive ? '#15803d' : '#3d0605' }}>
+                <span style={{ fontSize: '9px', fontWeight: '800', color: isMonitoringActive ? '#22c55e' : '#94a3b8' }}>
                   {isMonitoringActive ? '● 1s Active Radar' : 'Standby'}
                 </span>
               </div>
 
               <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
                 {trafficLiveLogs.length === 0 ? (
-                  <p style={{ margin: '6px 0', fontSize: '10px', color: '#3d0605', textAlign: 'center' }}>
+                  <p style={{ margin: '6px 0', fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
                     Select From and To locations in Gujarat above. System will continuously stream traffic updates every second.
                   </p>
                 ) : (
                   trafficLiveLogs.map((log) => (
-                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '9px', color: log.level === 'alert' ? '#b91c1c' : '#590907', fontWeight: log.level === 'alert' ? '900' : '700' }}>
-                      <span style={{ color: '#3d0605', flexShrink: 0 }}>[{log.time}]</span>
+                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '9px', color: log.level === 'alert' ? '#f87171' : '#cbd5e1', fontWeight: log.level === 'alert' ? '900' : '700' }}>
+                      <span style={{ color: '#94a3b8', flexShrink: 0 }}>[{log.time}]</span>
                       <span>{log.text}</span>
                     </div>
                   ))
@@ -4125,18 +4315,18 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Clock size={18} />
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
-                  <span style={{ fontSize: '9px', color: '#3d0605', fontWeight: '700' }}>Rechecks every day • Stays set until deleted</span>
+                  <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>Rechecks every day • Stays set until deleted</span>
                 </div>
               </div>
             </div>
@@ -4166,24 +4356,24 @@ export default function App() {
                   placeholder="Enter reminder task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '600' }}
+                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', fontWeight: '600' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#A5A79B', color: '#590907', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                 <Plus size={15} /> {editingIndex !== null ? "Update Reminder" : "Add Permanent Reminder"}
               </button>
             </form>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
               {sortedReminders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#3d0605', fontSize: '11px', margin: '14px 0' }}>No reminders set. Add your daily routine reminder above!</p>
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', margin: '14px 0' }}>No reminders set. Add your daily routine reminder above!</p>
               ) : (
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
@@ -4194,8 +4384,8 @@ export default function App() {
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
-                        backgroundColor: '#A5A79B', 
-                        border: '1px solid #590907', 
+                        backgroundColor: '#1e293b', 
+                        border: '1px solid #334155', 
                         borderRadius: '8px', 
                         padding: '10px 12px',
                         opacity: rem.completed ? 0.75 : 1
@@ -4206,7 +4396,7 @@ export default function App() {
                           margin: 0, 
                           fontSize: '12px', 
                           fontWeight: '800', 
-                          color: rem.completed ? '#166534' : '#590907', 
+                          color: rem.completed ? '#22c55e' : '#f8fafc', 
                           textDecoration: rem.completed ? 'line-through' : 'none', 
                           whiteSpace: 'nowrap', 
                           overflow: 'hidden', 
@@ -4214,7 +4404,7 @@ export default function App() {
                         }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
-                        <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>
+                        <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
                           Time: {formatTimeTo12Hour(rem.time)}
                         </span>
                       </div>
@@ -4239,7 +4429,7 @@ export default function App() {
                             <Check size={14} />
                           </div>
                         )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#0284c7', border: 'none', color: '#cbd5e1', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
                         <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
                       </div>
                     </div>
@@ -4249,12 +4439,13 @@ export default function App() {
             </div>
 
             {/* Watcher Modal Action Controls */}
-            <div style={{ position: 'relative', borderTop: '1px solid #590907', paddingTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid #1e293b', paddingTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <button 
                 type="button"
                 onClick={triggerTestWatcherAlert}
                 title="Instantly Test Watcher Alert (Sound, Modal & Notification)"
-                style={{ flex: '1 1 120px', background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                style={{ flex: '1 1 120px', background: '#0284c7',
+              border: '1px solid #334155', color: '#cbd5e1', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
                 <Zap size={12} /> Test Alert Now
               </button>
@@ -4264,19 +4455,20 @@ export default function App() {
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
-                style={{ background: '#590907', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: '#0284c7',
+              border: '1px solid #334155', color: '#cbd5e1', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
 
               {showSnoozeDropdown && (
-                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#590907', border: '1px solid #E8D2B5', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#A5A79B', paddingLeft: '3px' }}>Select Snooze:</span>
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#94a3b8', paddingLeft: '3px' }}>Select Snooze:</span>
                   {[1, 5, 10, 15, 30].map((m) => (
                     <button 
                       key={m} 
                       onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
-                      style={{ background: snoozeMinutes === m ? '#E8D2B5' : 'transparent', color: snoozeMinutes === m ? '#590907' : '#E8D2B5', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
+                      style={{ background: snoozeMinutes === m ? '#0284c7' : 'transparent', color: snoozeMinutes === m ? '#ffffff' : '#94a3b8', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
                     >
                       {m} Minute{m > 1 ? 's' : ''}
                     </button>
@@ -4338,7 +4530,7 @@ export default function App() {
         <div style={{ 
           position: 'fixed', 
           inset: 0, 
-          backgroundColor: 'rgba(89, 9, 7, 0.96)', 
+          backgroundColor: 'rgba(15, 23, 42, 0.97)', 
           backdropFilter: 'blur(10px)', 
           zIndex: 99999, 
           display: 'flex', 
@@ -4377,7 +4569,7 @@ export default function App() {
           <h1 style={{ 
             fontSize: '28px', 
             fontWeight: '900', 
-            color: '#E8D2B5', 
+            color: '#cbd5e1', 
             maxWidth: '680px', 
             lineHeight: '1.3', 
             margin: '0 0 10px 0', 
@@ -4403,8 +4595,8 @@ export default function App() {
                 padding: '13px 30px', 
                 borderRadius: '12px', 
                 border: 'none', 
-                backgroundColor: '#E8D2B5', 
-                color: '#590907', 
+                backgroundColor: '#0f172a', 
+                color: '#f8fafc', 
                 fontWeight: '900', 
                 fontSize: '15px', 
                 cursor: 'pointer',
@@ -4422,9 +4614,9 @@ export default function App() {
               style={{ 
                 padding: '13px 26px', 
                 borderRadius: '12px', 
-                border: '1px solid #E8D2B5', 
-                backgroundColor: '#3d0605', 
-                color: '#E8D2B5', 
+                border: '1px solid #334155',
+                backgroundColor: '#1e293b', 
+                color: '#cbd5e1', 
                 fontWeight: '900', 
                 fontSize: '15px', 
                 cursor: 'pointer', 
@@ -4439,28 +4631,127 @@ export default function App() {
         </div>
       )}
 
+      
+      {/* Mobile Permissions & System Setup Modal */}
+      {showPermissionsModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+            <button 
+              onClick={() => setShowPermissionsModal(false)} 
+              style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #334155', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={16} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>System Permissions Setup</h3>
+                <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Mobile & Desktop Hardware Authorization</span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 16px 0' }}>
+              Shadow Dashboard requires hardware access to deliver voice commands, GPS route traffic alerts, and background reminder notifications on mobile.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
+              
+              {/* Notifications Permission */}
+              <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Bell size={20} color="#38bdf8" />
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>System Notifications</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Watcher alerts & PWA reminders</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.notifications === 'granted' ? '#10b981' : '#f59e0b' }}>
+                  {mobilePermissions.notifications === 'granted' ? '✓ Granted' : 'Pending'}
+                </span>
+              </div>
+
+              {/* Microphone Permission */}
+              <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Mic size={20} color="#a855f7" />
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>Microphone Access</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Shadow Voice AI & Audio Notes</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.mic === 'granted' ? '#10b981' : '#f59e0b' }}>
+                  {mobilePermissions.mic === 'granted' ? '✓ Granted' : 'Pending'}
+                </span>
+              </div>
+
+              {/* Geolocation Permission */}
+              <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Navigation size={20} color="#10b981" />
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>GPS Location</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Real-time traffic & live navigation</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.location === 'granted' ? '#10b981' : '#f59e0b' }}>
+                  {mobilePermissions.location === 'granted' ? '✓ Granted' : 'Pending'}
+                </span>
+              </div>
+
+            </div>
+
+            <button
+              onClick={requestAllMobilePermissions}
+              disabled={isRequestingPerms}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                color: '#ffffff',
+                fontWeight: '900',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)'
+              }}
+            >
+              <Zap size={16} />
+              {isRequestingPerms ? 'Requesting Browser Permissions...' : 'Grant All Permissions in 1 Tap'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #590907', color: '#590907', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             {userProfile.photo ? (
               <img 
                 src={userProfile.photo} 
                 alt={userProfile.name} 
-                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid #590907', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
+                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid #334155', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
                 {(userProfile.name || 'U').charAt(0).toUpperCase()}
               </div>
             )}
 
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#590907' }}>{userProfile.name}</h3>
-            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#3d0605', fontWeight: '600' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '10px', color: '#3d0605', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate || 'Active'}</span>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate || 'Active'}</span>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button 
@@ -4476,7 +4767,7 @@ export default function App() {
                     setShowProfileModal(false);
                   }
                 }}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
               >
                 Disconnect / Log Out
               </button>
@@ -4487,7 +4778,7 @@ export default function App() {
                   setAuthMode('login');
                   setShowAuthModal(true);
                 }}
-                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid #590907', backgroundColor: 'transparent', color: '#590907', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: 'transparent', color: '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
               >
                 Switch Account
               </button>
@@ -4523,23 +4814,23 @@ export default function App() {
         const avgDailySpend = Math.round(monthlySpent / currentDay);
 
         return (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '750px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}>
-              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '750px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <DollarSign size={20} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#590907' }}>Shadow Expense Manager</h3>
-                    <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>Track daily spends & monthly financial analytics</span>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#f8fafc' }}>Shadow Expense Manager</h3>
+                    <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Track daily spends & monthly financial analytics</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#590907', border: 'none', color: '#E8D2B5', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
+                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#0284c7', border: 'none', color: '#cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
                     <FileSpreadsheet size={13} /> Export CSV
                   </button>
                   <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
@@ -4549,15 +4840,15 @@ export default function App() {
               </div>
 
               {/* Month Selector Bar (Strictly Blocks Future Months) */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#590907', borderRadius: '12px', padding: '8px 14px', marginBottom: '14px', color: '#E8D2B5' }}>
-                <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #E8D2B5', color: '#E8D2B5', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0284c7', borderRadius: '12px', padding: '8px 14px', marginBottom: '14px', color: '#cbd5e1' }}>
+                <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
                   ◀ Prev Month
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '14px', letterSpacing: '0.5px' }}>
-                  <Calendar size={16} color="#E8D2B5" />
+                  <Calendar size={16} color="#38bdf8" />
                   <span>{formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                   {isFutureMonthBlocked && (
-                    <span style={{ fontSize: '9px', backgroundColor: '#E8D2B5', color: '#590907', padding: '2px 6px', borderRadius: '4px', fontWeight: '900' }}>Current Month</span>
+                    <span style={{ fontSize: '9px', backgroundColor: '#0f172a', color: '#f8fafc', padding: '2px 6px', borderRadius: '4px', fontWeight: '900' }}>Current Month</span>
                   )}
                 </div>
                 <button 
@@ -4565,8 +4856,8 @@ export default function App() {
                   disabled={isFutureMonthBlocked}
                   style={{ 
                     background: isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.15)' : 'transparent', 
-                    border: `1px solid ${isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.3)' : '#E8D2B5'}`, 
-                    color: isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.4)' : '#E8D2B5', 
+                    border: `1px solid ${isFutureMonthBlocked ? '#334155' : '#0284c7'}`,
+                    color: isFutureMonthBlocked ? '#64748b' : '#38bdf8', 
                     padding: '4px 12px', 
                     borderRadius: '6px', 
                     fontSize: '11px', 
@@ -4593,12 +4884,12 @@ export default function App() {
                 </div>
 
                 {/* 2. Monthly Budget */}
-                <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(89,9,7,0.08)' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(89,9,7,0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
                     <button 
                       onClick={() => setIsSettingBudget(prev => !prev)} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#590907', padding: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f8fafc', padding: 0 }}
                       title="Edit monthly budget"
                     >
                       <Edit2 size={13} />
@@ -4611,7 +4902,7 @@ export default function App() {
                         value={tempBudgetInput}
                         onChange={(e) => setTempBudgetInput(e.target.value)}
                         placeholder="New ₹"
-                        style={{ width: '80px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #590907' }}
+                        style={{ width: '80px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #334155' }}
                       />
                       <button
                         onClick={() => {
@@ -4622,13 +4913,13 @@ export default function App() {
                           }
                           setIsSettingBudget(false);
                         }}
-                        style={{ backgroundColor: '#590907', color: '#E8D2B5', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '3px 8px', fontWeight: '800', cursor: 'pointer' }}
+                        style={{ backgroundColor: '#0284c7', color: '#cbd5e1', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '3px 8px', fontWeight: '800', cursor: 'pointer' }}
                       >
                         Save
                       </button>
                     </div>
                   ) : (
-                    <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#590907' }}>₹{monthlyBudget.toLocaleString()}</p>
+                    <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toLocaleString()}</p>
                   )}
                   <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>Target spending limit</span>
                 </div>
@@ -4649,7 +4940,7 @@ export default function App() {
               </div>
 
               {/* Monthly Budget Progress Bar */}
-              <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+              <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '800', marginBottom: '6px' }}>
                   <span>🎯 Monthly Spending Progress: ₹{monthlySpent.toLocaleString()} of ₹{monthlyBudget.toLocaleString()}</span>
                   <span style={{ color: monthlyRemainingBudget >= 0 ? '#166534' : '#ef4444' }}>
@@ -4662,10 +4953,10 @@ export default function App() {
               </div>
 
               {/* Clean Unified Expense Creator (Pure Expense Only) */}
-              <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '16px', border: '1px solid #590907', marginBottom: '14px', boxShadow: '0 2px 10px rgba(89,9,7,0.08)' }}>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '16px', border: '1px solid #334155', marginBottom: '14px', boxShadow: '0 2px 10px rgba(89,9,7,0.08)' }}>
                 {/* 1-Tap Quick Presets */}
                 <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', display: 'block', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', display: 'block', marginBottom: '6px' }}>
                     ⚡ 1-Tap Quick Presets:
                   </span>
                   <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -4685,9 +4976,9 @@ export default function App() {
                         style={{
                           padding: '4px 9px',
                           borderRadius: '6px',
-                          border: '1px solid #590907',
-                          backgroundColor: '#E8D2B5',
-                          color: '#590907',
+                          border: '1px solid #334155',
+                          backgroundColor: '#0f172a',
+                          color: '#f8fafc',
                           fontSize: '10px',
                           fontWeight: '800',
                           cursor: 'pointer',
@@ -4736,8 +5027,8 @@ export default function App() {
                         padding: '9px 20px', 
                         borderRadius: '8px', 
                         border: 'none', 
-                        backgroundColor: '#590907', 
-                        color: '#E8D2B5', 
+                        backgroundColor: '#0284c7', 
+                        color: '#cbd5e1', 
                         fontWeight: '900', 
                         fontSize: '12px', 
                         cursor: 'pointer', 
@@ -4760,9 +5051,9 @@ export default function App() {
                     flex: 1,
                     padding: '8px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: expenseTabMode === 'tracker' ? '#590907' : 'transparent',
-                    color: expenseTabMode === 'tracker' ? '#E8D2B5' : '#590907',
+                    border: '1px solid #334155',
+                    backgroundColor: expenseTabMode === 'tracker' ? '#0284c7' : 'transparent',
+                    color: expenseTabMode === 'tracker' ? '#ffffff' : '#94a3b8',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -4781,9 +5072,9 @@ export default function App() {
                     flex: 1,
                     padding: '8px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #590907',
-                    backgroundColor: expenseTabMode === 'monthly_report' ? '#590907' : 'transparent',
-                    color: expenseTabMode === 'monthly_report' ? '#E8D2B5' : '#590907',
+                    border: '1px solid #334155',
+                    backgroundColor: expenseTabMode === 'monthly_report' ? '#0284c7' : 'transparent',
+                    color: expenseTabMode === 'monthly_report' ? '#ffffff' : '#94a3b8',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -4801,8 +5092,8 @@ export default function App() {
               {expenseTabMode === 'tracker' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {monthlyItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px 10px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px dashed #590907', color: '#590907' }}>
-                      <DollarSign size={32} color="#590907" style={{ margin: '0 auto 6px auto', opacity: 0.6 }} />
+                    <div style={{ textAlign: 'center', padding: '30px 10px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px dashed #38bdf8', color: '#f8fafc' }}>
+                      <DollarSign size={32} color="#38bdf8" style={{ margin: '0 auto 6px auto', opacity: 0.6 }} />
                       <p style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>
                         No expenses recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}.
                       </p>
@@ -4864,15 +5155,15 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {/* Spending Velocity & Top Category Card */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                       <span style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', textTransform: 'uppercase' }}>AVERAGE DAILY SPEND</span>
-                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#590907' }}>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#f8fafc' }}>
                         ₹{avgDailySpend.toLocaleString()} / day
                       </p>
                       <span style={{ fontSize: '9px', color: '#6b7280' }}>Based on {currentDay} days in {formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                     </div>
 
-                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                       <span style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', textTransform: 'uppercase' }}>TOP SPENDING CATEGORY</span>
                       <p style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: '900', color: '#991b1b' }}>
                         {topCat ? topCat[0] : 'None Yet'}
@@ -4884,8 +5175,8 @@ export default function App() {
                   </div>
 
                   {/* Category Breakdown Bar Chart */}
-                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #590907', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#590907' }}>
+                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#f8fafc' }}>
                       🏷️ Spending by Category ({formatExpenseMonthLabel(selectedExpenseMonth)})
                     </h4>
                     {categoryStats.length === 0 ? (
@@ -4901,7 +5192,7 @@ export default function App() {
                                 <span>₹{amt.toLocaleString()} ({pct}%)</span>
                               </div>
                               <div style={{ width: '100%', height: '7px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#590907', borderRadius: '4px' }} />
+                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#0284c7', borderRadius: '4px' }} />
                               </div>
                             </div>
                           );
@@ -4990,8 +5281,8 @@ export default function App() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '5px',
-                  backgroundColor: '#E8D2B5',
-                  color: '#590907',
+                  backgroundColor: '#0f172a',
+                  color: '#f8fafc',
                   padding: '6px 14px',
                   borderRadius: '6px',
                   fontSize: '11px',
@@ -5007,20 +5298,20 @@ export default function App() {
       )}
 
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(165,167,155,0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#E8D2B5', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '800px', position: 'relative', border: '1px solid #590907', color: '#590907', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#590907', color: '#E8D2B5', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '800px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#590907', color: '#E8D2B5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Newspaper size={19} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#590907' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>
                   Live Briefing & IPO Intelligence Hub
                 </h3>
-                <span style={{ fontSize: '10px', color: '#3d0605', fontWeight: '700' }}>
+                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
                   Global, India, Gujarat News & Real-Time Plain English IPO Intelligence
                 </span>
               </div>
@@ -5049,9 +5340,9 @@ export default function App() {
                       flex: '1 1 140px',
                       padding: '8px 12px',
                       borderRadius: '10px',
-                      border: '1px solid #590907',
-                      backgroundColor: isSel ? '#590907' : '#A5A79B',
-                      color: isSel ? '#E8D2B5' : '#590907',
+                      border: '1px solid #334155',
+                      backgroundColor: isSel ? '#0284c7' : '#1e293b',
+                      color: isSel ? '#ffffff' : '#94a3b8',
                       fontWeight: '900',
                       fontSize: '11px',
                       cursor: 'pointer',
@@ -5076,7 +5367,7 @@ export default function App() {
                 {/* Real-time Live Market Feed Status Bar with Manual Refresh and Hourly Auto-Refresh */}
                 <div style={{ 
                   backgroundColor: '#ffffff', 
-                  border: '1px solid #590907', 
+                  border: '1px solid #334155', 
                   borderRadius: '12px', 
                   padding: '10px 14px', 
                   display: 'flex', 
@@ -5088,7 +5379,7 @@ export default function App() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }} />
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#590907' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#f8fafc' }}>
                       BSE & NSE Real-Time IPO Radar • Current October–November 2026 Issues
                     </span>
                   </div>
@@ -5111,9 +5402,9 @@ export default function App() {
                         gap: '4px',
                         padding: '4px 10px',
                         borderRadius: '6px',
-                        border: '1px solid #590907',
-                        backgroundColor: '#590907',
-                        color: '#E8D2B5',
+                        border: '1px solid #334155',
+                        backgroundColor: '#0284c7',
+                        color: '#cbd5e1',
                         fontSize: '10px',
                         fontWeight: '800',
                         cursor: ipoRefreshing ? 'not-allowed' : 'pointer',
@@ -5161,7 +5452,7 @@ export default function App() {
                 </div>
 
                 {/* Sub-Tabs: Live Open vs Upcoming */}
-                <div style={{ display: 'flex', gap: '8px', backgroundColor: '#A5A79B', padding: '6px', borderRadius: '10px', border: '1px solid #590907' }}>
+                <div style={{ display: 'flex', gap: '8px', backgroundColor: '#1e293b', padding: '6px', borderRadius: '10px', border: '1px solid #334155' }}>
                   <button
                     type="button"
                     onClick={() => setIpoSubTab('live')}
@@ -5170,8 +5461,8 @@ export default function App() {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      backgroundColor: ipoSubTab === 'live' ? '#590907' : 'transparent',
-                      color: ipoSubTab === 'live' ? '#E8D2B5' : '#590907',
+                      backgroundColor: ipoSubTab === 'live' ? '#0284c7' : 'transparent',
+                      color: ipoSubTab === 'live' ? '#ffffff' : '#94a3b8',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -5193,8 +5484,8 @@ export default function App() {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      backgroundColor: ipoSubTab === 'upcoming' ? '#590907' : 'transparent',
-                      color: ipoSubTab === 'upcoming' ? '#E8D2B5' : '#590907',
+                      backgroundColor: ipoSubTab === 'upcoming' ? '#0284c7' : 'transparent',
+                      color: ipoSubTab === 'upcoming' ? '#ffffff' : '#94a3b8',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -5216,7 +5507,7 @@ export default function App() {
                     key={ipo.id}
                     style={{
                       backgroundColor: '#ffffff',
-                      border: '1px solid #590907',
+                      border: '1px solid #334155',
                       borderRadius: '14px',
                       padding: '16px',
                       boxShadow: '0 2px 10px rgba(89,9,7,0.08)',
@@ -5229,7 +5520,7 @@ export default function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#590907' }}>
+                          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>
                             {ipo.name}
                           </h4>
                           <span style={{ fontSize: '9px', fontWeight: '800', backgroundColor: '#e2e8f0', color: '#334155', padding: '2px 6px', borderRadius: '4px' }}>
@@ -5244,7 +5535,7 @@ export default function App() {
                         <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '6px' }}>
                           {ipo.status}
                         </span>
-                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#590907', color: '#E8D2B5', padding: '3px 8px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#0284c7', color: '#cbd5e1', padding: '3px 8px', borderRadius: '6px' }}>
                           {ipo.allotmentBadge}
                         </span>
                       </div>
@@ -5324,10 +5615,10 @@ export default function App() {
                     {/* Simple Beginner Advice & Listing Date */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '11px', flexWrap: 'wrap', gap: '6px' }}>
                       <div>
-                        <strong style={{ color: '#590907' }}>💡 Shadow Simple Advice: </strong>
+                        <strong style={{ color: '#f8fafc' }}>💡 Shadow Simple Advice: </strong>
                         <span style={{ color: '#374151', fontWeight: '600' }}>{ipo.verdict}</span>
                       </div>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#590907', backgroundColor: '#E8D2B5', padding: '3px 8px', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', backgroundColor: '#0f172a', padding: '3px 8px', borderRadius: '6px' }}>
                         Listing on Exchange: {ipo.listingDate}
                       </span>
                     </div>
@@ -5338,14 +5629,14 @@ export default function App() {
               /* Google News Feed with SQUISH BUG COMPLETELY FIXED */
               <>
                 {/* Status & 2-Minute Countdown Bar + Manual Refresh Button */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#A5A79B', border: '1px solid #590907', borderRadius: '10px', padding: '7px 10px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '7px 10px', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#590907' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>
                       Auto-refresh in {Math.floor(newsCountdown / 60)}m {newsCountdown % 60}s
                     </span>
                     {lastNewsUpdated && (
-                      <span style={{ fontSize: '10px', color: '#3d0605' }}>• Updated: {lastNewsUpdated}</span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>• Updated: {lastNewsUpdated}</span>
                     )}
                   </div>
 
@@ -5360,8 +5651,8 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      backgroundColor: '#590907',
-                      color: '#E8D2B5',
+                      backgroundColor: '#0284c7',
+                      color: '#cbd5e1',
                       border: 'none',
                       padding: '6px 12px',
                       borderRadius: '8px',
@@ -5378,12 +5669,12 @@ export default function App() {
                 {/* News Cards List with Image & Hover-Playable Video (flexShrink: 0 ensures full cards) */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
                   {isNewsLoading && trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px 10px', color: '#590907', fontWeight: '800', fontSize: '13px' }}>
+                    <div style={{ textAlign: 'center', padding: '30px 10px', color: '#f8fafc', fontWeight: '800', fontSize: '13px' }}>
                       <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
                       Fetching live Google News for {newsCategory.toUpperCase()}...
                     </div>
                   ) : trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: '#3d0605', fontSize: '12px', fontWeight: '700' }}>
+                    <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
                       No live news currently available. Click Refresh above.
                     </div>
                   ) : (
@@ -5394,7 +5685,7 @@ export default function App() {
                         onMouseLeave={() => setHoveredNewsId(null)}
                         style={{ 
                           backgroundColor: '#ffffff', 
-                          border: '1px solid #590907', 
+                          border: '1px solid #334155', 
                           borderRadius: '14px', 
                           padding: '12px', 
                           display: 'flex', 
@@ -5409,7 +5700,7 @@ export default function App() {
                         }}
                       >
                         {/* Media Thumbnail Container with Hover-Playable Video Preview */}
-                        <div style={{ width: '125px', minWidth: '125px', height: '85px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: '#590907', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div style={{ width: '125px', minWidth: '125px', height: '85px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {hoveredNewsId === (item.id || idx) ? (
                             <>
                               <video 
@@ -5421,8 +5712,8 @@ export default function App() {
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                               />
                               <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(89,9,7,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                <Play size={8} color="#E8D2B5" fill="#E8D2B5" />
-                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#E8D2B5', letterSpacing: '0.5px' }}>PREVIEW</span>
+                                <Play size={8} color="#38bdf8" fill="#38bdf8" />
+                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#cbd5e1', letterSpacing: '0.5px' }}>PREVIEW</span>
                               </div>
                             </>
                           ) : (
@@ -5436,7 +5727,7 @@ export default function App() {
                                 }}
                               />
                               <div style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Play size={10} color="#E8D2B5" />
+                                <Play size={10} color="#38bdf8" />
                               </div>
                             </>
                           )}
@@ -5446,7 +5737,7 @@ export default function App() {
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                 {item.source || 'LIVE'}
                               </span>
                               <span style={{ fontSize: '9px', color: '#6b7280', fontWeight: '700' }}>
@@ -5465,7 +5756,7 @@ export default function App() {
                               href={item.link} 
                               target="_blank" 
                               rel="noopener noreferrer" 
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#E8D2B5', backgroundColor: '#590907', textDecoration: 'none', padding: '5px 12px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(89,9,7,0.2)' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', textDecoration: 'none', padding: '5px 12px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(89,9,7,0.2)' }}
                             >
                               Read Article <ExternalLink size={11} />
                             </a>
@@ -5478,7 +5769,7 @@ export default function App() {
               </>
             )}
 
-            <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#590907', color: '#E8D2B5', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
+            <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}
