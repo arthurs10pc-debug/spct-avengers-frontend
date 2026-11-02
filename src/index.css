@@ -8,14 +8,17 @@
 
 * {
   box-sizing: border-box;
+  font-family: 'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #ECF0F1;
-  color: #2C3E50;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-family: 'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.2px;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -23,24 +26,24 @@ body {
   min-height: 100dvh;
 }
 
-/* Professional Executive Minimalist Scrollbar */
+/* Crisp Clean White Theme Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #ECF0F1;
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #BDC3C7;
+  background: #cbd5e1;
   border-radius: 9999px;
-  border: 1px solid #95A5A6;
+  border: 1px solid #e2e8f0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #7F8C8D;
+  background: #94a3b8;
 }
 
 /* Mobile Responsive & Smooth PWA Rules */

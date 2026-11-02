@@ -374,8 +374,8 @@ const ShadowStartupAnimation = ({ onComplete }) => {
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // 1. Clear background to exact #BDC3C7 (Silver Sand from user's image)
-      ctx.fillStyle = '#BDC3C7';
+      // 1. Clear background to pure white #ffffff
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
 
       // 2. Letter Reveal Progress (0.0s - 0.65s reveals "S" -> "SH" -> ... -> "SHADOW")
@@ -385,16 +385,16 @@ const ShadowStartupAnimation = ({ onComplete }) => {
       }
       const displayWord = fullWord.substring(0, visibleCount);
 
-      // Font Setup: Bold, Heavy Modern Sans
-      const fontSize = Math.min(w * 0.16, h * 0.16, 92);
-      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Impact, sans-serif`;
+      // Font Setup: Bold Geometric Block Typography
+      const fontSize = Math.min(w * 0.16, h * 0.16, 96);
+      ctx.font = `900 ${fontSize}px "Montserrat", "Inter", -apple-system, Impact, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       const cx = w / 2;
       const cy = h / 2;
 
-      // 3. Dynamic Rotating Shadow Sweep Angle (matches video snaps: rotates from down-left to down to left)
+      // 3. Dynamic Rotating Shadow Sweep Angle (matches user's reference video)
       const sweepCycle = elapsed / 2200;
       const angle = (Math.PI * 0.75) - (sweepCycle * Math.PI * 0.85);
       const cosA = Math.cos(angle);
@@ -405,16 +405,16 @@ const ShadowStartupAnimation = ({ onComplete }) => {
       const shadowStep = 2.5;
       const shadowSteps = Math.floor(maxDist / shadowStep);
 
-      // 4. Draw Rotating Flat Long Shadow: Exact Darker Tone of #BDC3C7 (#7F8C8D)
-      ctx.fillStyle = '#7F8C8D';
+      // 4. Draw Rotating Flat Long Shadow: Clean light slate/silver tone (#e2e8f0)
+      ctx.fillStyle = '#e2e8f0';
       for (let d = shadowSteps; d >= 1; d--) {
         const sx = cx + d * shadowStep * cosA;
         const sy = cy + d * shadowStep * sinA;
         ctx.fillText(displayWord, sx, sy);
       }
 
-      // 5. Draw Main Foreground Text: Exact #ECF0F1 (Clouds Off-white from user's image)
-      ctx.fillStyle = '#ECF0F1';
+      // 5. Draw Main Foreground Text: Pure Jet Black #000000 Block Font
+      ctx.fillStyle = '#000000';
       ctx.fillText(displayWord, cx, cy);
 
       animId = requestAnimationFrame(render);
@@ -437,7 +437,7 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         width: '100vw',
         height: '100dvh',
         zIndex: 999999,
-        backgroundColor: '#BDC3C7',
+        backgroundColor: '#ffffff',
         cursor: 'pointer',
         overflow: 'hidden',
         opacity: fadingOut ? 0 : 1,
@@ -3317,118 +3317,133 @@ export default function App() {
   });
 
   return (
-    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#ECF0F1', color: '#2C3E50', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
-      {/* Custom Full-Screen Startup Animation (Matches Given Video Animation in #BDC3C7 & #ECF0F1) */}
+    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#f8fafc', color: '#0f172a', display: 'flex', flexDirection: 'row', fontFamily: "'Montserrat', 'Inter', -apple-system, sans-serif", fontWeight: '800', overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Custom Full-Screen Startup Animation (White Theme + Dynamic Rotating Shadow) */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
 
-      {/* Left Side Navigation Sidebar - Professional Silver #BDC3C7 */}
-      <aside className="app-sidebar" style={{ width: '64px', backgroundColor: '#BDC3C7', borderRight: '1px solid #95A5A6', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
-        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#ECF0F1', color: '#2C3E50', border: '1px solid #95A5A6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px', boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)' }}>
+      {/* Left Side Navigation Sidebar - Pure White Theme */}
+      <aside className="app-sidebar" style={{ width: '68px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '8px', flexShrink: 0, zIndex: 100, boxShadow: '2px 0 10px rgba(0,0,0,0.03)' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', border: '1px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.15)' }}>
           <Shield size={20} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Navigation size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '800' }}>Route</span>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: showRoutePanel ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+          <Navigation size={18} />
+          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Route</span>
         </button>
 
+        {/* Watcher Widget: Exact 1:1 match to user screenshot */}
         <button 
           onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
-          title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '15:28'} (${nextCountdownStr} remaining)`} 
+          title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '14:28'} (${nextCountdownStr} remaining)`} 
           style={{ 
-            background: 'transparent', 
+            background: showWatcherModal ? '#f1f5f9' : 'transparent', 
             border: 'none', 
-            color: '#2C3E50', 
+            color: '#0f172a', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
-            gap: '2px', 
+            gap: '3px', 
             cursor: 'pointer', 
             padding: '3px 2px', 
-            borderRadius: '8px', 
-            width: '52px' 
+            borderRadius: '10px', 
+            width: '58px',
+            transition: 'all 0.15s ease'
           }}
         >
-          <Clock size={17} color="#2C3E50" />
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            backgroundColor: '#f8fafc',
+            border: '1.5px solid #cbd5e1',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#0f172a'
+          }}>
+            <Clock size={15} color="#0f172a" />
+          </div>
           <span style={{ 
-            backgroundColor: '#ECF0F1', 
-            padding: '2px 4px', 
-            borderRadius: '6px', 
-            border: '1px solid #95A5A6', 
+            backgroundColor: '#ffffff', 
+            padding: '3px 5px', 
+            borderRadius: '9px', 
+            border: '1.5px solid #cbd5e1', 
             whiteSpace: 'nowrap',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             lineHeight: 1.15,
-            minWidth: '40px',
-            boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)'
+            minWidth: '46px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
           }}>
-            <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#2C3E50', letterSpacing: '0.2px' }}>
+            <span style={{ fontSize: '10.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', fontFamily: "'Montserrat', 'Inter', sans-serif" }}>
               {nextRemTimeStr || '14:28'}
             </span>
             <span style={{ 
-              fontSize: '8.5px', 
+              fontSize: '9.5px', 
               fontWeight: '900', 
-              color: '#C0392B', 
-              letterSpacing: '0.2px',
-              fontFamily: 'monospace, system-ui',
+              color: '#dc2626', 
+              letterSpacing: '-0.2px',
+              fontFamily: "'Montserrat', 'Inter', monospace, sans-serif",
               fontVariantNumeric: 'tabular-nums'
             }}>
               {nextCountdownStr || '-00:00'}
             </span>
           </span>
-          <span style={{ fontSize: '9px', fontWeight: '800', color: '#2C3E50' }}>Watcher</span>
+          <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.2px' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <DollarSign size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '800' }}>Expense</span>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: showExpenseModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+          <DollarSign size={18} />
+          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Newspaper size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '800' }}>Briefing</span>
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: showBriefingModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+          <Newspaper size={18} />
+          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Briefing</span>
         </button>
 
-        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
-          <Wrench size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '800' }}>Tools</span>
+        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: showToolsModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+          <Wrench size={18} />
+          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Tools</span>
         </button>
 
         <button 
           onClick={() => setShowNotesModal(true)} 
           title="Google Keep Style Notes & Task Reminders" 
           style={{ 
-            background: showNotesModal ? '#ECF0F1' : 'transparent', 
+            background: showNotesModal ? '#f1f5f9' : 'transparent', 
             border: 'none', 
-            color: '#2C3E50', 
+            color: '#0f172a', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
-            gap: '2px', 
+            gap: '3px', 
             cursor: 'pointer', 
-            padding: '4px', 
-            borderRadius: '8px', 
-            width: '48px',
-            position: 'relative'
+            padding: '5px 4px', 
+            borderRadius: '10px', 
+            width: '56px',
+            position: 'relative',
+            transition: 'all 0.15s ease'
           }}
         >
-          <CheckSquare size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '800' }}>Notes</span>
+          <CheckSquare size={18} />
+          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Notes</span>
           {notesList.length > 0 && (
             <span style={{ 
               position: 'absolute', 
               top: '2px', 
-              right: '4px', 
-              backgroundColor: '#2C3E50', 
-              color: '#ECF0F1', 
+              right: '6px', 
+              backgroundColor: '#0f172a', 
+              color: '#ffffff', 
               fontSize: '8px', 
               fontWeight: '900', 
               borderRadius: '50%', 
-              width: '13px', 
-              height: '13px', 
+              width: '14px', 
+              height: '14px', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center' 
@@ -3452,9 +3467,9 @@ export default function App() {
             title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
             style={{ 
               position: 'relative',
-              background: '#ECF0F1', 
-              border: '1px solid #95A5A6',
-              color: '#2C3E50', 
+              background: '#f8fafc', 
+              border: '1.5px solid #e2e8f0',
+              color: '#0f172a', 
               padding: userProfile && userProfile.photo ? '2px' : '8px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -3464,20 +3479,20 @@ export default function App() {
               width: '38px',
               height: '38px',
               overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
             }}
           >
             {userProfile ? (
               userProfile.photo ? (
                 <img src={userProfile.photo} alt={userProfile.name} style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
               ) : (
-                <span style={{ fontSize: '13px', fontWeight: '900', color: '#2C3E50' }}>{(userProfile.name || 'U').charAt(0).toUpperCase()}</span>
+                <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{(userProfile.name || 'U').charAt(0).toUpperCase()}</span>
               )
             ) : (
-              <UserCircle size={20} color="#2C3E50" />
+              <UserCircle size={20} color="#0f172a" />
             )}
             {userProfile && (
-              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', border: '1px solid #95A5A6' }} />
+              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#16a34a', border: '1px solid #ffffff' }} />
             )}
           </button>
 
@@ -3485,9 +3500,9 @@ export default function App() {
             onClick={handleStopAll} 
             title="Shadow Standby / Emergency Audio & Route Stop" 
             style={{ 
-              background: '#ECF0F1',
-              border: '1px solid #95A5A6', 
-              color: '#2C3E50', 
+              background: '#fef2f2',
+              border: '1.5px solid #fecaca', 
+              color: '#dc2626', 
               padding: '6px 4px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -3496,24 +3511,23 @@ export default function App() {
               alignItems: 'center', 
               gap: '2px', 
               width: '46px',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)'
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 3px rgba(220, 38, 38, 0.1)'
             }}
           >
-            <Power size={15} color="#C0392B" />
-            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: '#2C3E50' }}>STANDBY</span>
+            <Power size={15} color="#dc2626" />
+            <span style={{ fontSize: '7.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#dc2626' }}>STANDBY</span>
           </button>
         </div>
       </aside>
-
-      {/* Main Content Area - Clean Professional Clouds #ECF0F1 */}
-      <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
+      {/* Main Content Area - Clean Crisp White Theme */}
+      <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 68px)', backgroundColor: '#f8fafc' }}>
         
-        {/* Top Header - Silver Sand #BDC3C7 */}
-        <header className="app-header" style={{ padding: '12px 16px', backgroundColor: '#BDC3C7', borderBottom: '1px solid #95A5A6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        {/* Top Header - Pure White */}
+        <header className="app-header" style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
           <div style={{ overflow: 'hidden' }}>
-            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#2C3E50', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
-            <span style={{ fontSize: '9px', color: '#34495E', fontWeight: '800' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+            <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.6px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
+            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -3522,19 +3536,19 @@ export default function App() {
               onClick={() => setShowPermissionsModal(true)}
               title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
               style={{
-                border: '1px solid #95A5A6',
-                background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#D4EDDA' : '#ECF0F1',
-                color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#155724' : '#2C3E50',
-                padding: '6px 12px',
+                border: '1px solid #e2e8f0',
+                background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#f0fdf4' : '#f8fafc',
+                color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#166534' : '#0f172a',
+                padding: '7px 13px',
                 borderRadius: '10px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontWeight: '800',
+                fontWeight: '900',
                 fontSize: '11px',
-                transition: 'all 0.2s',
-                boxShadow: '0 1px 3px rgba(44, 62, 80, 0.1)'
+                letterSpacing: '0.3px',
+                transition: 'all 0.15s ease'
               }}
             >
               <Shield size={14} />
@@ -3545,10 +3559,10 @@ export default function App() {
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
               style={{
-                border: isMuted ? '2px solid #C0392B' : '1px solid #95A5A6',
-                background: isMuted ? '#F8D7DA' : '#ECF0F1',
-                color: isMuted ? '#721C24' : '#2C3E50',
-                padding: '6px 12px',
+                border: isMuted ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                background: isMuted ? '#fef2f2' : '#f8fafc',
+                color: isMuted ? '#991b1b' : '#0f172a',
+                padding: '7px 13px',
                 borderRadius: '10px',
                 cursor: 'pointer',
                 display: 'flex',
@@ -3556,18 +3570,17 @@ export default function App() {
                 gap: '6px',
                 fontWeight: '900',
                 fontSize: '11px',
-                letterSpacing: '0.5px',
-                boxShadow: isMuted ? '0 0 10px rgba(192, 57, 43, 0.4)' : '0 1px 3px rgba(44, 62, 80, 0.1)',
-                transition: 'all 0.2s'
+                letterSpacing: '0.3px',
+                transition: 'all 0.15s ease'
               }}
             >
-              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
               <span>{isMuted ? "MUTED" : "SOUND ON"}</span>
             </button>
           </div>
         </header>
 
-        {/* Main Jarvis Heart Center - Only moving middle particle dots animation video (No spinning circles or perimeter rings) */}
+        {/* Main Dashboard Stage - Crisp White Theme */}
         <main style={{ 
           flex: 1, 
           display: 'flex', 
@@ -3575,9 +3588,8 @@ export default function App() {
           padding: '20px 24px', 
           position: 'relative', 
           overflowY: 'auto', 
-          backgroundColor: '#070a12',
-          backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(30, 58, 138, 0.15) 0%, rgba(7, 10, 18, 0) 70%), linear-gradient(180deg, #070a12 0%, #0a0e1a 100%)',
-          color: '#f8fafc'
+          backgroundColor: '#f8fafc',
+          color: '#0f172a'
         }}>
           
           <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -3586,24 +3598,24 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#38bdf8', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#16a34a', boxShadow: '0 0 8px #16a34a' }} />
+                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#475569', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
                     Shadow Command Center • Cloud Connected
                   </span>
                 </div>
-                <h2 style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#f8fafc', letterSpacing: '-0.5px' }}>
+                <h2 style={{ margin: '4px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.5px' }}>
                   Welcome back, {userProfile?.name?.split(' ')[0] || 'Commander'}
                 </h2>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', padding: '6px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Clock size={14} color="#38bdf8" />
-                  <span style={{ fontSize: '11px', fontWeight: '800', fontFamily: 'monospace', color: '#f8fafc' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                  <Clock size={14} color="#0f172a" />
+                  <span style={{ fontSize: '11px', fontWeight: '900', fontFamily: 'monospace', color: '#0f172a' }}>
                     {currentDateTimeStr || new Date().toLocaleTimeString()}
                   </span>
                 </div>
-                <div style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', color: '#94a3b8' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: '800', color: '#475569', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
                   📍 Gujarat, India (IST)
                 </div>
               </div>
@@ -3614,22 +3626,22 @@ export default function App() {
               <div style={{ 
                 padding: '12px 18px', 
                 borderRadius: '14px', 
-                backgroundColor: trafficAlertBanner ? '#7f1d1d' : '#0f172a', 
-                border: `1px solid ${trafficAlertBanner ? '#ef4444' : '#0284c7'}`, 
-                color: '#ffffff', 
+                backgroundColor: trafficAlertBanner ? '#fef2f2' : '#ffffff', 
+                border: `1.5px solid ${trafficAlertBanner ? '#f87171' : '#e2e8f0'}`, 
+                color: '#0f172a', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between',
                 gap: '12px', 
-                boxShadow: trafficAlertBanner ? '0 8px 30px rgba(239, 68, 68, 0.3)' : '0 4px 20px rgba(2, 132, 199, 0.25)'
+                boxShadow: '0 4px 14px rgba(0,0,0,0.04)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                  {trafficAlertBanner ? <AlertTriangle size={20} color="#fca5a5" /> : <Navigation size={18} color="#38bdf8" />}
+                  {trafficAlertBanner ? <AlertTriangle size={20} color="#dc2626" /> : <Navigation size={18} color="#0f172a" />}
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: trafficAlertBanner ? '#b91c1c' : '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Live Gujarat Route Monitoring Active'}
                     </p>
-                    <span style={{ fontSize: '10px', color: trafficAlertBanner ? '#fee2e2' : '#94a3b8', fontWeight: '700' }}>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       {trafficAlertBanner ? trafficAlertBanner.message : `Radar polling every 1s: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}`}
                     </span>
                   </div>
@@ -3638,7 +3650,7 @@ export default function App() {
                 {isMonitoringActive && (
                   <button
                     onClick={handleStopRouteNavigation}
-                    style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
+                    style={{ backgroundColor: '#dc2626', color: '#ffffff', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
                   >
                     <StopCircle size={14} /> STOP
                   </button>
@@ -3660,111 +3672,111 @@ export default function App() {
                   {/* Card 1: Watcher */}
                   <div 
                     onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Watcher Routine</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#2C3E50', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Watcher Routine</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #e2e8f0' }}>
                         <Clock size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#2C3E50', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a', fontFamily: "'Montserrat', 'Inter', monospace, sans-serif", letterSpacing: '0.5px' }}>
                         {nextCountdownStr}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#34495E', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#475569', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Next: "{nextRemTitle || 'Routine'}" at {formatTimeTo12Hour(nextRemTimeStr || '09:00')}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>{triggeredCount}/{(remindersList || []).length} Triggered Today</span>
-                      <span style={{ color: '#2C3E50', fontWeight: '800' }}>Open Watcher →</span>
+                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Watcher →</span>
                     </div>
                   </div>
 
                   {/* Card 2: Expenses */}
                   <div 
                     onClick={() => setShowExpenseModal(true)}
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Monthly Expenses</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#16A085', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Monthly Expenses</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #bbf7d0' }}>
                         <DollarSign size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#16A085' }}>
+                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
                         ₹{monthlySpent.toLocaleString('en-IN')}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#7F8C8D', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
                         Budget: ₹{monthlyBudget.toLocaleString('en-IN')} ({budgetPct}% used)
                       </div>
                     </div>
-                    <div style={{ width: '100%', backgroundColor: '#ECF0F1', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${budgetPct}%`, height: '100%', backgroundColor: budgetPct > 90 ? '#C0392B' : (budgetPct > 70 ? '#E67E22' : '#16A085'), borderRadius: '3px', transition: 'width 0.3s' }} />
+                    <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${budgetPct}%`, height: '100%', backgroundColor: budgetPct > 90 ? '#dc2626' : (budgetPct > 70 ? '#ea580c' : '#16a34a'), borderRadius: '3px', transition: 'width 0.3s' }} />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>Remaining: ₹{Math.max(0, monthlyBudget - monthlySpent).toLocaleString('en-IN')}</span>
-                      <span style={{ color: '#16A085', fontWeight: '800' }}>Log Expense →</span>
+                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Log Expense →</span>
                     </div>
                   </div>
 
                   {/* Card 3: Notes & Keep */}
                   <div 
                     onClick={() => setShowNotesModal(true)}
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Google Keep Notes</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#8E44AD', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Google Keep Notes</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #ddd6fe' }}>
                         <CheckSquare size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#8E44AD' }}>
+                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
                         {(notesList || []).length} Notes
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#34495E', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
                         {(notesList || []).filter(n => n.pinned).length} Pinned • Cloud Synced
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>🕒 3x Daily Auto Email Ready</span>
-                      <span style={{ color: '#8E44AD', fontWeight: '800' }}>Open Notes →</span>
+                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Notes →</span>
                     </div>
                   </div>
 
                   {/* Card 4: Radar & Briefing */}
                   <div 
                     onClick={handleOpenBriefing}
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Radar & Intelligence</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#D35400', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Radar & Intelligence</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fed7aa' }}>
                         <TrendingUp size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#D35400' }}>
+                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
                         {(ipoData?.live || []).length} Live IPOs
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#34495E', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
                         {isMonitoringActive ? '● Gujarat Radar Active' : 'Standby • Ahmedabad Live'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>Real-Time Market Data</span>
-                      <span style={{ color: '#D35400', fontWeight: '800' }}>Daily Briefing →</span>
+                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Daily Briefing →</span>
                     </div>
                   </div>
 
@@ -3774,25 +3786,25 @@ export default function App() {
 
             {/* Central Stage: Shadow AI Voice Assistant Glass Console */}
             <div style={{
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #BDC3C7',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid #e2e8f0',
               borderRadius: '20px',
-              padding: '24px',
+              padding: '28px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
-              boxShadow: '0 8px 30px rgba(189, 195, 199, 0.5)',
-              gap: '16px',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+              gap: '18px',
               textAlign: 'center'
             }}>
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '800', color: '#7F8C8D', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                   Natural Language Voice Intelligence
                 </span>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#2C3E50' }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
                   {isListening ? "Listening to your voice..." : "Shadow Neural Assistant"}
                 </h3>
               </div>
@@ -3811,47 +3823,47 @@ export default function App() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: '#ECF0F1',
-                  border: `3px solid ${isListening ? '#E74C3C' : '#BDC3C7'}`,
+                  backgroundColor: '#f8fafc',
+                  border: `3px solid ${isListening ? '#ef4444' : '#e2e8f0'}`,
                   boxShadow: isListening 
-                    ? '0 0 40px rgba(231, 76, 60, 0.5)' 
-                    : '0 8px 24px rgba(189, 195, 199, 0.6)',
+                    ? '0 0 35px rgba(239, 68, 68, 0.4)' 
+                    : '0 8px 24px rgba(0,0,0,0.06)',
                   transition: 'all 0.25s ease'
                 }}
               >
                 <div style={{
-                  width: '54px',
-                  height: '54px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '50%',
-                  backgroundColor: isListening ? '#E74C3C' : '#BDC3C7',
+                  backgroundColor: isListening ? '#ef4444' : '#0f172a',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: '6px',
                   transition: 'all 0.2s ease',
-                  border: isListening ? '2px solid #C0392B' : '1px solid #95A5A6'
+                  border: isListening ? '2px solid #b91c1c' : '1px solid #0f172a'
                 }}>
-                  <Mic size={26} color={isListening ? '#ffffff' : '#2C3E50'} />
+                  <Mic size={26} color="#ffffff" />
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#2C3E50', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.5px' }}>
                   {isListening ? 'SPEAK NOW' : 'SHADOW AI'}
                 </span>
-                <span style={{ fontSize: '8px', color: '#7F8C8D', fontWeight: '700', marginTop: '2px' }}>
+                <span style={{ fontSize: '8.5px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>
                   {isListening ? 'Listening...' : 'Tap to Speak'}
                 </span>
               </div>
 
               {/* Live Voice Transcript Feedback Pill */}
               {voiceTranscript && (
-                <div style={{ backgroundColor: '#ECF0F1', border: '1px solid #BDC3C7', borderRadius: '10px', padding: '6px 14px', fontSize: '11px', fontWeight: '700', color: '#2C3E50', maxWidth: '480px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '6px 14px', fontSize: '11px', fontWeight: '800', color: '#0f172a', maxWidth: '480px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🎙️ Recognized:</span>
-                  <span style={{ color: '#2C3E50' }}>"{voiceTranscript}"</span>
+                  <span style={{ color: '#0f172a' }}>"{voiceTranscript}"</span>
                 </div>
               )}
 
               {/* Quick Clickable Voice Commands (Hindi & English) */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '680px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#7F8C8D' }}>
+                <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#64748b' }}>
                   Or tap any quick command below:
                 </span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
@@ -3865,21 +3877,21 @@ export default function App() {
                       key={idx}
                       onClick={() => handleVoiceCommand(chip.cmd)}
                       style={{
-                        backgroundColor: '#ECF0F1',
-                        border: '1px solid #BDC3C7',
-                        color: '#2C3E50',
-                        padding: '6px 12px',
+                        backgroundColor: '#f1f5f9',
+                        border: '1px solid #e2e8f0',
+                        color: '#0f172a',
+                        padding: '7px 14px',
                         borderRadius: '20px',
                         fontSize: '11px',
-                        fontWeight: '700',
+                        fontWeight: '800',
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        transition: 'all 0.15s ease',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px'
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#7F8C8D'; e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.backgroundColor = '#ECF0F1'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
                     >
                       {chip.label}
                     </button>
@@ -3896,37 +3908,37 @@ export default function App() {
 
       {/* Tools / Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(8px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#0f172a', borderRadius: '22px', padding: '22px', width: '100%', maxWidth: '740px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '740px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
             
             <button 
               onClick={() => { setShowToolsModal(false); setConverterStatus(null); }} 
-              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #334155', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Wrench size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#f8fafc' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
                   Shadow Studio: Universal File & Image Converter
                 </h3>
-                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
                   Convert WEBP ➔ PNG, JPG, PDF with true transparency, lossless rendering & custom sizing
                 </span>
               </div>
             </div>
 
             {/* Target Size / Quality Selector */}
-            <div style={{ marginBottom: '14px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Target Output Size / Quality:
                 </span>
-                <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '800' }}>
+                <span style={{ fontSize: '11px', color: '#0f172a', fontWeight: '900' }}>
                   Selected: {selectedSize}
                 </span>
               </div>
@@ -3936,15 +3948,15 @@ export default function App() {
                     key={sz}
                     onClick={() => setSelectedSize(sz)}
                     style={{
-                      padding: '4px 10px',
+                      padding: '5px 12px',
                       borderRadius: '8px',
-                      border: selectedSize === sz ? '1px solid #38bdf8' : '1px solid #334155',
-                      backgroundColor: selectedSize === sz ? '#0284c7' : '#1e293b',
-                      color: selectedSize === sz ? '#ffffff' : '#94a3b8',
-                      fontSize: '10px',
-                      fontWeight: '800',
+                      border: selectedSize === sz ? 'none' : '1px solid #e2e8f0',
+                      backgroundColor: selectedSize === sz ? '#0f172a' : '#f1f5f9',
+                      color: selectedSize === sz ? '#ffffff' : '#0f172a',
+                      fontSize: '11px',
+                      fontWeight: '900',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     {sz}
@@ -3981,9 +3993,9 @@ export default function App() {
                 style={{ 
                   flex: 1, 
                   minHeight: '180px', 
-                  border: '2px dashed #0284c7', 
+                  border: '2px dashed #cbd5e1', 
                   borderRadius: '16px', 
-                  backgroundColor: '#1e293b', 
+                  backgroundColor: '#f8fafc', 
                   display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
@@ -3998,7 +4010,7 @@ export default function App() {
                 {uploadedFile ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
                     {uploadedFilePreview ? (
-                      <div style={{ width: '84px', height: '84px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #334155', backgroundColor: '#0f172a' }}>
+                      <div style={{ width: '84px', height: '84px', borderRadius: '10px', overflow: 'hidden', border: '1.5px solid #e2e8f0', backgroundColor: '#ffffff' }}>
                         <img 
                           src={uploadedFilePreview} 
                           alt="Preview" 
@@ -4007,14 +4019,14 @@ export default function App() {
                         />
                       </div>
                     ) : (
-                      <FileText size={40} color="#38bdf8" />
+                      <FileText size={40} color="#0f172a" />
                     )}
                     
                     <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#f8fafc', wordBreak: 'break-all' }}>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', wordBreak: 'break-all' }}>
                         {uploadedFile?.name || 'Selected File'}
                       </p>
-                      <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
                         {uploadedFileMeta?.sizeKb || (uploadedFile?.size ? (uploadedFile.size / 1024).toFixed(1) : '0')} KB 
                         {uploadedFileMeta?.width ? ` • ${uploadedFileMeta.width} × ${uploadedFileMeta.height} px` : ''}
                       </span>
@@ -4027,13 +4039,13 @@ export default function App() {
                         toolsFileInputRef.current?.click();
                       }}
                       style={{
-                        padding: '4px 12px',
-                        borderRadius: '6px',
-                        background: '#334155',
-                        color: '#f8fafc',
-                        border: 'none',
-                        fontSize: '10px',
-                        fontWeight: '800',
+                        padding: '5px 14px',
+                        borderRadius: '8px',
+                        background: '#f1f5f9',
+                        color: '#0f172a',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '11px',
+                        fontWeight: '900',
                         cursor: 'pointer'
                       }}
                     >
@@ -4042,14 +4054,14 @@ export default function App() {
                   </div>
                 ) : (
                   <div>
-                    <Upload size={36} color="#38bdf8" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#f8fafc' }}>
+                    <Upload size={38} color="#0f172a" style={{ marginBottom: '8px' }} />
+                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>
                       Drag and Drop File Here
                     </p>
-                    <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#94a3b8' }}>
+                    <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
                       Supports WEBP, PNG, JPG, JPEG, GIF, PDF, TXT, CSV, JSON
                     </p>
-                    <span style={{ fontSize: '11px', color: '#38bdf8', textDecoration: 'underline', fontWeight: '700' }}>
+                    <span style={{ fontSize: '11px', color: '#0f172a', textDecoration: 'underline', fontWeight: '900' }}>
                       Or tap to browse from device
                     </span>
                   </div>
@@ -4058,7 +4070,7 @@ export default function App() {
 
               {/* Quick Preset Action Buttons */}
               <div style={{ width: window.innerWidth < 640 ? '100%' : '220px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Quick 1-Click Conversions:
                 </span>
 
@@ -4066,11 +4078,11 @@ export default function App() {
                   onClick={() => handleExecuteConversion('png')}
                   disabled={!uploadedFile}
                   style={{
-                    padding: '10px 12px',
+                    padding: '11px 14px',
                     borderRadius: '10px',
-                    border: '1px solid #334155',
-                    backgroundColor: '#1e293b',
-                    color: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    backgroundColor: '#f1f5f9',
+                    color: '#0f172a',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: uploadedFile ? 'pointer' : 'not-allowed',
@@ -4078,23 +4090,23 @@ export default function App() {
                     alignItems: 'center',
                     gap: '8px',
                     opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.15s ease'
                   }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.borderColor = '#38bdf8'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
                 >
-                  <Download size={14} color="#38bdf8" /> Convert to PNG (.png)
+                  <Download size={15} color="#0f172a" /> Convert to PNG (.png)
                 </button>
 
                 <button
                   onClick={() => handleExecuteConversion('jpg')}
                   disabled={!uploadedFile}
                   style={{
-                    padding: '10px 12px',
+                    padding: '11px 14px',
                     borderRadius: '10px',
-                    border: '1px solid #334155',
-                    backgroundColor: '#1e293b',
-                    color: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    backgroundColor: '#f1f5f9',
+                    color: '#0f172a',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: uploadedFile ? 'pointer' : 'not-allowed',
@@ -4102,23 +4114,23 @@ export default function App() {
                     alignItems: 'center',
                     gap: '8px',
                     opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.15s ease'
                   }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.borderColor = '#10b981'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
                 >
-                  <Download size={14} color="#10b981" /> Convert to JPG (.jpg)
+                  <Download size={15} color="#0f172a" /> Convert to JPG (.jpg)
                 </button>
 
                 <button
                   onClick={() => handleExecuteConversion('webp')}
                   disabled={!uploadedFile}
                   style={{
-                    padding: '10px 12px',
+                    padding: '11px 14px',
                     borderRadius: '10px',
-                    border: '1px solid #334155',
-                    backgroundColor: '#1e293b',
-                    color: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    backgroundColor: '#f1f5f9',
+                    color: '#0f172a',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: uploadedFile ? 'pointer' : 'not-allowed',
@@ -4126,23 +4138,23 @@ export default function App() {
                     alignItems: 'center',
                     gap: '8px',
                     opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.15s ease'
                   }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.borderColor = '#a855f7'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
                 >
-                  <Download size={14} color="#a855f7" /> Convert to WEBP (.webp)
+                  <Download size={15} color="#0f172a" /> Convert to WEBP (.webp)
                 </button>
 
                 <button
                   onClick={() => handleExecuteConversion('pdf')}
                   disabled={!uploadedFile}
                   style={{
-                    padding: '10px 12px',
+                    padding: '11px 14px',
                     borderRadius: '10px',
-                    border: '1px solid #334155',
-                    backgroundColor: '#1e293b',
-                    color: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    backgroundColor: '#f1f5f9',
+                    color: '#0f172a',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: uploadedFile ? 'pointer' : 'not-allowed',
@@ -4150,12 +4162,12 @@ export default function App() {
                     alignItems: 'center',
                     gap: '8px',
                     opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.15s ease'
                   }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.borderColor = '#ef4444'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
                 >
-                  <Download size={14} color="#ef4444" /> Export as PDF Document
+                  <Download size={15} color="#0f172a" /> Export as PDF Document
                 </button>
               </div>
 
@@ -4164,17 +4176,17 @@ export default function App() {
             {/* Real-Time Conversion Status Banner */}
             {converterStatus && (
               <div style={{
-                padding: '10px 14px',
+                padding: '11px 16px',
                 borderRadius: '10px',
-                marginBottom: '14px',
+                marginBottom: '16px',
                 fontSize: '12px',
-                fontWeight: '800',
+                fontWeight: '900',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                backgroundColor: converterStatus.type === 'error' ? '#7f1d1d' : (converterStatus.type === 'success' ? '#064e3b' : '#1e293b'),
-                color: converterStatus.type === 'error' ? '#fecaca' : (converterStatus.type === 'success' ? '#a7f3d0' : '#38bdf8'),
-                border: `1px solid ${converterStatus.type === 'error' ? '#ef4444' : (converterStatus.type === 'success' ? '#10b981' : '#0284c7')}`
+                backgroundColor: converterStatus.type === 'error' ? '#fef2f2' : (converterStatus.type === 'success' ? '#f0fdf4' : '#eff6ff'),
+                color: converterStatus.type === 'error' ? '#b91c1c' : (converterStatus.type === 'success' ? '#15803d' : '#1d4ed8'),
+                border: `1.5px solid ${converterStatus.type === 'error' ? '#fecaca' : (converterStatus.type === 'success' ? '#bbf7d0' : '#bfdbfe')}`
               }}>
                 <span>{converterStatus.message}</span>
               </div>
@@ -4182,7 +4194,7 @@ export default function App() {
 
             {/* All Formats Grid */}
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 All Available Export Formats:
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '8px' }}>
@@ -4203,20 +4215,20 @@ export default function App() {
                     onClick={() => handleExecuteConversion(f.id)}
                     disabled={!uploadedFile}
                     style={{
-                      padding: '8px',
+                      padding: '9px 8px',
                       borderRadius: '8px',
-                      border: '1px solid #334155',
-                      backgroundColor: '#1e293b',
-                      color: '#cbd5e1',
-                      fontSize: '10px',
-                      fontWeight: '800',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#f8fafc',
+                      color: '#0f172a',
+                      fontSize: '10.5px',
+                      fontWeight: '900',
                       cursor: uploadedFile ? 'pointer' : 'not-allowed',
                       opacity: uploadedFile ? 1 : 0.5,
                       textAlign: 'center',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.15s ease'
                     }}
-                    onMouseEnter={(e) => { if (uploadedFile) { e.currentTarget.style.backgroundColor = '#0284c7'; e.currentTarget.style.color = '#ffffff'; } }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#1e293b'; e.currentTarget.style.color = '#cbd5e1'; }}
+                    onMouseEnter={(e) => { if (uploadedFile) { e.currentTarget.style.backgroundColor = '#0f172a'; e.currentTarget.style.color = '#ffffff'; } }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.color = '#0f172a'; }}
                   >
                     {f.label}
                   </button>
@@ -4229,23 +4241,23 @@ export default function App() {
       )}
 
       {showNotesModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(6px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '780px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '780px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
             
             <button 
               onClick={() => setShowNotesModal(false)} 
-              style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} />
             </button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#f8fafc' }}>
-                  <CheckSquare size={19} color="#38bdf8" /> Google Keep Style Notes
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', letterSpacing: '-0.3px' }}>
+                  <CheckSquare size={20} color="#0f172a" /> Google Keep Style Notes
                 </h3>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '600' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
                   All notes and pinned notes synced across devices ({userProfile?.email || 'Guest Mode - Login to Sync'})
                 </span>
               </div>
@@ -4258,14 +4270,14 @@ export default function App() {
                   value={notesTargetEmail || (userProfile?.email || 'sataparahetkumar786@gmail.com')}
                   onChange={(e) => setNotesTargetEmail(e.target.value)}
                   style={{
-                    padding: '6px 10px',
+                    padding: '7px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #334155',
+                    border: '1.5px solid #cbd5e1',
                     fontSize: '11px',
                     width: '180px',
-                    backgroundColor: '#ffffff',
-                    color: '#f8fafc',
-                    fontWeight: '700',
+                    backgroundColor: '#f8fafc',
+                    color: '#0f172a',
+                    fontWeight: '800',
                     outline: 'none'
                   }}
                 />
@@ -4273,10 +4285,10 @@ export default function App() {
                   onClick={() => handleSendNotesEmailNow(notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com')}
                   disabled={isSendingNotesEmail}
                   style={{
-                    backgroundColor: '#0284c7',
-                    color: '#cbd5e1',
+                    backgroundColor: '#0f172a',
+                    color: '#ffffff',
                     border: 'none',
-                    padding: '7px 14px',
+                    padding: '8px 14px',
                     borderRadius: '8px',
                     fontSize: '11px',
                     fontWeight: '900',
@@ -4284,8 +4296,8 @@ export default function App() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    boxShadow: '0 2px 8px rgba(89,9,7,0.3)',
-                    transition: 'all 0.2s'
+                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)',
+                    transition: 'all 0.15s ease'
                   }}
                   title="Deliver current notes directly to this Gmail ID now"
                 >
@@ -4296,24 +4308,24 @@ export default function App() {
             </div>
 
             {/* Daily Email Schedule Banner & Feedback */}
-            <div style={{ padding: '8px 12px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#cbd5e1', fontSize: '10px', fontWeight: '700', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ padding: '9px 14px', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', fontSize: '11px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
               <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your registered Gmail.</span>
               {notesEmailFeedback && (
-                <span style={{ color: '#38bdf8', fontWeight: '900' }}>{notesEmailFeedback}</span>
+                <span style={{ color: '#0f172a', fontWeight: '900' }}>{notesEmailFeedback}</span>
               )}
             </div>
 
-            {/* Clean Note Creator (No complicated checklist mode - Simple title & text note) */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '14px', border: '1px solid #334155', marginBottom: '18px', boxShadow: '0 2px 10px rgba(89,9,7,0.1)' }}>
+            {/* Clean Note Creator */}
+            <div style={{ backgroundColor: '#f8fafc', borderRadius: '14px', padding: '16px', border: '1.5px solid #e2e8f0', marginBottom: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '900', color: '#f8fafc' }}>
+                <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>
                   ✍️ Create a Note
                 </span>
 
                 {/* Color Palette & Pin Toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc' }}>Color:</span>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>Color:</span>
                   {['#38bdf8', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#0284c7'].map(c => (
                     <button
                       key={c}
@@ -4324,7 +4336,7 @@ export default function App() {
                         height: '18px',
                         borderRadius: '50%',
                         backgroundColor: c,
-                        border: newNoteColor === c ? '2px solid #000' : '1px solid #ccc',
+                        border: newNoteColor === c ? '2px solid #0f172a' : '1px solid #cbd5e1',
                         cursor: 'pointer'
                       }}
                     />
@@ -4334,20 +4346,20 @@ export default function App() {
                     onClick={() => setNewNotePinned(!newNotePinned)}
                     title={newNotePinned ? "Pinned to Top" : "Pin Note"}
                     style={{
-                      border: '1px solid #ddd',
-                      background: newNotePinned ? '#ffe4e6' : '#f9fafb',
+                      border: '1px solid #e2e8f0',
+                      background: newNotePinned ? '#fef2f2' : '#ffffff',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       padding: '4px 8px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      color: newNotePinned ? '#e11d48' : '#6b7280',
-                      fontSize: '10px',
-                      fontWeight: '800'
+                      color: newNotePinned ? '#dc2626' : '#64748b',
+                      fontSize: '11px',
+                      fontWeight: '900'
                     }}
                   >
-                    <Pin size={13} fill={newNotePinned ? '#e11d48' : 'none'} />
+                    <Pin size={13} fill={newNotePinned ? '#dc2626' : 'none'} />
                     <span>{newNotePinned ? 'Pinned' : 'Pin'}</span>
                   </button>
                 </div>
@@ -4363,10 +4375,11 @@ export default function App() {
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #ddd',
+                  border: '1.5px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
                   fontSize: '12px',
-                  fontWeight: '700',
-                  color: '#111827',
+                  fontWeight: '800',
+                  color: '#0f172a',
                   marginBottom: '8px',
                   boxSizing: 'border-box',
                   outline: 'none'
@@ -4383,9 +4396,11 @@ export default function App() {
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #ddd',
+                  border: '1.5px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
                   fontSize: '12px',
-                  color: '#111827',
+                  fontWeight: '700',
+                  color: '#0f172a',
                   marginBottom: '10px',
                   resize: 'vertical',
                   boxSizing: 'border-box',
@@ -4397,8 +4412,8 @@ export default function App() {
               {/* Multimedia Attachment Buttons Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <Paperclip size={12} /> Attach:
+                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <Paperclip size={13} /> Attach:
                   </span>
 
                   {/* Hidden Universal File Input */}
@@ -4419,10 +4434,10 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Photos / Images (.jpg, .png, .webp)"
                   >
-                    <Image size={12} /> Photo
+                    <Image size={13} /> Photo
                   </button>
 
                   {/* Video Button */}
@@ -4434,10 +4449,10 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Videos (.mp4, .webm, .mov)"
                   >
-                    <Video size={12} /> Video
+                    <Video size={13} /> Video
                   </button>
 
                   {/* Audio Button */}
@@ -4449,10 +4464,10 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Audio files (.mp3, .wav, .m4a)"
                   >
-                    <Music size={12} /> Audio
+                    <Music size={13} /> Audio
                   </button>
 
                   {/* PDF Button */}
@@ -4464,10 +4479,10 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #334155', backgroundColor: '#0f172a', color: '#f8fafc', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach PDF Documents (.pdf)"
                   >
-                    <FileText size={12} /> PDF
+                    <FileText size={13} /> PDF
                   </button>
 
                   {/* Direct Voice Record Button */}
@@ -4475,12 +4490,12 @@ export default function App() {
                     type="button"
                     onClick={isRecordingAudio ? handleStopAudioRecording : handleStartAudioRecording}
                     style={{
-                      padding: '4px 9px',
+                      padding: '5px 10px',
                       borderRadius: '6px',
-                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : '#334155'),
-                      backgroundColor: isRecordingAudio ? '#7f1d1d' : '#1e293b',
-                      color: isRecordingAudio ? '#fca5a5' : '#38bdf8',
-                      fontSize: '10px',
+                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : '#cbd5e1'),
+                      backgroundColor: isRecordingAudio ? '#fef2f2' : '#ffffff',
+                      color: isRecordingAudio ? '#dc2626' : '#0f172a',
+                      fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
                       display: 'flex',
@@ -4489,7 +4504,7 @@ export default function App() {
                     }}
                     title={isRecordingAudio ? "Click to stop and attach voice recording" : "Record Voice Note directly from microphone"}
                   >
-                    <Mic size={12} color={isRecordingAudio ? '#dc2626' : '#38bdf8'} />
+                    <Mic size={13} color={isRecordingAudio ? '#dc2626' : '#0f172a'} />
                     {isRecordingAudio ? `Stop (${recordingDuration}s)` : 'Voice Record'}
                   </button>
                 </div>
@@ -4499,15 +4514,15 @@ export default function App() {
                   type="button"
                   onClick={handleSaveNote}
                   style={{
-                    backgroundColor: '#0284c7',
-                    color: '#cbd5e1',
+                    backgroundColor: '#0f172a',
+                    color: '#ffffff',
                     border: 'none',
-                    padding: '8px 20px',
+                    padding: '8px 22px',
                     borderRadius: '8px',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: '900',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(89,9,7,0.2)'
+                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)'
                   }}
                 >
                   Save Note
@@ -4516,8 +4531,8 @@ export default function App() {
 
               {/* Staged Attachments Preview Strip */}
               {stagedAttachments.length > 0 && (
-                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px dashed #38bdf8' }}>
-                  <div style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', marginBottom: '6px' }}>
+                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#ffffff', borderRadius: '8px', border: '1.5px dashed #cbd5e1' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', marginBottom: '6px' }}>
                     📎 Ready to Save ({stagedAttachments.length} Attachment{stagedAttachments.length > 1 ? 's' : ''}):
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -4530,23 +4545,23 @@ export default function App() {
                           gap: '6px',
                           padding: '4px 8px',
                           borderRadius: '6px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                           maxWidth: '220px'
                         }}
                       >
                         {att.type === 'photo' && <img src={att.dataUrl} alt={att.name} style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />}
-                        {att.type === 'video' && <Video size={16} color="#3b82f6" />}
-                        {att.type === 'audio' && <Music size={16} color="#10b981" />}
-                        {att.type === 'pdf' && <FileText size={16} color="#ef4444" />}
-                        <span style={{ fontSize: '10px', fontWeight: '700', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {att.type === 'video' && <Video size={16} color="#2563eb" />}
+                        {att.type === 'audio' && <Music size={16} color="#16a34a" />}
+                        {att.type === 'pdf' && <FileText size={16} color="#dc2626" />}
+                        <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                           {att.name}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveStagedAttachment(att.id)}
-                          style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                          style={{ border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', padding: 0 }}
                           title="Remove attachment"
                         >
                           <X size={13} />
@@ -4558,21 +4573,21 @@ export default function App() {
               )}
             </div>
 
-            {/* Filter Tabs & Search: ONLY All Notes and Pinned as requested */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            {/* Filter Tabs & Search */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button
                   onClick={() => setNoteFilterTab('all')}
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #334155',
-                    backgroundColor: noteFilterTab === 'all' ? '#0284c7' : 'transparent',
-                    color: noteFilterTab === 'all' ? '#ffffff' : '#94a3b8',
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: noteFilterTab === 'all' ? '#0f172a' : '#f1f5f9',
+                    color: noteFilterTab === 'all' ? '#ffffff' : '#0f172a',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
-                    boxShadow: noteFilterTab === 'all' ? '0 2px 6px rgba(89,9,7,0.2)' : 'none'
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   All Notes ({notesList.length})
@@ -4582,16 +4597,16 @@ export default function App() {
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #334155',
-                    backgroundColor: noteFilterTab === 'pinned' ? '#0284c7' : 'transparent',
-                    color: noteFilterTab === 'pinned' ? '#ffffff' : '#94a3b8',
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: noteFilterTab === 'pinned' ? '#0f172a' : '#f1f5f9',
+                    color: noteFilterTab === 'pinned' ? '#ffffff' : '#0f172a',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    boxShadow: noteFilterTab === 'pinned' ? '0 2px 6px rgba(89,9,7,0.2)' : 'none'
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   <Pin size={12} fill={noteFilterTab === 'pinned' ? '#ffffff' : 'none'} />
@@ -4605,15 +4620,15 @@ export default function App() {
                 value={noteSearchQuery}
                 onChange={(e) => setNoteSearchQuery(e.target.value)}
                 style={{
-                  padding: '6px 12px',
+                  padding: '7px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #334155',
-                  backgroundColor: '#ffffff',
-                  color: '#f8fafc',
+                  border: '1.5px solid #cbd5e1',
+                  backgroundColor: '#f8fafc',
+                  color: '#0f172a',
                   fontSize: '11px',
                   width: '180px',
                   outline: 'none',
-                  fontWeight: '600'
+                  fontWeight: '700'
                 }}
               />
             </div>
@@ -4820,24 +4835,24 @@ export default function App() {
 
       {/* Route Setup Modal - Strictly Gujarat, India with POI Direct Search & Real-Time Traffic Feed */}
       {showRoutePanel && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(3px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#0f172a', width: '100%', maxWidth: '520px', height: '100%', padding: '16px', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', color: '#f8fafc', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(4px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '520px', height: '100%', padding: '20px', borderLeft: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', color: '#0f172a', overflowY: 'auto', boxShadow: '-8px 0 25px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>Gujarat Live Route & Real-Time Radar</h3>
-                <span style={{ fontSize: '9px', fontWeight: '800', color: '#f8fafc', backgroundColor: '#1e293b', padding: '1px 5px', borderRadius: '4px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>Gujarat Live Route & Real-Time Radar</h3>
+                <span style={{ fontSize: '10px', fontWeight: '800', color: '#475569', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
                   Strictly Gujarat • Direct Search Circles, Mandir, Hospitals, Hostels
                 </span>
               </div>
-              <button onClick={() => setShowRoutePanel(false)} style={{ border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+              <button onClick={() => setShowRoutePanel(false)} style={{ border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
             </div>
 
             {/* Gujarat Landmark Category Quick Filters */}
-            <div style={{ marginBottom: '8px' }}>
-              <span style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+            <div style={{ marginBottom: '10px' }}>
+              <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 Direct Gujarat Landmark Selector:
               </span>
-              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '3px' }}>
+              <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '3px' }}>
                 {[
                   { id: 'all', label: 'All Presets' },
                   { id: 'circle', label: '⭕ Circles / Char Rasta' },
@@ -4850,15 +4865,16 @@ export default function App() {
                     type="button"
                     onClick={() => setSelectedPoiCategory(selectedPoiCategory === cat.id ? 'all' : cat.id)}
                     style={{
-                      background: selectedPoiCategory === cat.id ? '#0284c7' : '#1e293b',
-                      color: selectedPoiCategory === cat.id ? '#ffffff' : '#94a3b8',
-                      border: '1px solid #334155',
-                      padding: '3px 7px',
+                      background: selectedPoiCategory === cat.id ? '#0f172a' : '#f1f5f9',
+                      color: selectedPoiCategory === cat.id ? '#ffffff' : '#0f172a',
+                      border: '1px solid #e2e8f0',
+                      padding: '4px 9px',
                       borderRadius: '6px',
-                      fontSize: '9px',
+                      fontSize: '10px',
                       fontWeight: '800',
                       cursor: 'pointer',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     {cat.label}
@@ -4868,24 +4884,24 @@ export default function App() {
 
               {/* Scrollable POI Quick Selection Bar when category selected */}
               {selectedPoiCategory !== 'all' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '6px', margin: '6px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px', margin: '6px 0' }}>
                   {GUJARAT_POI_DATABASE.filter(p => p.category === selectedPoiCategory).map((poi, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 4px', borderBottom: '1px solid rgba(89,9,7,0.2)' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
                         {poi.name}
                       </span>
-                      <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                         <button 
                           type="button" 
                           onClick={() => { setFromInput(poi.name); setActiveRoute(prev => ({ ...prev, fromName: poi.name, fromCoords: poi.coords })); }} 
-                          style={{ background: '#0284c7', color: '#cbd5e1', border: 'none', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                          style={{ background: '#0f172a', color: '#ffffff', border: 'none', padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}
                         >
                           From
                         </button>
                         <button 
                           type="button" 
                           onClick={() => { setToInput(poi.name); setActiveRoute(prev => ({ ...prev, toName: poi.name, toCoords: poi.coords })); }} 
-                          style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', padding: '2px 5px', borderRadius: '4px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                          style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}
                         >
                           To
                         </button>
@@ -4897,7 +4913,7 @@ export default function App() {
             </div>
 
             {/* From & To Input Form with Autocomplete */}
-            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px', position: 'relative' }}>
+            <form onSubmit={handleApplyRoute} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px', position: 'relative' }}>
               <div style={{ display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', gap: '6px', position: 'relative' }}>
                 <div style={{ flex: 1, position: 'relative', display: 'flex', gap: '4px' }}>
                   <input
@@ -4905,18 +4921,17 @@ export default function App() {
                     placeholder="Search From (e.g. Iskcon, Civil, Akshardham)..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#0284c7',
-              border: '1px solid #334155', color: '#cbd5e1', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#0f172a', border: 'none', color: '#ffffff', padding: '0 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '900' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', padding: '1px 4px', borderRadius: '3px' }}>
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '6px', color: '#0f172a' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', padding: '1px 5px', borderRadius: '3px' }}>
                             {item.category ? item.category.toUpperCase() : 'GUJARAT'}
                           </span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.display_name}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '700' }}>{item.display_name}</span>
                         </div>
                       ))}
                     </div>
@@ -4929,18 +4944,17 @@ export default function App() {
                     placeholder="Search To (e.g. Pakwan, Nirma, Hospital)..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none' }}
+                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#0284c7',
-              border: '1px solid #334155', color: '#cbd5e1', padding: '0 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '9px', fontWeight: '800' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#0f172a', border: 'none', color: '#ffffff', padding: '0 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '900' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '7px 9px', fontSize: '10px', cursor: 'pointer', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '8px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', padding: '1px 4px', borderRadius: '3px' }}>
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '6px', color: '#0f172a' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', padding: '1px 5px', borderRadius: '3px' }}>
                             {item.category ? item.category.toUpperCase() : 'GUJARAT'}
                           </span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.display_name}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '700' }}>{item.display_name}</span>
                         </div>
                       ))}
                     </div>
@@ -4953,12 +4967,12 @@ export default function App() {
                   <button 
                     type="button" 
                     onClick={handleStopRouteNavigation}
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#7f1d1d', color: '#fecaca', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
                     <StopCircle size={15} /> Stop Route Navigation
                   </button>
                 ) : (
-                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
                     Start Live Navigation & Traffic Radar
                   </button>
                 )}
@@ -4966,13 +4980,13 @@ export default function App() {
                   type="button" 
                   onClick={() => setIsSimulatedTraffic(!isSimulatedTraffic)}
                   style={{
-                    padding: '10px 12px',
+                    padding: '10px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #334155',
-                    backgroundColor: isSimulatedTraffic ? '#ef4444' : '#1e293b',
-                    color: isSimulatedTraffic ? '#ffffff' : '#94a3b8',
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: isSimulatedTraffic ? '#fef2f2' : '#f1f5f9',
+                    color: isSimulatedTraffic ? '#dc2626' : '#0f172a',
                     fontWeight: '900',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     cursor: 'pointer'
                   }}
                   title="Simulate congestion on path to test instant alert & voice warning"
@@ -4982,31 +4996,31 @@ export default function App() {
               </div>
             </form>
 
-            {/* Leaflet Map (Clear segment in Green, Traffic segment in RED) */}
-            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #334155', backgroundColor: '#1e293b', minHeight: '220px', height: '220px', marginBottom: '8px' }}>
+            {/* Leaflet Map */}
+            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #e2e8f0', backgroundColor: '#f8fafc', minHeight: '220px', height: '220px', marginBottom: '10px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
 
             {/* Live Real-Time Traffic Telemetry Messages Stream */}
-            <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '4px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Radio size={12} color="#38bdf8" /> Real-Time Traffic Dispatch Feed
+            <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Radio size={13} color="#0f172a" /> Real-Time Traffic Dispatch Feed
                 </span>
-                <span style={{ fontSize: '9px', fontWeight: '800', color: isMonitoringActive ? '#22c55e' : '#94a3b8' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: isMonitoringActive ? '#16a34a' : '#64748b' }}>
                   {isMonitoringActive ? '● 1s Active Radar' : 'Standby'}
                 </span>
               </div>
 
               <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
                 {trafficLiveLogs.length === 0 ? (
-                  <p style={{ margin: '6px 0', fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
+                  <p style={{ margin: '6px 0', fontSize: '11px', color: '#64748b', textAlign: 'center', fontWeight: '700' }}>
                     Select From and To locations in Gujarat above. System will continuously stream traffic updates every second.
                   </p>
                 ) : (
                   trafficLiveLogs.map((log) => (
-                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '9px', color: log.level === 'alert' ? '#f87171' : '#cbd5e1', fontWeight: log.level === 'alert' ? '900' : '700' }}>
-                      <span style={{ color: '#94a3b8', flexShrink: 0 }}>[{log.time}]</span>
+                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '10px', color: log.level === 'alert' ? '#dc2626' : '#0f172a', fontWeight: log.level === 'alert' ? '900' : '700' }}>
+                      <span style={{ color: '#64748b', flexShrink: 0 }}>[{log.time}]</span>
                       <span>{log.text}</span>
                     </div>
                   ))
@@ -5020,26 +5034,26 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '20px', width: '100%', maxWidth: '420px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingRight: '36px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingRight: '36px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Clock size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>Permanent Watcher Reminders</h3>
-                  <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: '700' }}>Rechecks every day • Stays set until deleted</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>Permanent Watcher Reminders</h3>
+                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>Rechecks every day • Stays set until deleted</span>
                 </div>
               </div>
             </div>
 
             {/* Desktop Notification Status Banner */}
             {'Notification' in window && Notification.permission !== 'granted' && (
-              <div style={{ marginBottom: '10px', backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '10px', color: '#92400e', fontWeight: '700' }}>🔔 Browser alerts disabled</span>
+              <div style={{ marginBottom: '12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '10.5px', color: '#b45309', fontWeight: '800' }}>🔔 Browser alerts disabled</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -5047,38 +5061,38 @@ export default function App() {
                       alert(`Notification permission is: ${p}`);
                     });
                   }}
-                  style={{ background: '#92400e', color: '#ffffff', border: 'none', borderRadius: '5px', padding: '3px 8px', fontSize: '9px', fontWeight: '800', cursor: 'pointer' }}
+                  style={{ background: '#b45309', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}
                 >
                   Enable Notifications
                 </button>
               </div>
             )}
 
-            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+            <form onSubmit={handleAddOrUpdateReminder} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input
                   type="text"
                   placeholder="Enter reminder task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', fontWeight: '600' }}
+                  style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '100px', padding: '9px 6px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#f8fafc', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                  style={{ width: '105px', padding: '9px 8px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '800' }}
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '8px', border: 'none', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
                 <Plus size={15} /> {editingIndex !== null ? "Update Reminder" : "Add Permanent Reminder"}
               </button>
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '14px' }}>
               {sortedReminders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', margin: '14px 0' }}>No reminders set. Add your daily routine reminder above!</p>
+                <p style={{ textAlign: 'center', color: '#64748b', fontSize: '11px', margin: '16px 0', fontWeight: '700' }}>No reminders set. Add your daily routine reminder above!</p>
               ) : (
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
@@ -5089,9 +5103,9 @@ export default function App() {
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
-                        backgroundColor: '#1e293b', 
-                        border: '1px solid #334155', 
-                        borderRadius: '8px', 
+                        backgroundColor: '#f8fafc', 
+                        border: '1px solid #e2e8f0', 
+                        borderRadius: '10px', 
                         padding: '10px 12px',
                         opacity: rem.completed ? 0.75 : 1
                       }}
@@ -5100,8 +5114,8 @@ export default function App() {
                         <p style={{ 
                           margin: 0, 
                           fontSize: '12px', 
-                          fontWeight: '800', 
-                          color: rem.completed ? '#22c55e' : '#f8fafc', 
+                          fontWeight: '900', 
+                          color: rem.completed ? '#16a34a' : '#0f172a', 
                           textDecoration: rem.completed ? 'line-through' : 'none', 
                           whiteSpace: 'nowrap', 
                           overflow: 'hidden', 
@@ -5109,7 +5123,7 @@ export default function App() {
                         }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
-                        <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
+                        <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800' }}>
                           Time: {formatTimeTo12Hour(rem.time)}
                         </span>
                       </div>
@@ -5123,19 +5137,19 @@ export default function App() {
                               width: '24px', 
                               height: '24px', 
                               borderRadius: '6px', 
-                              backgroundColor: 'rgba(22, 101, 52, 0.2)', 
-                              border: '1px solid #166534', 
+                              backgroundColor: '#f0fdf4', 
+                              border: '1px solid #bbf7d0', 
                               display: 'flex', 
                               alignItems: 'center', 
                               justifyContent: 'center', 
-                              color: '#166534' 
+                              color: '#15803d' 
                             }}
                           >
                             <Check size={14} />
                           </div>
                         )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#0284c7', border: 'none', color: '#cbd5e1', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
-                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#0f172a', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
                       </div>
                     </div>
                   );
@@ -5144,36 +5158,34 @@ export default function App() {
             </div>
 
             {/* Watcher Modal Action Controls */}
-            <div style={{ position: 'relative', borderTop: '1px solid #1e293b', paddingTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid #e2e8f0', paddingTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <button 
                 type="button"
                 onClick={triggerTestWatcherAlert}
                 title="Instantly Test Watcher Alert (Sound, Modal & Notification)"
-                style={{ flex: '1 1 120px', background: '#0284c7',
-              border: '1px solid #334155', color: '#cbd5e1', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                style={{ flex: '1 1 120px', background: '#f1f5f9',
+              border: '1px solid #e2e8f0', color: '#0f172a', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
                 <Zap size={12} /> Test Alert Now
               </button>
 
-              
-
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
-                style={{ background: '#0284c7',
-              border: '1px solid #334155', color: '#cbd5e1', padding: '7px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: '#f1f5f9',
+              border: '1px solid #e2e8f0', color: '#0f172a', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
 
               {showSnoozeDropdown && (
-                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                  <span style={{ fontSize: '8px', fontWeight: '700', color: '#94a3b8', paddingLeft: '3px' }}>Select Snooze:</span>
+                <div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: '6px', backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '6px', zIndex: 300, display: 'flex', flexDirection: 'column', gap: '3px', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
+                  <span style={{ fontSize: '9px', fontWeight: '900', color: '#64748b', paddingLeft: '4px' }}>Select Snooze:</span>
                   {[1, 5, 10, 15, 30].map((m) => (
                     <button 
                       key={m} 
                       onClick={() => { setSnoozeMinutes(m); setShowSnoozeDropdown(false); }}
-                      style={{ background: snoozeMinutes === m ? '#0284c7' : 'transparent', color: snoozeMinutes === m ? '#ffffff' : '#94a3b8', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
+                      style={{ background: snoozeMinutes === m ? '#0f172a' : 'transparent', color: snoozeMinutes === m ? '#ffffff' : '#0f172a', border: 'none', padding: '5px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', textAlign: 'left' }}
                     >
                       {m} Minute{m > 1 ? 's' : ''}
                     </button>
@@ -5230,12 +5242,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Full-Screen Watcher Reminder Alert Modal (Triggers Visually When Reminder Is Due) */}
+      {/* Full-Screen Watcher Reminder Alert Modal */}
       {activeAlertTask && (
         <div style={{ 
           position: 'fixed', 
           inset: 0, 
-          backgroundColor: 'rgba(15, 23, 42, 0.97)', 
+          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
           backdropFilter: 'blur(10px)', 
           zIndex: 99999, 
           display: 'flex', 
@@ -5255,7 +5267,7 @@ export default function App() {
             alignItems: 'center', 
             justifyContent: 'center', 
             marginBottom: '18px',
-            boxShadow: '0 0 35px rgba(220, 38, 38, 0.85)'
+            boxShadow: '0 0 35px rgba(220, 38, 38, 0.4)'
           }}>
             <Bell size={44} />
           </div>
@@ -5263,9 +5275,9 @@ export default function App() {
           <span style={{ 
             fontSize: '12px', 
             fontWeight: '900', 
-            color: '#fca5a5', 
+            color: '#dc2626', 
             textTransform: 'uppercase', 
-            letterSpacing: '2.5px', 
+            letterSpacing: '2px', 
             marginBottom: '8px' 
           }}>
             ⏰ Watcher Reminder Alert
@@ -5274,7 +5286,7 @@ export default function App() {
           <h1 style={{ 
             fontSize: '28px', 
             fontWeight: '900', 
-            color: '#cbd5e1', 
+            color: '#0f172a', 
             maxWidth: '680px', 
             lineHeight: '1.3', 
             margin: '0 0 10px 0', 
@@ -5284,7 +5296,7 @@ export default function App() {
             "{activeAlertTask}"
           </h1>
 
-          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: '#fca5a5', fontWeight: '700' }}>
+          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: '#64748b', fontWeight: '800' }}>
             Scheduled reminder time has arrived!
           </p>
 
@@ -5301,11 +5313,11 @@ export default function App() {
                 borderRadius: '12px', 
                 border: 'none', 
                 backgroundColor: '#0f172a', 
-                color: '#f8fafc', 
+                color: '#ffffff', 
                 fontWeight: '900', 
                 fontSize: '15px', 
                 cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                boxShadow: '0 4px 15px rgba(15,23,42,0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -5319,9 +5331,9 @@ export default function App() {
               style={{ 
                 padding: '13px 26px', 
                 borderRadius: '12px', 
-                border: '1px solid #334155',
-                backgroundColor: '#1e293b', 
-                color: '#cbd5e1', 
+                border: '1.5px solid #cbd5e1',
+                backgroundColor: '#f1f5f9', 
+                color: '#0f172a', 
                 fontWeight: '900', 
                 fontSize: '15px', 
                 cursor: 'pointer', 
@@ -5336,73 +5348,72 @@ export default function App() {
         </div>
       )}
 
-      
       {/* Mobile Permissions & System Setup Modal */}
       {showPermissionsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '440px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '440px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
             <button 
               onClick={() => setShowPermissionsModal(false)} 
-              style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #334155', background: '#1e293b', color: '#f8fafc', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} />
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Shield size={22} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>System Permissions Setup</h3>
-                <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '700' }}>Mobile & Desktop Hardware Authorization</span>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Permissions</h3>
+                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>MOBILE & DESKTOP HARDWARE AUTHORIZATION</span>
               </div>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 16px 0' }}>
+            <p style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.5', margin: '0 0 16px 0', fontWeight: '700' }}>
               Shadow Dashboard requires hardware access to deliver voice commands, GPS route traffic alerts, and background reminder notifications on mobile.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
               
               {/* Notifications Permission */}
-              <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Bell size={20} color="#38bdf8" />
+                  <Bell size={20} color="#0f172a" />
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>System Notifications</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Watcher alerts & PWA reminders</div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Notifications</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Watcher alerts & PWA reminders</div>
                   </div>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.notifications === 'granted' ? '#10b981' : '#f59e0b' }}>
-                  {mobilePermissions.notifications === 'granted' ? '✓ Granted' : 'Pending'}
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.notifications === 'granted' ? '#16a34a' : '#d97706' }}>
+                  {mobilePermissions.notifications === 'granted' ? '✓ GRANTED' : 'PENDING'}
                 </span>
               </div>
 
               {/* Microphone Permission */}
-              <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Mic size={20} color="#a855f7" />
+                  <Mic size={20} color="#0f172a" />
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>Microphone Access</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Shadow Voice AI & Audio Notes</div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>Microphone Access</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Shadow Voice AI & Audio Notes</div>
                   </div>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.mic === 'granted' ? '#10b981' : '#f59e0b' }}>
-                  {mobilePermissions.mic === 'granted' ? '✓ Granted' : 'Pending'}
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.mic === 'granted' ? '#16a34a' : '#d97706' }}>
+                  {mobilePermissions.mic === 'granted' ? '✓ GRANTED' : 'PENDING'}
                 </span>
               </div>
 
               {/* Geolocation Permission */}
-              <div style={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Navigation size={20} color="#10b981" />
+                  <Navigation size={20} color="#0f172a" />
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#f8fafc' }}>GPS Location</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Real-time traffic & live navigation</div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>GPS Location</div>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Real-time traffic & live navigation</div>
                   </div>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.location === 'granted' ? '#10b981' : '#f59e0b' }}>
-                  {mobilePermissions.location === 'granted' ? '✓ Granted' : 'Pending'}
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.location === 'granted' ? '#16a34a' : '#d97706' }}>
+                  {mobilePermissions.location === 'granted' ? '✓ GRANTED' : 'PENDING'}
                 </span>
               </div>
 
@@ -5413,10 +5424,10 @@ export default function App() {
               disabled={isRequestingPerms}
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '13px',
                 borderRadius: '12px',
                 border: 'none',
-                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                backgroundColor: '#0f172a',
                 color: '#ffffff',
                 fontWeight: '900',
                 fontSize: '13px',
@@ -5425,11 +5436,12 @@ export default function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)'
+                boxShadow: '0 4px 15px rgba(15, 23, 42, 0.15)',
+                textTransform: 'uppercase'
               }}
             >
               <Zap size={16} />
-              {isRequestingPerms ? 'Requesting Browser Permissions...' : 'Grant All Permissions in 1 Tap'}
+              {isRequestingPerms ? 'REQUESTING PERMISSIONS...' : 'GRANT ALL PERMISSIONS IN 1 TAP'}
             </button>
           </div>
         </div>
@@ -5437,26 +5449,26 @@ export default function App() {
 
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}>
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             {userProfile.photo ? (
               <img 
                 src={userProfile.photo} 
                 alt={userProfile.name} 
-                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid #334155', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
+                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid #e2e8f0', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
                 {(userProfile.name || 'U').charAt(0).toUpperCase()}
               </div>
             )}
 
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>{userProfile.name}</h3>
-            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '18px' }}>Connected since: {userProfile.connectedDate || 'Active'}</span>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '18px', fontWeight: '800' }}>CONNECTED: {userProfile.connectedDate || 'ACTIVE'}</span>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button 
@@ -5472,9 +5484,9 @@ export default function App() {
                     setShowProfileModal(false);
                   }
                 }}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}
               >
-                Disconnect / Log Out
+                DISCONNECT / LOG OUT
               </button>
 
               <button 
@@ -5483,9 +5495,9 @@ export default function App() {
                   setAuthMode('login');
                   setShowAuthModal(true);
                 }}
-                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid #334155', backgroundColor: 'transparent', color: '#f8fafc', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f1f5f9', color: '#0f172a', fontWeight: '900', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}
               >
-                Switch Account
+                SWITCH ACCOUNT
               </button>
             </div>
           </div>
@@ -5519,95 +5531,96 @@ export default function App() {
         const avgDailySpend = Math.round(monthlySpent / currentDay);
 
         return (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '750px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}>
-              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '750px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
+              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
               {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <DollarSign size={20} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DollarSign size={22} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#f8fafc' }}>Shadow Expense Manager</h3>
-                    <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>Track daily spends & monthly financial analytics</span>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>Shadow Expense Manager</h3>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>DAILY SPENDS & FINANCIAL ANALYTICS</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#0284c7', border: 'none', color: '#cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
-                    <FileSpreadsheet size={13} /> Export CSV
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#0f172a', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase' }}>
+                    <FileSpreadsheet size={14} /> EXPORT CSV
                   </button>
-                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#7f1d1d', border: 'none', color: '#fecaca', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '800' }}>
-                    <Trash2 size={13} />
+                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#dc2626', padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '900' }}>
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
 
-              {/* Month Selector Bar (Strictly Blocks Future Months) */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0284c7', borderRadius: '12px', padding: '8px 14px', marginBottom: '14px', color: '#cbd5e1' }}>
-                <button onClick={handlePrevExpenseMonth} style={{ background: 'transparent', border: '1px solid #334155', color: '#cbd5e1', padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}>
-                  ◀ Prev Month
+              {/* Month Selector Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', marginBottom: '16px', color: '#0f172a' }}>
+                <button onClick={handlePrevExpenseMonth} style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase' }}>
+                  ◀ PREV MONTH
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '14px', letterSpacing: '0.5px' }}>
-                  <Calendar size={16} color="#38bdf8" />
+                  <Calendar size={16} color="#0f172a" />
                   <span>{formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                   {isFutureMonthBlocked && (
-                    <span style={{ fontSize: '9px', backgroundColor: '#0f172a', color: '#f8fafc', padding: '2px 6px', borderRadius: '4px', fontWeight: '900' }}>Current Month</span>
+                    <span style={{ fontSize: '9px', backgroundColor: '#0f172a', color: '#ffffff', padding: '3px 7px', borderRadius: '4px', fontWeight: '900', textTransform: 'uppercase' }}>CURRENT</span>
                   )}
                 </div>
                 <button 
                   onClick={handleNextExpenseMonth} 
                   disabled={isFutureMonthBlocked}
                   style={{ 
-                    background: isFutureMonthBlocked ? 'rgba(232, 210, 181, 0.15)' : 'transparent', 
-                    border: `1px solid ${isFutureMonthBlocked ? '#334155' : '#0284c7'}`,
-                    color: isFutureMonthBlocked ? '#64748b' : '#38bdf8', 
-                    padding: '4px 12px', 
-                    borderRadius: '6px', 
+                    background: isFutureMonthBlocked ? '#f1f5f9' : '#ffffff', 
+                    border: `1px solid ${isFutureMonthBlocked ? '#e2e8f0' : '#cbd5e1'}`,
+                    color: isFutureMonthBlocked ? '#94a3b8' : '#0f172a', 
+                    padding: '6px 14px', 
+                    borderRadius: '8px', 
                     fontSize: '11px', 
                     fontWeight: '900', 
                     cursor: isFutureMonthBlocked ? 'not-allowed' : 'pointer',
-                    opacity: isFutureMonthBlocked ? 0.4 : 1
+                    opacity: isFutureMonthBlocked ? 0.5 : 1,
+                    textTransform: 'uppercase'
                   }}
-                  title={isFutureMonthBlocked ? "Current month (Cannot navigate into future months)" : "Next Month"}
+                  title={isFutureMonthBlocked ? "Current month" : "Next Month"}
                 >
-                  Next Month ▶
+                  NEXT MONTH ▶
                 </button>
               </div>
 
-              {/* Clean 3-Card Overview (NO EARN, NO NET BALANCE) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+              {/* 3-Card Overview */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                 {/* 1. Total Spent */}
-                <div style={{ backgroundColor: '#ffffff', border: '1px solid #ef4444', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(239,68,68,0.08)' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #fecaca', borderRadius: '14px', padding: '14px', boxShadow: '0 2px 8px rgba(220,38,38,0.06)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }}>TOTAL SPENT THIS MONTH</span>
-                    <TrendingDown size={16} color="#991b1b" />
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#dc2626', textTransform: 'uppercase' }}>TOTAL SPENT</span>
+                    <TrendingDown size={16} color="#dc2626" />
                   </div>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#991b1b' }}>₹{monthlySpent.toLocaleString()}</p>
-                  <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>{monthlyItems.length} expenses logged</span>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#dc2626' }}>₹{monthlySpent.toLocaleString()}</p>
+                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>{monthlyItems.length} expenses logged</span>
                 </div>
 
                 {/* 2. Monthly Budget */}
-                <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(89,9,7,0.08)' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
                     <button 
                       onClick={() => setIsSettingBudget(prev => !prev)} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f8fafc', padding: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f172a', padding: 0 }}
                       title="Edit monthly budget"
                     >
-                      <Edit2 size={13} />
+                      <Edit2 size={14} />
                     </button>
                   </div>
                   {isSettingBudget ? (
-                    <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
                       <input
                         type="number"
                         value={tempBudgetInput}
                         onChange={(e) => setTempBudgetInput(e.target.value)}
                         placeholder="New ₹"
-                        style={{ width: '80px', padding: '3px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid #334155' }}
+                        style={{ width: '85px', padding: '5px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: '800' }}
                       />
                       <button
                         onClick={() => {
@@ -5618,51 +5631,51 @@ export default function App() {
                           }
                           setIsSettingBudget(false);
                         }}
-                        style={{ backgroundColor: '#0284c7', color: '#cbd5e1', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '3px 8px', fontWeight: '800', cursor: 'pointer' }}
+                        style={{ backgroundColor: '#0f172a', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '11px', padding: '5px 10px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase' }}
                       >
-                        Save
+                        SAVE
                       </button>
                     </div>
                   ) : (
-                    <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#f8fafc' }}>₹{monthlyBudget.toLocaleString()}</p>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>₹{monthlyBudget.toLocaleString()}</p>
                   )}
-                  <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>Target spending limit</span>
+                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>Target spending limit</span>
                 </div>
 
                 {/* 3. Budget Remaining */}
-                <div style={{ backgroundColor: '#ffffff', border: `1px solid ${monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626'}`, borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <div style={{ backgroundColor: '#ffffff', border: `1.5px solid ${monthlyRemainingBudget >= 0 ? '#bbf7d0' : '#fecaca'}`, borderRadius: '14px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626', textTransform: 'uppercase' }}>BUDGET REMAINING</span>
-                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626' }}>{budgetPct}% used</span>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626', textTransform: 'uppercase' }}>BUDGET REMAINING</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626' }}>{budgetPct}% used</span>
                   </div>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626' }}>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626' }}>
                     {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()}` : `-₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
                   </p>
-                  <span style={{ fontSize: '10px', color: monthlyRemainingBudget >= 0 ? '#166534' : '#dc2626', fontWeight: '700' }}>
+                  <span style={{ fontSize: '10px', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626', fontWeight: '800' }}>
                     {monthlyRemainingBudget >= 0 ? 'Within budget limit' : 'Over budget!'}
                   </span>
                 </div>
               </div>
 
               {/* Monthly Budget Progress Bar */}
-              <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '10px 14px', marginBottom: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '800', marginBottom: '6px' }}>
-                  <span>🎯 Monthly Spending Progress: ₹{monthlySpent.toLocaleString()} of ₹{monthlyBudget.toLocaleString()}</span>
-                  <span style={{ color: monthlyRemainingBudget >= 0 ? '#166534' : '#ef4444' }}>
-                    {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()} Remaining (${budgetPct}% used)` : `⚠️ Over budget by ₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
+              <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '900', marginBottom: '8px', color: '#0f172a' }}>
+                  <span>🎯 MONTHLY PROGRESS: ₹{monthlySpent.toLocaleString()} OF ₹{monthlyBudget.toLocaleString()}</span>
+                  <span style={{ color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626' }}>
+                    {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()} REMAINING (${budgetPct}% USED)` : `⚠️ OVER BUDGET BY ₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${budgetPct}%`, backgroundColor: budgetPct > 90 ? '#ef4444' : (budgetPct > 70 ? '#f59e0b' : '#166534'), borderRadius: '4px', transition: 'width 0.3s ease' }} />
+                <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${budgetPct}%`, backgroundColor: budgetPct > 90 ? '#dc2626' : (budgetPct > 70 ? '#d97706' : '#16a34a'), borderRadius: '4px', transition: 'width 0.3s ease' }} />
                 </div>
               </div>
 
-              {/* Clean Unified Expense Creator (Pure Expense Only) */}
-              <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '16px', border: '1px solid #334155', marginBottom: '14px', boxShadow: '0 2px 10px rgba(89,9,7,0.08)' }}>
+              {/* Expense Creator */}
+              <div style={{ backgroundColor: '#f8fafc', borderRadius: '14px', padding: '16px', border: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
                 {/* 1-Tap Quick Presets */}
                 <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', display: 'block', marginBottom: '6px' }}>
-                    ⚡ 1-Tap Quick Presets:
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    ⚡ 1-TAP QUICK PRESETS:
                   </span>
                   <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
                     {[
@@ -5679,12 +5692,12 @@ export default function App() {
                         type="button"
                         onClick={() => { setExpenseTitle(p.t); setExpenseAmount(String(p.a)); setExpenseCategory(p.c); }}
                         style={{
-                          padding: '4px 9px',
-                          borderRadius: '6px',
-                          border: '1px solid #334155',
-                          backgroundColor: '#0f172a',
-                          color: '#f8fafc',
-                          fontSize: '10px',
+                          padding: '6px 11px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          fontSize: '11px',
                           fontWeight: '800',
                           cursor: 'pointer',
                           whiteSpace: 'nowrap'
@@ -5704,19 +5717,19 @@ export default function App() {
                       placeholder="Expense Title (e.g. Chai, Groceries, Petrol, Books)..."
                       value={expenseTitle}
                       onChange={(e) => setExpenseTitle(e.target.value)}
-                      style={{ flex: '2 1 200px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '12px', outline: 'none', fontWeight: '600' }}
+                      style={{ flex: '2 1 200px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '12px', outline: 'none', fontWeight: '800' }}
                     />
                     <input
                       type="number"
                       placeholder="₹ Amount"
                       value={expenseAmount}
                       onChange={(e) => setExpenseAmount(e.target.value)}
-                      style={{ flex: '1 1 100px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '12px', outline: 'none', fontWeight: '700' }}
+                      style={{ flex: '1 1 100px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '12px', outline: 'none', fontWeight: '900' }}
                     />
                     <select
                       value={expenseCategory}
                       onChange={(e) => setExpenseCategory(e.target.value)}
-                      style={{ flex: '1.5 1 140px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #d1d5db', backgroundColor: '#f9fafb', color: '#111827', fontSize: '11px', outline: 'none', fontWeight: '600' }}
+                      style={{ flex: '1.5 1 140px', padding: '10px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '800' }}
                     >
                       <option value="Food & Snacks">🍔 Food & Snacks</option>
                       <option value="Travel & Commute">🚌 Travel & Commute</option>
@@ -5729,80 +5742,83 @@ export default function App() {
                     <button 
                       type="submit" 
                       style={{ 
-                        padding: '9px 20px', 
+                        padding: '10px 22px', 
                         borderRadius: '8px', 
                         border: 'none', 
-                        backgroundColor: '#0284c7', 
-                        color: '#cbd5e1', 
+                        backgroundColor: '#0f172a', 
+                        color: '#ffffff', 
                         fontWeight: '900', 
                         fontSize: '12px', 
                         cursor: 'pointer', 
                         whiteSpace: 'nowrap',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                        boxShadow: '0 2px 8px rgba(15,23,42,0.15)',
+                        textTransform: 'uppercase'
                       }}
                     >
-                      + Log Expense
+                      + LOG EXPENSE
                     </button>
                   </div>
                 </form>
               </div>
 
-              {/* Clear Content Tabs: Transactions List vs Monthly Analytics */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {/* Clear Content Tabs */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
                 <button
                   type="button"
                   onClick={() => setExpenseTabMode('tracker')}
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
+                    padding: '9px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #334155',
-                    backgroundColor: expenseTabMode === 'tracker' ? '#0284c7' : 'transparent',
-                    color: expenseTabMode === 'tracker' ? '#ffffff' : '#94a3b8',
+                    border: '1px solid ' + (expenseTabMode === 'tracker' ? '#0f172a' : '#e2e8f0'),
+                    backgroundColor: expenseTabMode === 'tracker' ? '#0f172a' : '#f1f5f9',
+                    color: expenseTabMode === 'tracker' ? '#ffffff' : '#64748b',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    textTransform: 'uppercase'
                   }}
                 >
-                  <Edit2 size={13} /> Expenses List ({monthlyItems.length})
+                  <Edit2 size={13} /> EXPENSES LIST ({monthlyItems.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setExpenseTabMode('monthly_report')}
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
+                    padding: '9px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #334155',
-                    backgroundColor: expenseTabMode === 'monthly_report' ? '#0284c7' : 'transparent',
-                    color: expenseTabMode === 'monthly_report' ? '#ffffff' : '#94a3b8',
+                    border: '1px solid ' + (expenseTabMode === 'monthly_report' ? '#0f172a' : '#e2e8f0'),
+                    backgroundColor: expenseTabMode === 'monthly_report' ? '#0f172a' : '#f1f5f9',
+                    color: expenseTabMode === 'monthly_report' ? '#ffffff' : '#64748b',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    textTransform: 'uppercase'
                   }}
                 >
-                  <BarChart2 size={13} /> Monthly Analytics & Report
+                  <BarChart2 size={13} /> MONTHLY ANALYTICS & REPORT
                 </button>
               </div>
 
               {/* Tab 1: Expenses List */}
               {expenseTabMode === 'tracker' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {monthlyItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px 10px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px dashed #38bdf8', color: '#f8fafc' }}>
-                      <DollarSign size={32} color="#38bdf8" style={{ margin: '0 auto 6px auto', opacity: 0.6 }} />
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '800' }}>
+                    <div style={{ textAlign: 'center', padding: '36px 12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b' }}>
+                      <DollarSign size={32} color="#0f172a" style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>
                         No expenses recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}.
                       </p>
-                      <span style={{ fontSize: '11px', opacity: 0.8 }}>Log your first expense using the quick presets above!</span>
+                      <span style={{ fontSize: '11px', fontWeight: '700' }}>Log your first expense using the quick presets above!</span>
                     </div>
                   ) : (
                     monthlyItems.map((item, idx) => {
@@ -5812,23 +5828,23 @@ export default function App() {
                           style={{
                             backgroundColor: '#ffffff',
                             borderRadius: '10px',
-                            padding: '10px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderLeft: '4px solid #ef4444',
+                            padding: '12px 14px',
+                            border: '1.5px solid #e2e8f0',
+                            borderLeft: '4px solid #dc2626',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#fee2e2', color: '#991b1b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <TrendingDown size={14} />
                             </div>
                             <div>
-                              <p style={{ margin: 0, fontSize: '12px', fontWeight: '800', color: '#111827' }}>{item.title}</p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
-                                <span style={{ backgroundColor: '#f3f4f6', padding: '1px 5px', borderRadius: '3px', fontWeight: '700' }}>{item.category}</span>
+                              <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{item.title}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#64748b', marginTop: '2px', fontWeight: '700' }}>
+                                <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>{item.category}</span>
                                 <span>•</span>
                                 <span>{item.date || 'Today'}</span>
                               </div>
@@ -5836,16 +5852,16 @@ export default function App() {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '900', color: '#991b1b' }}>
+                            <span style={{ fontSize: '15px', fontWeight: '900', color: '#dc2626' }}>
                               -₹{parseFloat(item.amount).toLocaleString()}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleDeleteExpense(item.id || idx)}
-                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: '#9ca3af' }}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px', color: '#94a3b8' }}
                               title="Delete expense"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>
@@ -5855,49 +5871,49 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 2: Monthly Analytics & Report (Pure Expense Focus) */}
+              {/* Tab 2: Monthly Analytics & Report */}
               {expenseTabMode === 'monthly_report' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {/* Spending Velocity & Top Category Card */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', textTransform: 'uppercase' }}>AVERAGE DAILY SPEND</span>
-                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#f8fafc' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                    <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>AVERAGE DAILY SPEND</span>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#0f172a' }}>
                         ₹{avgDailySpend.toLocaleString()} / day
                       </p>
-                      <span style={{ fontSize: '9px', color: '#6b7280' }}>Based on {currentDay} days in {formatExpenseMonthLabel(selectedExpenseMonth)}</span>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Based on {currentDay} days in {formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                     </div>
 
-                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#6b7280', textTransform: 'uppercase' }}>TOP SPENDING CATEGORY</span>
-                      <p style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: '900', color: '#991b1b' }}>
+                    <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>TOP SPENDING CATEGORY</span>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#dc2626' }}>
                         {topCat ? topCat[0] : 'None Yet'}
                       </p>
-                      <span style={{ fontSize: '9px', color: '#6b7280' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>
                         {topCat ? `₹${topCat[1].toLocaleString()} (${monthlySpent > 0 ? Math.round((topCat[1] / monthlySpent) * 100) : 0}% of month)` : 'No expenses logged'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Category Breakdown Bar Chart */}
-                  <div style={{ backgroundColor: '#ffffff', border: '1px solid #334155', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: '900', color: '#f8fafc' }}>
+                  {/* Category Breakdown */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
                       🏷️ Spending by Category ({formatExpenseMonthLabel(selectedExpenseMonth)})
                     </h4>
                     {categoryStats.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: '11px', color: '#6b7280' }}>No expense records available for this month.</p>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontWeight: '700' }}>No expense records available for this month.</p>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {categoryStats.map(([cat, amt]) => {
                           const pct = monthlySpent > 0 ? Math.round((amt / monthlySpent) * 100) : 0;
                           return (
                             <div key={cat}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '800', marginBottom: '2px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '900', marginBottom: '3px', color: '#0f172a' }}>
                                 <span>{cat}</span>
                                 <span>₹{amt.toLocaleString()} ({pct}%)</span>
                               </div>
-                              <div style={{ width: '100%', height: '7px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#0284c7', borderRadius: '4px' }} />
+                              <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#0f172a', borderRadius: '4px' }} />
                               </div>
                             </div>
                           );
@@ -6003,32 +6019,32 @@ export default function App() {
       )}
 
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(3, 7, 18, 0.85)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#0f172a', borderRadius: '20px', padding: '22px', width: '100%', maxWidth: '800px', position: 'relative', border: '1px solid #334155', color: '#f8fafc', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: 'none', background: '#0284c7', color: '#cbd5e1', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '800px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#0284c7', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Newspaper size={19} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Newspaper size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#f8fafc' }}>
-                  Live Briefing & IPO Intelligence Hub
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
+                  Live Briefing & IPO Radar
                 </h3>
-                <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
-                  Global, India, Gujarat News & Real-Time Plain English IPO Intelligence
+                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                  GLOBAL, INDIA, GUJARAT NEWS & REAL-TIME IPO INTELLIGENCE
                 </span>
               </div>
             </div>
 
-            {/* Top 4 Selection Options: Global, India, Gujarat, and IPO Info (Hindi) */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            {/* Top 4 Selection Options */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
               {[
-                { id: 'global', label: '🌐 Global News' },
-                { id: 'india', label: '🇮🇳 India News' },
-                { id: 'gujarat', label: '🏛️ Gujarat News' },
-                { id: 'ipo', label: '📈 Live IPO Radar (Easy Guide)' }
+                { id: 'global', label: '🌐 GLOBAL NEWS' },
+                { id: 'india', label: '🇮🇳 INDIA NEWS' },
+                { id: 'gujarat', label: '🏛️ GUJARAT NEWS' },
+                { id: 'ipo', label: '📈 LIVE IPO RADAR' }
               ].map((tab) => {
                 const isSel = newsCategory === tab.id;
                 return (
@@ -6043,11 +6059,11 @@ export default function App() {
                     }}
                     style={{
                       flex: '1 1 140px',
-                      padding: '8px 12px',
-                      borderRadius: '10px',
-                      border: '1px solid #334155',
-                      backgroundColor: isSel ? '#0284c7' : '#1e293b',
-                      color: isSel ? '#ffffff' : '#94a3b8',
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid ' + (isSel ? '#0f172a' : '#e2e8f0'),
+                      backgroundColor: isSel ? '#0f172a' : '#f1f5f9',
+                      color: isSel ? '#ffffff' : '#64748b',
                       fontWeight: '900',
                       fontSize: '11px',
                       cursor: 'pointer',
@@ -6056,7 +6072,8 @@ export default function App() {
                       justifyContent: 'center',
                       gap: '5px',
                       transition: 'all 0.2s ease',
-                      boxShadow: isSel ? '0 2px 6px rgba(89,9,7,0.35)' : 'none'
+                      boxShadow: isSel ? '0 2px 6px rgba(15,23,42,0.15)' : 'none',
+                      textTransform: 'uppercase'
                     }}
                   >
                     {tab.label}
@@ -6065,36 +6082,35 @@ export default function App() {
               })}
             </div>
 
-            {/* When IPO Info is Selected: Real-Time Plain English IPO Intelligence Center */}
+            {/* When IPO Info is Selected: Real-Time IPO Intelligence Center */}
             {newsCategory === 'ipo' ? (
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
                 
-                {/* Real-time Live Market Feed Status Bar with Manual Refresh and Hourly Auto-Refresh */}
+                {/* Real-time Live Market Feed Status Bar */}
                 <div style={{ 
-                  backgroundColor: '#ffffff', 
-                  border: '1px solid #334155', 
+                  backgroundColor: '#f8fafc', 
+                  border: '1.5px solid #e2e8f0', 
                   borderRadius: '12px', 
                   padding: '10px 14px', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'space-between', 
                   flexWrap: 'wrap', 
-                  gap: '8px',
-                  boxShadow: '0 2px 6px rgba(89,9,7,0.06)'
+                  gap: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }} />
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#f8fafc' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
                       BSE & NSE Real-Time IPO Radar • Current October–November 2026 Issues
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
-                      Auto-updates hourly (in {Math.floor(ipoCountdown / 60)}m {String(ipoCountdown % 60).padStart(2, '0')}s) • Last sync: {ipoLastUpdated}
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                      Auto-updates in {Math.floor(ipoCountdown / 60)}m {String(ipoCountdown % 60).padStart(2, '0')}s • Sync: {ipoLastUpdated}
                     </span>
                     {ipoJustRefreshed && (
                       <span style={{ fontSize: '10px', backgroundColor: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
-                        ✅ Updated Just Now!
+                        ✅ UPDATED
                       </span>
                     )}
                     <button
@@ -6105,59 +6121,55 @@ export default function App() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px',
-                        padding: '4px 10px',
+                        padding: '5px 12px',
                         borderRadius: '6px',
-                        border: '1px solid #334155',
-                        backgroundColor: '#0284c7',
-                        color: '#cbd5e1',
-                        fontSize: '10px',
-                        fontWeight: '800',
+                        border: 'none',
+                        backgroundColor: '#0f172a',
+                        color: '#ffffff',
+                        fontSize: '11px',
+                        fontWeight: '900',
                         cursor: ipoRefreshing ? 'not-allowed' : 'pointer',
-                        boxShadow: '0 2px 4px rgba(89,9,7,0.15)'
+                        textTransform: 'uppercase'
                       }}
                       title="Manually refresh real-time IPO data now"
                     >
                       <RotateCw size={11} style={{ animation: ipoRefreshing ? 'spin 1s linear infinite' : 'none' }} />
-                      {ipoRefreshing ? 'Updating...' : 'Refresh'}
+                      {ipoRefreshing ? 'UPDATING...' : 'REFRESH'}
                     </button>
                   </div>
                 </div>
 
-                {/* Beginner Guide Card: Plain English Explanations of All Financial Terms */}
+                {/* Beginner Guide Card */}
                 <div style={{ 
                   backgroundColor: '#fef3c7', 
-                  border: '1px solid #f59e0b', 
+                  border: '1px solid #fde68a', 
                   borderRadius: '12px', 
                   padding: '12px 14px', 
                   fontSize: '11px', 
-                  lineHeight: '1.5',
-                  boxShadow: '0 2px 6px rgba(245,158,11,0.1)'
+                  lineHeight: '1.5'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#92400e', fontWeight: '900', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#92400e', fontWeight: '900', fontSize: '12px', textTransform: 'uppercase' }}>
                     <span>💡</span>
-                    <span>New to IPOs? Everyday Plain English Guide:</span>
+                    <span>EVERYDAY PLAIN ENGLISH IPO GUIDE:</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', color: '#78350f', fontSize: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', color: '#78350f', fontSize: '10px', fontWeight: '700' }}>
                     <div>
-                      <strong>• What is an IPO?</strong> When a company sells its shares to the public on the stock exchange for the first time.
+                      <strong>• What is an IPO?</strong> When a company sells shares to the public for the first time.
                     </div>
                     <div>
-                      <strong>• What does "Subscription" mean?</strong> Total buyer demand. If demand is <strong>3x</strong>, it means for every 1 share offered, 3 people applied to buy it.
+                      <strong>• Demand (Subscription):</strong> If demand is <strong>3x</strong>, 3 people applied for every 1 share.
                     </div>
                     <div>
-                      <strong>• What is "GMP" (Grey Market Premium)?</strong> Unofficial estimated extra profit per share when the stock begins trading on Day 1.
+                      <strong>• GMP (Grey Market Premium):</strong> Estimated extra profit per share on Day 1.
                     </div>
                     <div>
-                      <strong>• What is "Lot Size"?</strong> The minimum bundle of shares you must buy in an application.
-                    </div>
-                    <div>
-                      <strong>• What is "Allotment"?</strong> Getting the shares in your Demat account. If oversubscribed, a computerized lucky draw picks winners. If you don't win, your money is safely unblocked.
+                      <strong>• Lot Size:</strong> Minimum bundle of shares you must buy in an application.
                     </div>
                   </div>
                 </div>
 
                 {/* Sub-Tabs: Live Open vs Upcoming */}
-                <div style={{ display: 'flex', gap: '8px', backgroundColor: '#1e293b', padding: '6px', borderRadius: '10px', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', gap: '8px', backgroundColor: '#f8fafc', padding: '6px', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
                   <button
                     type="button"
                     onClick={() => setIpoSubTab('live')}
@@ -6166,8 +6178,8 @@ export default function App() {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      backgroundColor: ipoSubTab === 'live' ? '#0284c7' : 'transparent',
-                      color: ipoSubTab === 'live' ? '#ffffff' : '#94a3b8',
+                      backgroundColor: ipoSubTab === 'live' ? '#0f172a' : 'transparent',
+                      color: ipoSubTab === 'live' ? '#ffffff' : '#64748b',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -6175,11 +6187,10 @@ export default function App() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
-                      boxShadow: ipoSubTab === 'live' ? '0 2px 6px rgba(89,9,7,0.3)' : 'none',
-                      transition: 'all 0.2s'
+                      textTransform: 'uppercase'
                     }}
                   >
-                    🟢 Live Open IPOs (Bidding Active - {(ipoData?.live || []).length})
+                    🟢 LIVE OPEN IPOS ({(ipoData?.live || []).length})
                   </button>
                   <button
                     type="button"
@@ -6189,8 +6200,8 @@ export default function App() {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      backgroundColor: ipoSubTab === 'upcoming' ? '#0284c7' : 'transparent',
-                      color: ipoSubTab === 'upcoming' ? '#ffffff' : '#94a3b8',
+                      backgroundColor: ipoSubTab === 'upcoming' ? '#0f172a' : 'transparent',
+                      color: ipoSubTab === 'upcoming' ? '#ffffff' : '#64748b',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -6198,41 +6209,40 @@ export default function App() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
-                      boxShadow: ipoSubTab === 'upcoming' ? '0 2px 6px rgba(89,9,7,0.3)' : 'none',
-                      transition: 'all 0.2s'
+                      textTransform: 'uppercase'
                     }}
                   >
-                    📅 Upcoming IPOs (Opening Soon - {(ipoData?.upcoming || []).length})
+                    📅 UPCOMING IPOS ({(ipoData?.upcoming || []).length})
                   </button>
                 </div>
 
-                {/* IPO Cards in Simple Plain English */}
+                {/* IPO Cards */}
                 {(ipoData?.[ipoSubTab] || []).map((ipo) => (
                   <div
                     key={ipo.id}
                     style={{
                       backgroundColor: '#ffffff',
-                      border: '1px solid #334155',
+                      border: '1.5px solid #e2e8f0',
                       borderRadius: '14px',
                       padding: '16px',
-                      boxShadow: '0 2px 10px rgba(89,9,7,0.08)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '12px'
                     }}
                   >
-                    {/* Header: Company Name, Category, Exchange & Badges */}
+                    {/* Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#f8fafc' }}>
+                          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>
                             {ipo.name}
                           </h4>
-                          <span style={{ fontSize: '9px', fontWeight: '800', backgroundColor: '#e2e8f0', color: '#334155', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#f1f5f9', color: '#475569', padding: '3px 7px', borderRadius: '4px', textTransform: 'uppercase' }}>
                             {ipo.type} ({ipo.exchange})
                           </span>
                         </div>
-                        <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: '700' }}>
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
                           {ipo.sector}
                         </span>
                       </div>
@@ -6240,108 +6250,101 @@ export default function App() {
                         <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '6px' }}>
                           {ipo.status}
                         </span>
-                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#0284c7', color: '#cbd5e1', padding: '3px 8px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
                           {ipo.allotmentBadge}
                         </span>
                       </div>
                     </div>
 
-                    {/* Key Metrics Grid (English with Plain Terms) */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', backgroundColor: '#f9fafb', padding: '10px', borderRadius: '10px', border: '1px solid #e5e7eb', fontSize: '11px' }}>
+                    {/* Key Metrics Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>💰 PRICE PER SHARE</span>
-                        <strong style={{ color: '#111827', fontSize: '12px' }}>{ipo.priceBand}</strong>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>💰 PRICE PER SHARE</span>
+                        <strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: '900' }}>{ipo.priceBand}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>📦 MINIMUM INVESTMENT (1 LOT)</span>
-                        <strong style={{ color: '#111827', fontSize: '12px' }}>{ipo.lotSize}</strong>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>📦 MIN LOT SIZE</span>
+                        <strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: '900' }}>{ipo.lotSize}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>🗓️ BIDDING DATES</span>
-                        <strong style={{ color: '#111827', fontSize: '12px' }}>{ipo.dates}</strong>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>🗓️ BID DATES</span>
+                        <strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: '900' }}>{ipo.dates}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#6b7280', display: 'block', fontSize: '9px', fontWeight: '800' }}>🚀 ESTIMATED DAY 1 PROFIT (GMP)</span>
-                        <strong style={{ color: '#166534', fontSize: '12px' }}>{ipo.gmp}</strong>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>🚀 EST. DAY 1 PROFIT (GMP)</span>
+                        <strong style={{ color: '#166534', fontSize: '13px', fontWeight: '900' }}>{ipo.gmp}</strong>
                       </div>
                     </div>
 
-                    {/* What Company Actually Does (Simple English Description) */}
-                    <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fef3c7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-                      <strong style={{ color: '#92400e', display: 'block', marginBottom: '2px' }}>
-                        🏭 What Does This Company Actually Do? (Simple English):
+                    {/* What Company Does */}
+                    <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fef3c7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde68a', fontWeight: '700' }}>
+                      <strong style={{ color: '#92400e', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
+                        🏭 ABOUT THIS COMPANY:
                       </strong>
                       <span>{ipo.about}</span>
                     </div>
 
-                    {/* Subscription Breakdown with Plain English Meanings */}
-                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 12px', fontSize: '11px' }}>
+                    {/* Subscription Breakdown */}
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', fontWeight: '700' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
-                        <strong style={{ color: '#166534' }}>
-                          👥 Public Demand (Subscription Breakdown):
+                        <strong style={{ color: '#166534', textTransform: 'uppercase' }}>
+                          👥 PUBLIC DEMAND:
                         </strong>
-                        <span style={{ fontSize: '10px', color: '#166534', fontWeight: '800', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '6px' }}>
-                          Total Demand: {ipo.subscription.total}
+                        <span style={{ fontSize: '10px', color: '#166534', fontWeight: '900', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '6px' }}>
+                          Total: {ipo.subscription.total}
                         </span>
                       </div>
-                      <p style={{ margin: '0 0 8px 0', fontSize: '10px', color: '#166534' }}>
-                        👉 <em>{ipo.subscription.totalMeaning}</em>
+                      <p style={{ margin: '0 0 6px 0', fontSize: '10px', color: '#166534' }}>
+                        👉 {ipo.subscription.totalMeaning}
                       </p>
-                      
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '10px', borderTop: '1px dashed #bbf7d0', paddingTop: '6px' }}>
                         <div>
-                          <strong style={{ color: '#15803d' }}>Regular Public (Retail):</strong> {ipo.subscription.retail}
+                          <strong style={{ color: '#15803d' }}>Retail Public:</strong> {ipo.subscription.retail}
                           <span style={{ display: 'block', color: '#4b5563', marginTop: '1px' }}>{ipo.subscription.retailMeaning}</span>
                         </div>
                         <div>
-                          <strong style={{ color: '#15803d' }}>Big Banks & Funds (QIB):</strong> {ipo.subscription.qib}
+                          <strong style={{ color: '#15803d' }}>Institutions (QIB):</strong> {ipo.subscription.qib}
                           <span style={{ display: 'block', color: '#4b5563', marginTop: '1px' }}>{ipo.subscription.qibMeaning}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Chances of Getting Shares (Allotment Probability Explained) */}
-                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', fontSize: '11px' }}>
-                      <strong style={{ color: '#1e40af', display: 'block', marginBottom: '2px' }}>
-                        🎯 Chances of Getting Shares (Allotment Probability):
+                    {/* Chances of Getting Shares */}
+                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', fontWeight: '700' }}>
+                      <strong style={{ color: '#1e40af', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
+                        🎯 ALLOTMENT CHANCES:
                       </strong>
-                      <span style={{ color: '#1e3a8a', fontWeight: '800' }}>{ipo.allotmentChance}</span>
+                      <span style={{ color: '#1e3a8a', fontWeight: '900' }}>{ipo.allotmentChance}</span>
                       <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: '#374151', lineHeight: '1.4' }}>
                         {ipo.allotmentDetail}
                       </p>
                     </div>
 
-                    {/* Expected Day 1 Profit Detail */}
-                    <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '9px 12px', fontSize: '10px' }}>
-                      <strong style={{ color: '#6b21a8' }}>📈 Day 1 Profit Outlook: </strong>
-                      <span style={{ color: '#581c87' }}>{ipo.gmpDetail}</span>
-                    </div>
-
                     {/* Simple Beginner Advice & Listing Date */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: '8px', fontSize: '11px', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '11px', flexWrap: 'wrap', gap: '6px' }}>
                       <div>
-                        <strong style={{ color: '#f8fafc' }}>💡 Shadow Simple Advice: </strong>
-                        <span style={{ color: '#374151', fontWeight: '600' }}>{ipo.verdict}</span>
+                        <strong style={{ color: '#0f172a', textTransform: 'uppercase' }}>💡 SHADOW VERDICT: </strong>
+                        <span style={{ color: '#475569', fontWeight: '700' }}>{ipo.verdict}</span>
                       </div>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#f8fafc', backgroundColor: '#0f172a', padding: '3px 8px', borderRadius: '6px' }}>
-                        Listing on Exchange: {ipo.listingDate}
+                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#0f172a', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+                        Listing: {ipo.listingDate}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              /* Google News Feed with SQUISH BUG COMPLETELY FIXED */
+              /* Google News Feed */
               <>
-                {/* Status & 2-Minute Countdown Bar + Manual Refresh Button */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '7px 10px', marginBottom: '10px' }}>
+                {/* Status Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#f8fafc' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
                       Auto-refresh in {Math.floor(newsCountdown / 60)}m {newsCountdown % 60}s
                     </span>
                     {lastNewsUpdated && (
-                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>• Updated: {lastNewsUpdated}</span>
+                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>• Updated: {lastNewsUpdated}</span>
                     )}
                   </div>
 
@@ -6356,30 +6359,31 @@ export default function App() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      backgroundColor: '#0284c7',
-                      color: '#cbd5e1',
+                      backgroundColor: '#0f172a',
+                      color: '#ffffff',
                       border: 'none',
-                      padding: '6px 12px',
+                      padding: '6px 14px',
                       borderRadius: '8px',
                       fontSize: '11px',
-                      fontWeight: '800',
-                      cursor: isNewsLoading ? 'wait' : 'pointer'
+                      fontWeight: '900',
+                      cursor: isNewsLoading ? 'wait' : 'pointer',
+                      textTransform: 'uppercase'
                     }}
                   >
-                    <RotateCw size={13} style={{ animation: isNewsLoading ? 'jarvisSpinClockwise 1s linear infinite' : 'none' }} />
-                    {isNewsLoading ? 'Updating...' : 'Refresh'}
+                    <RotateCw size={12} style={{ animation: isNewsLoading ? 'jarvisSpinClockwise 1s linear infinite' : 'none' }} />
+                    {isNewsLoading ? 'UPDATING...' : 'REFRESH'}
                   </button>
                 </div>
 
-                {/* News Cards List with Image & Hover-Playable Video (flexShrink: 0 ensures full cards) */}
+                {/* News Cards List */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
                   {isNewsLoading && trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px 10px', color: '#f8fafc', fontWeight: '800', fontSize: '13px' }}>
+                    <div style={{ textAlign: 'center', padding: '36px 12px', color: '#0f172a', fontWeight: '900', fontSize: '13px' }}>
                       <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
-                      Fetching live Google News for {newsCategory.toUpperCase()}...
+                      FETCHING LIVE NEWS FOR {newsCategory.toUpperCase()}...
                     </div>
                   ) : trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>
+                    <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '12px', fontWeight: '800' }}>
                       No live news currently available. Click Refresh above.
                     </div>
                   ) : (
@@ -6390,7 +6394,7 @@ export default function App() {
                         onMouseLeave={() => setHoveredNewsId(null)}
                         style={{ 
                           backgroundColor: '#ffffff', 
-                          border: '1px solid #334155', 
+                          border: '1.5px solid #e2e8f0', 
                           borderRadius: '14px', 
                           padding: '12px', 
                           display: 'flex', 
@@ -6399,13 +6403,13 @@ export default function App() {
                           position: 'relative',
                           overflow: 'hidden',
                           transition: 'all 0.2s ease',
-                          boxShadow: hoveredNewsId === (item.id || idx) ? '0 4px 14px rgba(89,9,7,0.2)' : '0 1px 4px rgba(0,0,0,0.05)',
+                          boxShadow: hoveredNewsId === (item.id || idx) ? '0 4px 14px rgba(0,0,0,0.06)' : '0 1px 4px rgba(0,0,0,0.02)',
                           flexShrink: 0,
                           minHeight: '110px'
                         }}
                       >
-                        {/* Media Thumbnail Container with Hover-Playable Video Preview */}
-                        <div style={{ width: '125px', minWidth: '125px', height: '85px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {/* Media Thumbnail */}
+                        <div style={{ width: '125px', minWidth: '125px', height: '85px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {hoveredNewsId === (item.id || idx) ? (
                             <>
                               <video 
@@ -6416,9 +6420,9 @@ export default function App() {
                                 playsInline 
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                               />
-                              <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(89,9,7,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                <Play size={8} color="#38bdf8" fill="#38bdf8" />
-                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#cbd5e1', letterSpacing: '0.5px' }}>PREVIEW</span>
+                              <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(15,23,42,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <Play size={8} color="#ffffff" fill="#ffffff" />
+                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px' }}>PREVIEW</span>
                               </div>
                             </>
                           ) : (
@@ -6432,7 +6436,7 @@ export default function App() {
                                 }}
                               />
                               <div style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Play size={10} color="#38bdf8" />
+                                <Play size={10} color="#ffffff" />
                               </div>
                             </>
                           )}
@@ -6442,28 +6446,28 @@ export default function App() {
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                 {item.source || 'LIVE'}
                               </span>
-                              <span style={{ fontSize: '9px', color: '#6b7280', fontWeight: '700' }}>
+                              <span style={{ fontSize: '9px', color: '#64748b', fontWeight: '800' }}>
                                 {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
                               </span>
                             </div>
 
-                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#111827', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', lineHeight: '1.4', wordBreak: 'break-word' }}>
                               {item.title}
                             </p>
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                            <span style={{ fontSize: '9px', color: '#6b7280', fontWeight: '700' }}>Hover to preview video clip</span>
+                            <span style={{ fontSize: '9px', color: '#64748b', fontWeight: '800' }}>Hover to preview video clip</span>
                             <a 
                               href={item.link} 
                               target="_blank" 
                               rel="noopener noreferrer" 
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#cbd5e1', backgroundColor: '#0284c7', textDecoration: 'none', padding: '5px 12px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(89,9,7,0.2)' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', textDecoration: 'none', padding: '6px 14px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(15,23,42,0.15)', textTransform: 'uppercase' }}
                             >
-                              Read Article <ExternalLink size={11} />
+                              READ ARTICLE <ExternalLink size={11} />
                             </a>
                           </div>
                         </div>
@@ -6474,7 +6478,7 @@ export default function App() {
               </>
             )}
 
-            <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '10px', border: 'none', backgroundColor: '#0284c7', color: '#cbd5e1', fontWeight: '900', fontSize: '12px', cursor: 'pointer' }}>Close</button>
+            <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '14px', width: '100%', padding: '11px', borderRadius: '10px', border: '1.5px solid #e2e8f0', backgroundColor: '#f1f5f9', color: '#0f172a', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>CLOSE</button>
           </div>
         </div>
       )}
