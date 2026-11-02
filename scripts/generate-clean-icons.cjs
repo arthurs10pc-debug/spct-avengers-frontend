@@ -41,12 +41,7 @@ function generateShadowIconPNG(size, outputPath) {
   const cx = width / 2;
   const cy = height / 2;
 
-  // We want a stealth executive Shadow Icon:
-  // Sleek dark obsidian rounded rect background (#07090e -> #000000)
-  // Subtle metallic titanium shield border
-  // Stylized silver / platinum 'S' emblem with stealth shadow facets
-  // ZERO blue balls, zero glowing cyan orbs!
-
+  // Professional 2-color theme: #BDC3C7 (Silver) & #ECF0F1 (Clouds)
   const cornerRadius = size * 0.22;
 
   for (let y = 0; y < height; y++) {
@@ -57,8 +52,6 @@ function generateShadowIconPNG(size, outputPath) {
       const px = rowOffset + 1 + x * bytesPerPixel;
       const dx = x - cx;
       const dy = y - cy;
-      const nx = x / width;
-      const ny = y / height;
 
       // Rounded rect mask
       let inBounds = true;
@@ -70,7 +63,6 @@ function generateShadowIconPNG(size, outputPath) {
       }
 
       if (!inBounds) {
-        // Transparent outside rounded corners
         rawData[px] = 0;
         rawData[px + 1] = 0;
         rawData[px + 2] = 0;
@@ -78,30 +70,27 @@ function generateShadowIconPNG(size, outputPath) {
         continue;
       }
 
-      // Base Obsidian / Charcoal gradient
-      const grad = Math.min(1, Math.max(0, (ny + 0.2)));
-      let r = Math.floor(18 * (1 - grad * 0.7));
-      let g = Math.floor(20 * (1 - grad * 0.7));
-      let b = Math.floor(26 * (1 - grad * 0.7));
+      // Base #BDC3C7 (Silver Sand)
+      let r = 189;
+      let g = 195;
+      let b = 199;
       let a = 255;
 
-      // Subtle outer metallic border
+      // Outer border #95A5A6
       const edgeDist = Math.min(
         Math.min(x, width - 1 - x),
         Math.min(y, height - 1 - y)
       );
-      if (edgeDist < Math.max(2, size * 0.025)) {
-        r = 55;
-        g = 65;
-        b = 80;
+      if (edgeDist < Math.max(2, size * 0.03)) {
+        r = 149;
+        g = 165;
+        b = 166;
       }
 
-      // Geometric stylized "S" emblem:
-      // Normalized coordinates centered at 0, 0: sx, sy in [-1, 1]
+      // Geometric stylized "S" emblem in #ECF0F1 with #2C3E50 drop accent
       const sx = (x - cx) / (width * 0.32);
       const sy = (y - cy) / (height * 0.34);
 
-      // Stylized angular stealth "S" composed of 3 horizontal bars and 2 vertical links
       const barH = 0.22;
       const thick = 0.20;
 
@@ -111,17 +100,14 @@ function generateShadowIconPNG(size, outputPath) {
       const inTopLeft = sx >= -0.7 && sx <= -0.7 + thick && sy >= -0.85 && sy <= -0.11 + barH;
       const inBotRight = sx >= 0.7 - thick && sx <= 0.7 && sy >= -0.11 && sy <= 0.63 + barH;
 
-      // Diagonal stealth cuts for high-tech aesthetic
       const cut1 = (sx + sy) > 1.25;
       const cut2 = (-sx - sy) > 1.25;
 
       if ((inTopBar || inMidBar || inBotBar || inTopLeft || inBotRight) && !cut1 && !cut2) {
-        // Metallic Silver & Platinum Gradient for the Shadow 'S'
-        const metalGrad = (sx + sy + 2) / 4;
-        const brightness = Math.min(255, Math.floor(190 + 65 * Math.sin(metalGrad * Math.PI)));
-        r = brightness;
-        g = Math.floor(brightness * 0.96);
-        b = Math.floor(brightness * 0.98);
+        // Pure #ECF0F1 (Clouds Off-white)
+        r = 236;
+        g = 240;
+        b = 241;
         a = 255;
       }
 
@@ -132,19 +118,17 @@ function generateShadowIconPNG(size, outputPath) {
     }
   }
 
-  // Deflate IDAT data
   const deflated = zlib.deflateSync(rawData);
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-  // IHDR chunk
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // Bit depth: 8
-  ihdr[9] = 6; // Color type: RGBA
-  ihdr[10] = 0; // Compression
-  ihdr[11] = 0; // Filter
-  ihdr[12] = 0; // Interlace
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
 
   const png = Buffer.concat([
     signature,

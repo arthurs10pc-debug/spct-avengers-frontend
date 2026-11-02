@@ -1,13 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <rect width="100" height="100" rx="22" fill="#080b12" />
-  <rect x="2" y="2" width="96" height="96" rx="20" stroke="#334155" stroke-width="2" opacity="0.6" />
-  <!-- Stealth Faceted Shadow Emblem -->
-  <path d="M28 26 H72 V40 H44 V48 H72 V74 H28 V60 H56 V52 H28 Z" fill="url(#silver_grad)" />
-  <defs>
-    <linearGradient id="silver_grad" x1="28" y1="26" x2="72" y2="74" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ffffff" />
-      <stop offset="0.5" stop-color="#cbd5e1" />
-      <stop offset="1" stop-color="#94a3b8" />
-    </linearGradient>
-  </defs>
+  <rect width="100" height="100" rx="22" fill="#BDC3C7" />
+  <rect x="2" y="2" width="96" height="96" rx="20" stroke="#95A5A6" stroke-width="2" />
+  <!-- Stealth Faceted Shadow Emblem in #ECF0F1 with #7F8C8D shadow -->
+  <path d="M30 28 H74 V42 H46 V50 H74 V76 H30 V62 H58 V54 H30 Z" fill="#7F8C8D" />
+  <path d="M28 26 H72 V40 H44 V48 H72 V74 H28 V60 H56 V52 H28 Z" fill="#ECF0F1" />
 </svg>

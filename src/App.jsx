@@ -331,8 +331,9 @@ const IPO_DATABASE = {
 };
 
 
-// Full Screen Startup Animation: Pure, Smooth, Full-Screen Dark Shadow Effect Matching App Theme
+// Full Screen Startup Animation: Exactly replicates the user's video animation using the given 2-color palette (#BDC3C7 & #ECF0F1)
 const ShadowStartupAnimation = ({ onComplete }) => {
+  const canvasRef = useRef(null);
   const [fadingOut, setFadingOut] = useState(false);
 
   const handleFinish = useCallback(() => {
@@ -343,12 +344,88 @@ const ShadowStartupAnimation = ({ onComplete }) => {
     }, 380);
   }, [fadingOut, onComplete]);
 
-  // Smooth cinematic duration (2.8 seconds then auto-dissolve into dashboard)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      handleFinish();
-    }, 2800);
-    return () => clearTimeout(timer);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animId;
+    const startTime = performance.now();
+    const totalDuration = 2700; // ms
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const fullWord = "SHADOW";
+
+    const render = (now) => {
+      const elapsed = now - startTime;
+
+      if (elapsed >= totalDuration) {
+        handleFinish();
+        return;
+      }
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      // 1. Clear background to exact #BDC3C7 (Silver Sand from user's image)
+      ctx.fillStyle = '#BDC3C7';
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Letter Reveal Progress (0.0s - 0.65s reveals "S" -> "SH" -> ... -> "SHADOW")
+      let visibleCount = fullWord.length;
+      if (elapsed < 650) {
+        visibleCount = Math.max(1, Math.min(fullWord.length, Math.floor((elapsed / 650) * fullWord.length) + 1));
+      }
+      const displayWord = fullWord.substring(0, visibleCount);
+
+      // Font Setup: Bold, Heavy Modern Sans
+      const fontSize = Math.min(w * 0.16, h * 0.16, 92);
+      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Impact, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // 3. Dynamic Rotating Shadow Sweep Angle (matches video snaps: rotates from down-left to down to left)
+      const sweepCycle = elapsed / 2200;
+      const angle = (Math.PI * 0.75) - (sweepCycle * Math.PI * 0.85);
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+
+      // Shadow projection distance to reach edges of the viewport
+      const maxDist = Math.max(w, h) * 1.3;
+      const shadowStep = 2.5;
+      const shadowSteps = Math.floor(maxDist / shadowStep);
+
+      // 4. Draw Rotating Flat Long Shadow: Exact Darker Tone of #BDC3C7 (#7F8C8D)
+      ctx.fillStyle = '#7F8C8D';
+      for (let d = shadowSteps; d >= 1; d--) {
+        const sx = cx + d * shadowStep * cosA;
+        const sy = cy + d * shadowStep * sinA;
+        ctx.fillText(displayWord, sx, sy);
+      }
+
+      // 5. Draw Main Foreground Text: Exact #ECF0F1 (Clouds Off-white from user's image)
+      ctx.fillStyle = '#ECF0F1';
+      ctx.fillText(displayWord, cx, cy);
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
   }, [handleFinish]);
 
   return (
@@ -360,11 +437,7 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         width: '100vw',
         height: '100dvh',
         zIndex: 999999,
-        backgroundColor: '#07090e',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: '#BDC3C7',
         cursor: 'pointer',
         overflow: 'hidden',
         opacity: fadingOut ? 0 : 1,
@@ -373,135 +446,14 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         WebkitUserSelect: 'none'
       }}
     >
-      <style>{`
-        @keyframes shadowMistSweep {
-          0% { opacity: 0.3; transform: scale(0.96) rotate(-2deg); }
-          50% { opacity: 0.6; transform: scale(1.06) rotate(2deg); }
-          100% { opacity: 0.3; transform: scale(0.96) rotate(-2deg); }
-        }
-        @keyframes shadowFloat {
-          0% { transform: translateY(0px) scale(1); }
-          50% { transform: translateY(-5px) scale(1.01); }
-          100% { transform: translateY(0px) scale(1); }
-        }
-        @keyframes shadowRevealIn {
-          0% { opacity: 0; transform: scale(0.92); filter: blur(6px); }
-          100% { opacity: 1; transform: scale(1); filter: blur(0px); }
-        }
-        .shadow-title-text {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Impact, Arial, sans-serif;
-          font-weight: 900;
-          letter-spacing: clamp(6px, 2.8vw, 18px);
-          color: #f8fafc;
-          position: relative;
-          z-index: 10;
-          text-shadow:
-            1px 1px 0 #000000,
-            2px 2px 0 #000000,
-            3px 3px 0 #000000,
-            4px 4px 0 #000000,
-            5px 5px 0 #000000,
-            6px 6px 0 #000000,
-            8px 8px 0 #000000,
-            11px 11px 0 #000000,
-            14px 14px 0 #000000,
-            18px 18px 0 #000000,
-            24px 24px 0 #000000,
-            32px 32px 0 #000000,
-            45px 45px 0 #000000,
-            65px 65px 0 #000000,
-            90px 90px 0 #000000,
-            120px 120px 30px rgba(0,0,0,0.95);
-        }
-      `}</style>
-
-      {/* Volumetric Dark Smoke / Mist Layer (Edge-to-Edge) */}
-      <div
+      <canvas
+        ref={canvasRef}
         style={{
-          position: 'absolute',
-          inset: '-20%',
-          background: 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.75) 45%, #07090e 75%)',
-          animation: 'shadowMistSweep 8s ease-in-out infinite',
-          pointerEvents: 'none'
+          display: 'block',
+          width: '100vw',
+          height: '100dvh'
         }}
       />
-
-      {/* Diagonal Ambient Light Stream */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-50%',
-          left: '-50%',
-          width: '200%',
-          height: '200%',
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.008) 40%, transparent 65%)',
-          pointerEvents: 'none'
-        }}
-      />
-
-      {/* Central Shadow Typography & Emblem */}
-      <div
-        style={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10,
-          animation: 'shadowFloat 3.5s ease-in-out infinite, shadowRevealIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards'
-        }}
-      >
-        {/* Stealth Monogram Crest */}
-        <div
-          style={{
-            width: 'clamp(52px, 14vw, 76px)',
-            height: 'clamp(52px, 14vw, 76px)',
-            borderRadius: '20px',
-            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '18px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.15)'
-          }}
-        >
-          <svg viewBox="0 0 100 100" style={{ width: '56%', height: '56%' }} fill="none">
-            <path d="M28 26 H72 V40 H44 V48 H72 V74 H28 V60 H56 V52 H28 Z" fill="url(#crest_silver)" />
-            <defs>
-              <linearGradient id="crest_silver" x1="28" y1="26" x2="72" y2="74" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#ffffff" />
-                <stop offset="0.6" stopColor="#cbd5e1" />
-                <stop offset="1" stopColor="#64748b" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-
-        {/* The Exact SHADOW Typographic Wordmark with Diagonal Long Shadow */}
-        <h1
-          className="shadow-title-text"
-          style={{
-            margin: 0,
-            fontSize: 'clamp(34px, 11vw, 68px)',
-            textTransform: 'uppercase',
-            lineHeight: 1
-          }}
-        >
-          SHADOW
-        </h1>
-
-        {/* Subtle Minimalist Line Accent */}
-        <div
-          style={{
-            marginTop: '16px',
-            width: 'clamp(60px, 15vw, 100px)',
-            height: '2px',
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-            borderRadius: '9999px'
-          }}
-        />
-      </div>
     </div>
   );
 };
@@ -513,25 +465,6 @@ export default function App() {
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [voiceFeedbackMessage, setVoiceFeedbackMessage] = useState('');
   const [assistantStatus, setAssistantStatus] = useState("Shadow System Active...");
-
-  // Whole App Unified Theme Engine: 'obsidian' (Dark Executive) or 'burgundy' (Signature Wine & Cream)
-  const [currentTheme, setCurrentTheme] = useState(() => {
-    try {
-      return localStorage.getItem('shadow_theme_mode') || 'obsidian';
-    } catch {
-      return 'obsidian';
-    }
-  });
-
-  const isBurgundy = currentTheme === 'burgundy';
-
-  const toggleTheme = () => {
-    const next = currentTheme === 'obsidian' ? 'burgundy' : 'obsidian';
-    setCurrentTheme(next);
-    try {
-      localStorage.setItem('shadow_theme_mode', next);
-    } catch {}
-  };
 
   // Real Database Google Auth State (Login / Sign Up with Backend verification)
   // Mobile & Desktop System Permissions State
@@ -3384,21 +3317,21 @@ export default function App() {
   });
 
   return (
-    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: isBurgundy ? '#A5A79B' : '#090d16', color: isBurgundy ? '#3d0605' : '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
-      {/* Custom Full-Screen Startup Animation (Pure Smooth Theme Shadow Effect) */}
+    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#ECF0F1', color: '#2C3E50', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Custom Full-Screen Startup Animation (Matches Given Video Animation in #BDC3C7 & #ECF0F1) */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
 
-      {/* Left Side Navigation Sidebar */}
-      <aside className="app-sidebar" style={{ width: '64px', backgroundColor: isBurgundy ? '#590907' : '#0b0f19', borderRight: isBurgundy ? '1px solid #3d0605' : '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
-        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isBurgundy ? '#E8D2B5' : '#1e293b', color: isBurgundy ? '#590907' : '#38bdf8', border: isBurgundy ? '1px solid #cbb294' : '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
+      {/* Left Side Navigation Sidebar - Professional Silver #BDC3C7 */}
+      <aside className="app-sidebar" style={{ width: '64px', backgroundColor: '#BDC3C7', borderRight: '1px solid #95A5A6', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#ECF0F1', color: '#2C3E50', border: '1px solid #95A5A6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px', boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)' }}>
           <Shield size={20} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
+          <span style={{ fontSize: '9px', fontWeight: '800' }}>Route</span>
         </button>
 
         <button 
@@ -3407,7 +3340,7 @@ export default function App() {
           style={{ 
             background: 'transparent', 
             border: 'none', 
-            color: '#E8D2B5', 
+            color: '#2C3E50', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
@@ -3418,27 +3351,27 @@ export default function App() {
             width: '52px' 
           }}
         >
-          <Clock size={17} color="#E8D2B5" />
+          <Clock size={17} color="#2C3E50" />
           <span style={{ 
-            backgroundColor: '#E8D2B5', 
+            backgroundColor: '#ECF0F1', 
             padding: '2px 4px', 
             borderRadius: '6px', 
-            border: '1px solid #cbb294', 
+            border: '1px solid #95A5A6', 
             whiteSpace: 'nowrap',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             lineHeight: 1.15,
             minWidth: '40px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)'
+            boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)'
           }}>
-            <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#3d0605', letterSpacing: '0.2px' }}>
+            <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#2C3E50', letterSpacing: '0.2px' }}>
               {nextRemTimeStr || '14:28'}
             </span>
             <span style={{ 
               fontSize: '8.5px', 
               fontWeight: '900', 
-              color: '#881337', 
+              color: '#C0392B', 
               letterSpacing: '0.2px',
               fontFamily: 'monospace, system-ui',
               fontVariantNumeric: 'tabular-nums'
@@ -3446,31 +3379,31 @@ export default function App() {
               {nextCountdownStr || '-00:00'}
             </span>
           </span>
-          <span style={{ fontSize: '9px', fontWeight: '700', color: '#E8D2B5' }}>Watcher</span>
+          <span style={{ fontSize: '9px', fontWeight: '800', color: '#2C3E50' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
+          <span style={{ fontSize: '9px', fontWeight: '800' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Newspaper size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
+          <span style={{ fontSize: '9px', fontWeight: '800' }}>Briefing</span>
         </button>
 
-        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#2C3E50', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Wrench size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
+          <span style={{ fontSize: '9px', fontWeight: '800' }}>Tools</span>
         </button>
 
         <button 
           onClick={() => setShowNotesModal(true)} 
           title="Google Keep Style Notes & Task Reminders" 
           style={{ 
-            background: showNotesModal ? (isBurgundy ? '#3d0605' : '#1e293b') : 'transparent', 
+            background: showNotesModal ? '#ECF0F1' : 'transparent', 
             border: 'none', 
-            color: isBurgundy ? '#E8D2B5' : '#cbd5e1', 
+            color: '#2C3E50', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
@@ -3483,14 +3416,14 @@ export default function App() {
           }}
         >
           <CheckSquare size={17} />
-          <span style={{ fontSize: '9px', fontWeight: '700' }}>Notes</span>
+          <span style={{ fontSize: '9px', fontWeight: '800' }}>Notes</span>
           {notesList.length > 0 && (
             <span style={{ 
               position: 'absolute', 
               top: '2px', 
               right: '4px', 
-              backgroundColor: isBurgundy ? '#E8D2B5' : '#38bdf8', 
-              color: isBurgundy ? '#590907' : '#000000', 
+              backgroundColor: '#2C3E50', 
+              color: '#ECF0F1', 
               fontSize: '8px', 
               fontWeight: '900', 
               borderRadius: '50%', 
@@ -3519,9 +3452,9 @@ export default function App() {
             title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
             style={{ 
               position: 'relative',
-              background: userProfile ? (isBurgundy ? '#3d0605' : '#1e293b') : (isBurgundy ? '#2a0403' : '#0f172a'), 
-              border: isBurgundy ? '1px solid #590907' : '1px solid #334155',
-              color: userProfile ? (isBurgundy ? '#E8D2B5' : '#38bdf8') : (isBurgundy ? '#E8D2B5' : '#cbd5e1'), 
+              background: '#ECF0F1', 
+              border: '1px solid #95A5A6',
+              color: '#2C3E50', 
               padding: userProfile && userProfile.photo ? '2px' : '8px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -3530,20 +3463,21 @@ export default function App() {
               justifyContent: 'center',
               width: '38px',
               height: '38px',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)'
             }}
           >
             {userProfile ? (
               userProfile.photo ? (
                 <img src={userProfile.photo} alt={userProfile.name} style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
               ) : (
-                <span style={{ fontSize: '13px', fontWeight: '900' }}>{(userProfile.name || 'U').charAt(0).toUpperCase()}</span>
+                <span style={{ fontSize: '13px', fontWeight: '900', color: '#2C3E50' }}>{(userProfile.name || 'U').charAt(0).toUpperCase()}</span>
               )
             ) : (
-              <UserCircle size={20} />
+              <UserCircle size={20} color="#2C3E50" />
             )}
             {userProfile && (
-              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', border: '1px solid #334155' }} />
+              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e', border: '1px solid #95A5A6' }} />
             )}
           </button>
 
@@ -3551,9 +3485,9 @@ export default function App() {
             onClick={handleStopAll} 
             title="Shadow Standby / Emergency Audio & Route Stop" 
             style={{ 
-              background: isBurgundy ? '#3d0605' : '#1e293b',
-              border: isBurgundy ? '1px solid #590907' : '1px solid #334155', 
-              color: isBurgundy ? '#E8D2B5' : '#cbd5e1', 
+              background: '#ECF0F1',
+              border: '1px solid #95A5A6', 
+              color: '#2C3E50', 
               padding: '6px 4px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -3563,56 +3497,34 @@ export default function App() {
               gap: '2px', 
               width: '46px',
               transition: 'all 0.2s ease',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.35)'
+              boxShadow: '0 1px 3px rgba(44, 62, 80, 0.15)'
             }}
           >
-            <Power size={15} color="#ef4444" />
-            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: isBurgundy ? '#E8D2B5' : '#cbd5e1' }}>STANDBY</span>
+            <Power size={15} color="#C0392B" />
+            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: '#2C3E50' }}>STANDBY</span>
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Clean Professional Clouds #ECF0F1 */}
       <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
-        {/* Top Header */}
-        <header className="app-header" style={{ padding: '12px 16px', backgroundColor: isBurgundy ? '#590907' : '#0b0f19', borderBottom: isBurgundy ? '1px solid #3d0605' : '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        {/* Top Header - Silver Sand #BDC3C7 */}
+        <header className="app-header" style={{ padding: '12px 16px', backgroundColor: '#BDC3C7', borderBottom: '1px solid #95A5A6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
-            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: isBurgundy ? '#E8D2B5' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
-            <span style={{ fontSize: '9px', color: isBurgundy ? '#fce7f3' : '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#2C3E50', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
+            <span style={{ fontSize: '9px', color: '#34495E', fontWeight: '800' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* Quick 1-Tap Theme Switcher */}
-            <button
-              onClick={toggleTheme}
-              title={`Switch Theme: currently ${isBurgundy ? 'Signature Burgundy' : 'Executive Obsidian'}`}
-              style={{
-                border: isBurgundy ? '1px solid #cbb294' : '1px solid #334155',
-                background: isBurgundy ? '#E8D2B5' : '#1e293b',
-                color: isBurgundy ? '#590907' : '#cbd5e1',
-                padding: '6px 12px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontWeight: '800',
-                fontSize: '11px',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Palette size={14} />
-              <span className="mobile-hide-text">{isBurgundy ? 'BURGUNDY' : 'OBSIDIAN'}</span>
-            </button>
-                        {/* Real Mobile & Desktop Permissions Setup Button */}
+            {/* Real Mobile & Desktop Permissions Setup Button */}
             <button
               onClick={() => setShowPermissionsModal(true)}
               title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
               style={{
-                border: '1px solid #334155',
-                background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#132e27' : '#1e293b',
-                color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#34d399' : '#38bdf8',
+                border: '1px solid #95A5A6',
+                background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#D4EDDA' : '#ECF0F1',
+                color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#155724' : '#2C3E50',
                 padding: '6px 12px',
                 borderRadius: '10px',
                 cursor: 'pointer',
@@ -3621,7 +3533,8 @@ export default function App() {
                 gap: '6px',
                 fontWeight: '800',
                 fontSize: '11px',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 3px rgba(44, 62, 80, 0.1)'
               }}
             >
               <Shield size={14} />
@@ -3632,9 +3545,9 @@ export default function App() {
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
               style={{
-                border: isMuted ? '2px solid #ef4444' : '1px solid #334155',
-                background: isMuted ? '#991b1b' : '#1e293b',
-                color: isMuted ? '#ffffff' : '#f8fafc',
+                border: isMuted ? '2px solid #C0392B' : '1px solid #95A5A6',
+                background: isMuted ? '#F8D7DA' : '#ECF0F1',
+                color: isMuted ? '#721C24' : '#2C3E50',
                 padding: '6px 12px',
                 borderRadius: '10px',
                 cursor: 'pointer',
@@ -3644,7 +3557,7 @@ export default function App() {
                 fontWeight: '900',
                 fontSize: '11px',
                 letterSpacing: '0.5px',
-                boxShadow: isMuted ? '0 0 10px rgba(239, 68, 68, 0.6)' : 'none',
+                boxShadow: isMuted ? '0 0 10px rgba(192, 57, 43, 0.4)' : '0 1px 3px rgba(44, 62, 80, 0.1)',
                 transition: 'all 0.2s'
               }}
             >
@@ -3747,111 +3660,111 @@ export default function App() {
                   {/* Card 1: Watcher */}
                   <div 
                     onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                    style={{ backgroundColor: '#0d131f', border: '1px solid #1e293b', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0284c7'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1e293b'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>Watcher Routine</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Watcher Routine</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#2C3E50', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
                         <Clock size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#38bdf8', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#2C3E50', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
                         {nextCountdownStr}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#f8fafc', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#34495E', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Next: "{nextRemTitle || 'Routine'}" at {formatTimeTo12Hour(nextRemTimeStr || '09:00')}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px', fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
                       <span>{triggeredCount}/{(remindersList || []).length} Triggered Today</span>
-                      <span style={{ color: '#38bdf8', fontWeight: '800' }}>Open Watcher →</span>
+                      <span style={{ color: '#2C3E50', fontWeight: '800' }}>Open Watcher →</span>
                     </div>
                   </div>
 
                   {/* Card 2: Expenses */}
                   <div 
                     onClick={() => setShowExpenseModal(true)}
-                    style={{ backgroundColor: '#0d131f', border: '1px solid #1e293b', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1e293b'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>Monthly Expenses</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Monthly Expenses</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#16A085', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
                         <DollarSign size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#10b981' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#16A085' }}>
                         ₹{monthlySpent.toLocaleString('en-IN')}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#7F8C8D', marginTop: '2px' }}>
                         Budget: ₹{monthlyBudget.toLocaleString('en-IN')} ({budgetPct}% used)
                       </div>
                     </div>
-                    <div style={{ width: '100%', backgroundColor: '#1e293b', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${budgetPct}%`, height: '100%', backgroundColor: budgetPct > 90 ? '#ef4444' : (budgetPct > 70 ? '#f59e0b' : '#10b981'), borderRadius: '3px', transition: 'width 0.3s' }} />
+                    <div style={{ width: '100%', backgroundColor: '#ECF0F1', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${budgetPct}%`, height: '100%', backgroundColor: budgetPct > 90 ? '#C0392B' : (budgetPct > 70 ? '#E67E22' : '#16A085'), borderRadius: '3px', transition: 'width 0.3s' }} />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px', fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
                       <span>Remaining: ₹{Math.max(0, monthlyBudget - monthlySpent).toLocaleString('en-IN')}</span>
-                      <span style={{ color: '#10b981', fontWeight: '800' }}>Log Expense →</span>
+                      <span style={{ color: '#16A085', fontWeight: '800' }}>Log Expense →</span>
                     </div>
                   </div>
 
                   {/* Card 3: Notes & Keep */}
                   <div 
                     onClick={() => setShowNotesModal(true)}
-                    style={{ backgroundColor: '#0d131f', border: '1px solid #1e293b', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#a855f7'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1e293b'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>Google Keep Notes</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Google Keep Notes</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#8E44AD', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
                         <CheckSquare size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#a855f7' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#8E44AD' }}>
                         {(notesList || []).length} Notes
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#f8fafc', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#34495E', marginTop: '2px' }}>
                         {(notesList || []).filter(n => n.pinned).length} Pinned • Cloud Synced
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px', fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
                       <span>🕒 3x Daily Auto Email Ready</span>
-                      <span style={{ color: '#a855f7', fontWeight: '800' }}>Open Notes →</span>
+                      <span style={{ color: '#8E44AD', fontWeight: '800' }}>Open Notes →</span>
                     </div>
                   </div>
 
                   {/* Card 4: Radar & Briefing */}
                   <div 
                     onClick={handleOpenBriefing}
-                    style={{ backgroundColor: '#0d131f', border: '1px solid #1e293b', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1e293b'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 16px rgba(189, 195, 199, 0.45)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#95A5A6'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>Radar & Intelligence</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#7F8C8D' }}>Radar & Intelligence</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#D35400', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BDC3C7' }}>
                         <TrendingUp size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#f59e0b' }}>
+                      <div style={{ fontSize: '24px', fontWeight: '900', color: '#D35400' }}>
                         {(ipoData?.live || []).length} Live IPOs
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#f8fafc', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#34495E', marginTop: '2px' }}>
                         {isMonitoringActive ? '● Gujarat Radar Active' : 'Standby • Ahmedabad Live'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1e293b', paddingTop: '8px', fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#7F8C8D', fontWeight: '700' }}>
                       <span>Real-Time Market Data</span>
-                      <span style={{ color: '#f59e0b', fontWeight: '800' }}>Daily Briefing →</span>
+                      <span style={{ color: '#D35400', fontWeight: '800' }}>Daily Briefing →</span>
                     </div>
                   </div>
 
@@ -3861,31 +3774,30 @@ export default function App() {
 
             {/* Central Stage: Shadow AI Voice Assistant Glass Console */}
             <div style={{
-              backgroundColor: 'rgba(13, 19, 31, 0.85)',
-              border: '1px solid #1e293b',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #BDC3C7',
               borderRadius: '20px',
               padding: '24px',
-              backdropFilter: 'blur(16px)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+              boxShadow: '0 8px 30px rgba(189, 195, 199, 0.5)',
               gap: '16px',
               textAlign: 'center'
             }}>
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '800', color: '#38bdf8', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '10px', fontWeight: '800', color: '#7F8C8D', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                   Natural Language Voice Intelligence
                 </span>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#f8fafc' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#2C3E50' }}>
                   {isListening ? "Listening to your voice..." : "Shadow Neural Assistant"}
                 </h3>
               </div>
 
-              {/* Glowing High-Tech AI Sphere */}
+              {/* High-Tech AI Sphere */}
               <div 
                 onClick={startListening} 
                 title="Click to speak with Shadow Voice AI"
@@ -3899,11 +3811,11 @@ export default function App() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: '#0f172a',
-                  border: `3px solid ${isListening ? '#38bdf8' : '#2563eb'}`,
+                  backgroundColor: '#ECF0F1',
+                  border: `3px solid ${isListening ? '#E74C3C' : '#BDC3C7'}`,
                   boxShadow: isListening 
-                    ? '0 0 50px rgba(56, 189, 248, 0.9), inset 0 0 25px rgba(56, 189, 248, 0.5)' 
-                    : '0 10px 35px rgba(37, 99, 235, 0.35), inset 0 0 15px rgba(15, 23, 42, 0.8)',
+                    ? '0 0 40px rgba(231, 76, 60, 0.5)' 
+                    : '0 8px 24px rgba(189, 195, 199, 0.6)',
                   transition: 'all 0.25s ease'
                 }}
               >
@@ -3911,35 +3823,35 @@ export default function App() {
                   width: '54px',
                   height: '54px',
                   borderRadius: '50%',
-                  backgroundColor: isListening ? '#0284c7' : 'rgba(56, 189, 248, 0.15)',
+                  backgroundColor: isListening ? '#E74C3C' : '#BDC3C7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: '6px',
                   transition: 'all 0.2s ease',
-                  border: isListening ? '2px solid #38bdf8' : '1px solid rgba(56, 189, 248, 0.3)'
+                  border: isListening ? '2px solid #C0392B' : '1px solid #95A5A6'
                 }}>
-                  <Mic size={26} color={isListening ? '#ffffff' : '#38bdf8'} />
+                  <Mic size={26} color={isListening ? '#ffffff' : '#2C3E50'} />
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#f8fafc', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#2C3E50', letterSpacing: '0.5px' }}>
                   {isListening ? 'SPEAK NOW' : 'SHADOW AI'}
                 </span>
-                <span style={{ fontSize: '8px', color: '#94a3b8', fontWeight: '700', marginTop: '2px' }}>
+                <span style={{ fontSize: '8px', color: '#7F8C8D', fontWeight: '700', marginTop: '2px' }}>
                   {isListening ? 'Listening...' : 'Tap to Speak'}
                 </span>
               </div>
 
               {/* Live Voice Transcript Feedback Pill */}
               {voiceTranscript && (
-                <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '10px', padding: '6px 14px', fontSize: '11px', fontWeight: '700', color: '#38bdf8', maxWidth: '480px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ backgroundColor: '#ECF0F1', border: '1px solid #BDC3C7', borderRadius: '10px', padding: '6px 14px', fontSize: '11px', fontWeight: '700', color: '#2C3E50', maxWidth: '480px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🎙️ Recognized:</span>
-                  <span style={{ color: '#f8fafc' }}>"{voiceTranscript}"</span>
+                  <span style={{ color: '#2C3E50' }}>"{voiceTranscript}"</span>
                 </div>
               )}
 
               {/* Quick Clickable Voice Commands (Hindi & English) */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '680px' }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#7F8C8D' }}>
                   Or tap any quick command below:
                 </span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
@@ -3953,9 +3865,9 @@ export default function App() {
                       key={idx}
                       onClick={() => handleVoiceCommand(chip.cmd)}
                       style={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #334155',
-                        color: '#cbd5e1',
+                        backgroundColor: '#ECF0F1',
+                        border: '1px solid #BDC3C7',
+                        color: '#2C3E50',
                         padding: '6px 12px',
                         borderRadius: '20px',
                         fontSize: '11px',
@@ -3966,8 +3878,8 @@ export default function App() {
                         alignItems: 'center',
                         gap: '4px'
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.color = '#ffffff'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; e.currentTarget.style.color = '#cbd5e1'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#7F8C8D'; e.currentTarget.style.backgroundColor = '#FFFFFF'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.backgroundColor = '#ECF0F1'; }}
                     >
                       {chip.label}
                     </button>
