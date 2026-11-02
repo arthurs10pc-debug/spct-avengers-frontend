@@ -1,5 +1,5 @@
 // Shadow Dashboard Service Worker (Mobile PWA & Desktop Notifications)
-const CACHE_VERSION = 'shadow-v4';
+const CACHE_VERSION = 'shadow-v5';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

@@ -7,7 +7,8 @@ import {
   DollarSign, Newspaper, Check, MapPin, Moon, UserCircle, LogIn, Wrench, Download, Upload, FileText, UserPlus,
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
   Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
-  Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye
+  Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
+  Palette
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -330,9 +331,8 @@ const IPO_DATABASE = {
 };
 
 
-// Full Screen Startup Animation with User's Given Video (Full Mobile Screen Coverage)
+// Full Screen Startup Animation: Pure, Smooth, Full-Screen Dark Shadow Effect Matching App Theme
 const ShadowStartupAnimation = ({ onComplete }) => {
-  const videoRef = useRef(null);
   const [fadingOut, setFadingOut] = useState(false);
 
   const handleFinish = useCallback(() => {
@@ -340,20 +340,14 @@ const ShadowStartupAnimation = ({ onComplete }) => {
     setFadingOut(true);
     setTimeout(() => {
       onComplete();
-    }, 350);
+    }, 380);
   }, [fadingOut, onComplete]);
 
-  // Safety fallback: if video doesn't end or fails to autoplay, dismiss after 4.2s
+  // Smooth cinematic duration (2.8 seconds then auto-dissolve into dashboard)
   useEffect(() => {
     const timer = setTimeout(() => {
       handleFinish();
-    }, 4200);
-
-    const vid = videoRef.current;
-    if (vid) {
-      vid.play().catch(() => {});
-    }
-
+    }, 2800);
     return () => clearTimeout(timer);
   }, [handleFinish]);
 
@@ -366,101 +360,147 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         width: '100vw',
         height: '100dvh',
         zIndex: 999999,
-        backgroundColor: '#e52628', // Exact matching red of the video so there are NEVER any black bars or square appearance!
+        backgroundColor: '#07090e',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         overflow: 'hidden',
         opacity: fadingOut ? 0 : 1,
-        transition: 'opacity 0.35s ease-out'
+        transition: 'opacity 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none'
       }}
     >
-      {/* Background Ambient Video Layer: Fills 100% of the mobile screen edge-to-edge with the same red & shadow */}
-      <video
-        src="/shadow-intro.mp4"
-        autoPlay
-        muted
-        playsInline
-        preload="auto"
-        aria-hidden="true"
+      <style>{`
+        @keyframes shadowMistSweep {
+          0% { opacity: 0.3; transform: scale(0.96) rotate(-2deg); }
+          50% { opacity: 0.6; transform: scale(1.06) rotate(2deg); }
+          100% { opacity: 0.3; transform: scale(0.96) rotate(-2deg); }
+        }
+        @keyframes shadowFloat {
+          0% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-5px) scale(1.01); }
+          100% { transform: translateY(0px) scale(1); }
+        }
+        @keyframes shadowRevealIn {
+          0% { opacity: 0; transform: scale(0.92); filter: blur(6px); }
+          100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+        }
+        .shadow-title-text {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Impact, Arial, sans-serif;
+          font-weight: 900;
+          letter-spacing: clamp(6px, 2.8vw, 18px);
+          color: #f8fafc;
+          position: relative;
+          z-index: 10;
+          text-shadow:
+            1px 1px 0 #000000,
+            2px 2px 0 #000000,
+            3px 3px 0 #000000,
+            4px 4px 0 #000000,
+            5px 5px 0 #000000,
+            6px 6px 0 #000000,
+            8px 8px 0 #000000,
+            11px 11px 0 #000000,
+            14px 14px 0 #000000,
+            18px 18px 0 #000000,
+            24px 24px 0 #000000,
+            32px 32px 0 #000000,
+            45px 45px 0 #000000,
+            65px 65px 0 #000000,
+            90px 90px 0 #000000,
+            120px 120px 30px rgba(0,0,0,0.95);
+        }
+      `}</style>
+
+      {/* Volumetric Dark Smoke / Mist Layer (Edge-to-Edge) */}
+      <div
         style={{
           position: 'absolute',
-          inset: 0,
-          width: '100vw',
-          height: '100dvh',
-          objectFit: 'cover',
-          filter: 'blur(10px) brightness(0.98)',
-          transform: 'scale(1.1)',
+          inset: '-20%',
+          background: 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.75) 45%, #07090e 75%)',
+          animation: 'shadowMistSweep 8s ease-in-out infinite',
           pointerEvents: 'none'
         }}
       />
 
-      {/* Main Foreground Video: Plays the exact video animation, perfectly centered and razor sharp */}
-      <video
-        ref={videoRef}
-        src="/shadow-intro.mp4"
-        autoPlay
-        muted
-        playsInline
-        preload="auto"
-        onEnded={handleFinish}
-        onError={handleFinish}
-        style={{
-          position: 'relative',
-          zIndex: 5,
-          width: '100vw',
-          height: '100dvh',
-          objectFit: 'contain',
-          display: 'block'
-        }}
-      />
-
-      {/* Subtle Skip Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleFinish();
-        }}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          zIndex: 20,
-          padding: '6px 14px',
-          borderRadius: '20px',
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          color: '#ffffff',
-          fontSize: '11px',
-          fontWeight: '800',
-          letterSpacing: '1px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px'
-        }}
-      >
-        SKIP ❯❯
-      </button>
-
-      {/* Subtle bottom hint */}
+      {/* Diagonal Ambient Light Stream */}
       <div
         style={{
           position: 'absolute',
-          bottom: '24px',
-          zIndex: 20,
-          color: 'rgba(255, 255, 255, 0.7)',
-          fontSize: '11px',
-          fontWeight: '700',
-          letterSpacing: '1.5px',
-          textTransform: 'uppercase',
-          pointerEvents: 'none',
-          textShadow: '0 1px 4px rgba(0,0,0,0.4)'
+          top: '-50%',
+          left: '-50%',
+          width: '200%',
+          height: '200%',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.008) 40%, transparent 65%)',
+          pointerEvents: 'none'
+        }}
+      />
+
+      {/* Central Shadow Typography & Emblem */}
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+          animation: 'shadowFloat 3.5s ease-in-out infinite, shadowRevealIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards'
         }}
       >
-        Tap Anywhere to Enter
+        {/* Stealth Monogram Crest */}
+        <div
+          style={{
+            width: 'clamp(52px, 14vw, 76px)',
+            height: 'clamp(52px, 14vw, 76px)',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '18px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.15)'
+          }}
+        >
+          <svg viewBox="0 0 100 100" style={{ width: '56%', height: '56%' }} fill="none">
+            <path d="M28 26 H72 V40 H44 V48 H72 V74 H28 V60 H56 V52 H28 Z" fill="url(#crest_silver)" />
+            <defs>
+              <linearGradient id="crest_silver" x1="28" y1="26" x2="72" y2="74" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#ffffff" />
+                <stop offset="0.6" stopColor="#cbd5e1" />
+                <stop offset="1" stopColor="#64748b" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        {/* The Exact SHADOW Typographic Wordmark with Diagonal Long Shadow */}
+        <h1
+          className="shadow-title-text"
+          style={{
+            margin: 0,
+            fontSize: 'clamp(34px, 11vw, 68px)',
+            textTransform: 'uppercase',
+            lineHeight: 1
+          }}
+        >
+          SHADOW
+        </h1>
+
+        {/* Subtle Minimalist Line Accent */}
+        <div
+          style={{
+            marginTop: '16px',
+            width: 'clamp(60px, 15vw, 100px)',
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+            borderRadius: '9999px'
+          }}
+        />
       </div>
     </div>
   );
@@ -473,6 +513,25 @@ export default function App() {
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [voiceFeedbackMessage, setVoiceFeedbackMessage] = useState('');
   const [assistantStatus, setAssistantStatus] = useState("Shadow System Active...");
+
+  // Whole App Unified Theme Engine: 'obsidian' (Dark Executive) or 'burgundy' (Signature Wine & Cream)
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    try {
+      return localStorage.getItem('shadow_theme_mode') || 'obsidian';
+    } catch {
+      return 'obsidian';
+    }
+  });
+
+  const isBurgundy = currentTheme === 'burgundy';
+
+  const toggleTheme = () => {
+    const next = currentTheme === 'obsidian' ? 'burgundy' : 'obsidian';
+    setCurrentTheme(next);
+    try {
+      localStorage.setItem('shadow_theme_mode', next);
+    } catch {}
+  };
 
   // Real Database Google Auth State (Login / Sign Up with Backend verification)
   // Mobile & Desktop System Permissions State
@@ -3325,19 +3384,19 @@ export default function App() {
   });
 
   return (
-    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#090d16', color: '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
-      {/* Custom Full-Screen Startup Animation (Code-Driven Cybernetic Particle & HUD Engine) */}
+    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: isBurgundy ? '#A5A79B' : '#090d16', color: isBurgundy ? '#3d0605' : '#f8fafc', display: 'flex', flexDirection: 'row', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Custom Full-Screen Startup Animation (Pure Smooth Theme Shadow Effect) */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
 
-      {/* Left Side Thin Navigation Sidebar - Muted Sage Grey & Burgundy */}
-      <aside className="app-sidebar" style={{ width: '64px', backgroundColor: '#0b0f19', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
-        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
+      {/* Left Side Navigation Sidebar */}
+      <aside className="app-sidebar" style={{ width: '64px', backgroundColor: isBurgundy ? '#590907' : '#0b0f19', borderRight: isBurgundy ? '1px solid #3d0605' : '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0', gap: '8px', flexShrink: 0, zIndex: 100 }}>
+        <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isBurgundy ? '#E8D2B5' : '#1e293b', color: isBurgundy ? '#590907' : '#38bdf8', border: isBurgundy ? '1px solid #cbb294' : '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2px' }}>
           <Shield size={20} />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Navigation size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Route</span>
         </button>
@@ -3390,17 +3449,17 @@ export default function App() {
           <span style={{ fontSize: '9px', fontWeight: '700', color: '#E8D2B5' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <DollarSign size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Newspaper size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Briefing</span>
         </button>
 
-        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
+        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: 'transparent', border: 'none', color: isBurgundy ? '#E8D2B5' : '#cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', cursor: 'pointer', padding: '4px', borderRadius: '8px', width: '48px' }}>
           <Wrench size={17} />
           <span style={{ fontSize: '9px', fontWeight: '700' }}>Tools</span>
         </button>
@@ -3409,9 +3468,9 @@ export default function App() {
           onClick={() => setShowNotesModal(true)} 
           title="Google Keep Style Notes & Task Reminders" 
           style={{ 
-            background: showNotesModal ? '#0284c7' : 'transparent', 
+            background: showNotesModal ? (isBurgundy ? '#3d0605' : '#1e293b') : 'transparent', 
             border: 'none', 
-            color: '#cbd5e1', 
+            color: isBurgundy ? '#E8D2B5' : '#cbd5e1', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
@@ -3430,8 +3489,8 @@ export default function App() {
               position: 'absolute', 
               top: '2px', 
               right: '4px', 
-              backgroundColor: '#38bdf8', 
-              color: '#000000', 
+              backgroundColor: isBurgundy ? '#E8D2B5' : '#38bdf8', 
+              color: isBurgundy ? '#590907' : '#000000', 
               fontSize: '8px', 
               fontWeight: '900', 
               borderRadius: '50%', 
@@ -3460,9 +3519,9 @@ export default function App() {
             title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
             style={{ 
               position: 'relative',
-              background: userProfile ? '#1e293b' : '#0f172a', 
-              border: '1px solid #334155',
-              color: userProfile ? '#38bdf8' : '#cbd5e1', 
+              background: userProfile ? (isBurgundy ? '#3d0605' : '#1e293b') : (isBurgundy ? '#2a0403' : '#0f172a'), 
+              border: isBurgundy ? '1px solid #590907' : '1px solid #334155',
+              color: userProfile ? (isBurgundy ? '#E8D2B5' : '#38bdf8') : (isBurgundy ? '#E8D2B5' : '#cbd5e1'), 
               padding: userProfile && userProfile.photo ? '2px' : '8px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -3492,9 +3551,9 @@ export default function App() {
             onClick={handleStopAll} 
             title="Shadow Standby / Emergency Audio & Route Stop" 
             style={{ 
-              background: '#0284c7',
-              border: '1px solid #334155', 
-              color: '#cbd5e1', 
+              background: isBurgundy ? '#3d0605' : '#1e293b',
+              border: isBurgundy ? '1px solid #590907' : '1px solid #334155', 
+              color: isBurgundy ? '#E8D2B5' : '#cbd5e1', 
               padding: '6px 4px', 
               borderRadius: '10px', 
               cursor: 'pointer', 
@@ -3508,7 +3567,7 @@ export default function App() {
             }}
           >
             <Power size={15} color="#ef4444" />
-            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: '#cbd5e1' }}>STANDBY</span>
+            <span style={{ fontSize: '7px', fontWeight: '900', letterSpacing: '0.5px', color: isBurgundy ? '#E8D2B5' : '#cbd5e1' }}>STANDBY</span>
           </button>
         </div>
       </aside>
@@ -3516,14 +3575,36 @@ export default function App() {
       {/* Main Content Area */}
       <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 64px)' }}>
         
-        {/* Top Header - Warm Cream Beige & Burgundy */}
-        <header className="app-header" style={{ padding: '12px 16px', backgroundColor: '#0b0f19', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        {/* Top Header */}
+        <header className="app-header" style={{ padding: '12px 16px', backgroundColor: isBurgundy ? '#590907' : '#0b0f19', borderBottom: isBurgundy ? '1px solid #3d0605' : '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ overflow: 'hidden' }}>
-            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
-            <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+            <h1 style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.5px', color: isBurgundy ? '#E8D2B5' : '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SHADOW DASHBOARD</h1>
+            <span style={{ fontSize: '9px', color: isBurgundy ? '#fce7f3' : '#38bdf8', fontWeight: '700' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {/* Quick 1-Tap Theme Switcher */}
+            <button
+              onClick={toggleTheme}
+              title={`Switch Theme: currently ${isBurgundy ? 'Signature Burgundy' : 'Executive Obsidian'}`}
+              style={{
+                border: isBurgundy ? '1px solid #cbb294' : '1px solid #334155',
+                background: isBurgundy ? '#E8D2B5' : '#1e293b',
+                color: isBurgundy ? '#590907' : '#cbd5e1',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '800',
+                fontSize: '11px',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Palette size={14} />
+              <span className="mobile-hide-text">{isBurgundy ? 'BURGUNDY' : 'OBSIDIAN'}</span>
+            </button>
                         {/* Real Mobile & Desktop Permissions Setup Button */}
             <button
               onClick={() => setShowPermissionsModal(true)}
