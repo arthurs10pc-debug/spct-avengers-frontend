@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   X, Upload, Download, RotateCcw, RotateCw, RefreshCw, 
   Crop, Sun, Paintbrush, Edit2, Eraser, SlidersHorizontal, 
-  Wand2, Check, Sparkles, Image as ImageIcon
+  Wand2, Check, Sparkles, Image as ImageIcon, Plus, Minus,
+  Target, Circle, Copy, Flame, Moon
 } from 'lucide-react';
 
 /**
@@ -120,17 +121,131 @@ function perfectInpaint(ctx, maskCtx, width, height, bbox) {
   ctx.putImageData(imgData, 0, 0);
 }
 
+/**
+ * Localized Surface Blur for Skin Smoothing / Beauty Retouch
+ */
+function applyLocalSkinSmoothing(ctx, cx, cy, radius) {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const x0 = Math.max(0, Math.floor(cx - radius));
+  const y0 = Math.max(0, Math.floor(cy - radius));
+  const x1 = Math.min(w - 1, Math.ceil(cx + radius));
+  const y1 = Math.min(h - 1, Math.ceil(cy + radius));
+  const rw = x1 - x0 + 1;
+  const rh = y1 - y0 + 1;
+  if (rw <= 2 || rh <= 2) return;
+
+  const imgData = ctx.getImageData(x0, y0, rw, rh);
+  const data = imgData.data;
+  const copy = new Uint8ClampedArray(data);
+
+  const blurRadius = 2;
+  const rSq = radius * radius;
+
+  for (let y = 0; y < rh; y++) {
+    for (let x = 0; x < rw; x++) {
+      const globalX = x0 + x;
+      const globalY = y0 + y;
+      const distSq = (globalX - cx) * (globalX - cx) + (globalY - cy) * (globalY - cy);
+      if (distSq > rSq) continue;
+
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= rh) continue;
+        for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= rw) continue;
+          const idx = (ny * rw + nx) * 4;
+          rSum += copy[idx];
+          gSum += copy[idx + 1];
+          bSum += copy[idx + 2];
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        const targetIdx = (y * rw + x) * 4;
+        // Feathered blend factor towards edges of brush circle
+        const feather = 1 - Math.sqrt(distSq) / radius;
+        const blendFactor = Math.min(1, Math.max(0, feather * 0.45)); // Gentle natural smoothing
+
+        data[targetIdx] = Math.round(copy[targetIdx] * (1 - blendFactor) + (rSum / count) * blendFactor);
+        data[targetIdx + 1] = Math.round(copy[targetIdx + 1] * (1 - blendFactor) + (gSum / count) * blendFactor);
+        data[targetIdx + 2] = Math.round(copy[targetIdx + 2] * (1 - blendFactor) + (bSum / count) * blendFactor);
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, x0, y0);
+}
+
+/**
+ * Localized Dodge & Burn (Exposure Sculpting)
+ */
+function applyLocalDodgeBurn(ctx, cx, cy, radius, isBurn = false) {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const x0 = Math.max(0, Math.floor(cx - radius));
+  const y0 = Math.max(0, Math.floor(cy - radius));
+  const x1 = Math.min(w - 1, Math.ceil(cx + radius));
+  const y1 = Math.min(h - 1, Math.ceil(cy + radius));
+  const rw = x1 - x0 + 1;
+  const rh = y1 - y0 + 1;
+  if (rw <= 2 || rh <= 2) return;
+
+  const imgData = ctx.getImageData(x0, y0, rw, rh);
+  const data = imgData.data;
+  const rSq = radius * radius;
+
+  for (let y = 0; y < rh; y++) {
+    for (let x = 0; x < rw; x++) {
+      const globalX = x0 + x;
+      const globalY = y0 + y;
+      const distSq = (globalX - cx) * (globalX - cx) + (globalY - cy) * (globalY - cy);
+      if (distSq > rSq) continue;
+
+      const feather = 1 - Math.sqrt(distSq) / radius;
+      const factor = isBurn ? (1 - feather * 0.08) : (1 + feather * 0.08);
+      const idx = (y * rw + x) * 4;
+
+      data[idx] = Math.min(255, Math.max(0, Math.round(data[idx] * factor)));
+      data[idx + 1] = Math.min(255, Math.max(0, Math.round(data[idx + 1] * factor)));
+      data[idx + 2] = Math.min(255, Math.max(0, Math.round(data[idx + 2] * factor)));
+    }
+  }
+
+  ctx.putImageData(imgData, x0, y0);
+}
+
 export default function PhotoEditorModal({ isOpen, onClose }) {
   const [imageFile, setImageFile] = useState(null);
   const [imageName, setImageName] = useState('photo');
   const [activeTool, setActiveTool] = useState('ai-erase'); // 'ai-erase' | 'crop' | 'adjust' | 'filter' | 'markup' | 'blur'
   
-  // AI Eraser settings
-  const [brushSize, setBrushSize] = useState(30);
+  // Premium Brush Modes & Settings
+  const [brushMode, setBrushMode] = useState('generative-erase'); // 'generative-erase' | 'spot-heal' | 'clone-stamp' | 'skin-smooth' | 'dodge-burn'
+  const [brushSize, setBrushSize] = useState(32);
+  const [brushHardness, setBrushHardness] = useState('soft'); // 'soft' | 'hard'
+  const [autoEraseOnRelease, setAutoEraseOnRelease] = useState(true); // true = instant, false = batch
+  const [batchMaskCount, setBatchMaskCount] = useState(0);
+
+  // Clone Stamp Settings
+  const [isPickingCloneSource, setIsPickingCloneSource] = useState(false);
+  const [cloneSource, setCloneSource] = useState(null);
+  const cloneDragStartRef = useRef(null);
+
+  // Dodge & Burn Settings
+  const [dodgeBurnType, setDodgeBurnType] = useState('dodge'); // 'dodge' | 'burn'
+
+  // Processing & Toast status
   const [isDrawing, setIsDrawing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [downloadInfo, setDownloadInfo] = useState(null);
+
+  // Live Brush Cursor overlay
+  const [cursorPos, setCursorPos] = useState({ x: -200, y: -200, visible: false, screenRadius: 16 });
 
   // Adjustments & Filters
   const [adjustments, setAdjustments] = useState({
@@ -150,6 +265,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   const fileInputRef = useRef(null);
   const containerRef = useRef(null);
   const strokeBBoxRef = useRef({ minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+  const batchBBoxRef = useRef({ minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
   const isPointerDownRef = useRef(false);
 
   // Undo / Redo history stack
@@ -165,10 +281,10 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       setHistoryStack(prev => {
         const next = prev.slice(0, historyIndex + 1);
         next.push(dataUrl);
-        if (next.length > 20) next.shift();
+        if (next.length > 25) next.shift();
         return next;
       });
-      setHistoryIndex(prev => Math.min(prev + 1, 19));
+      setHistoryIndex(prev => Math.min(prev + 1, 24));
     } catch (e) {
       console.warn('History push error:', e);
     }
@@ -212,6 +328,10 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       setActiveFilter('none');
       setHistoryStack([canvas.toDataURL('image/png')]);
       setHistoryIndex(0);
+      setCloneSource(null);
+      setBatchMaskCount(0);
+      batchBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+
       setToastMessage('✓ Image loaded! Brush any object to erase.');
       setTimeout(() => setToastMessage(null), 3000);
     };
@@ -286,6 +406,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       setHistoryIndex(0);
+      setBatchMaskCount(0);
+      const maskCanvas = maskCanvasRef.current;
+      if (maskCanvas) {
+        maskCanvas.getContext('2d').clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+      }
       setToastMessage('↺ Reset to original');
       setTimeout(() => setToastMessage(null), 1500);
     };
@@ -295,7 +420,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   // Map pointer coordinates from screen display to canvas resolution
   const getCanvasCoords = (e) => {
     const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas) return { x: 0, y: 0, screenX: 0, screenY: 0, scale: 1 };
     const rect = canvas.getBoundingClientRect();
     const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
     const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
@@ -305,8 +430,44 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
     return {
       x: Math.round((clientX - rect.left) * scaleX),
-      y: Math.round((clientY - rect.top) * scaleY)
+      y: Math.round((clientY - rect.top) * scaleY),
+      clientX,
+      clientY,
+      screenX: clientX - rect.left,
+      screenY: clientY - rect.top,
+      scale: rect.width / canvas.width
     };
+  };
+
+  // Update live circular brush cursor preview
+  const handleContainerPointerMove = (e) => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container || !imageFile) return;
+
+    const contRect = container.getBoundingClientRect();
+    const canRect = canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+    // Check if pointer is inside canvas area
+    const isInsideCanvas = (
+      clientX >= canRect.left &&
+      clientX <= canRect.right &&
+      clientY >= canRect.top &&
+      clientY <= canRect.bottom
+    );
+
+    const scale = canRect.width / canvas.width;
+    const currentSize = activeTool === 'markup' ? markupSize : brushSize;
+    const screenRadius = Math.max(3, Math.round((currentSize / 2) * scale));
+
+    setCursorPos({
+      x: clientX - contRect.left,
+      y: clientY - contRect.top,
+      visible: isInsideCanvas && (activeTool === 'ai-erase' || activeTool === 'markup'),
+      screenRadius
+    });
   };
 
   // Pointer Down
@@ -316,17 +477,70 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     isPointerDownRef.current = true;
     setIsDrawing(true);
 
-    const { x, y } = getCanvasCoords(e);
+    const coords = getCanvasCoords(e);
+    const { x, y } = coords;
+
+    // Handle Clone Source Picking
+    if (activeTool === 'ai-erase' && brushMode === 'clone-stamp' && isPickingCloneSource) {
+      setCloneSource({ x, y });
+      setIsPickingCloneSource(false);
+      isPointerDownRef.current = false;
+      setIsDrawing(false);
+      setToastMessage(`✓ Texture source sampled at (${x}, ${y})! Now paint.`);
+      setTimeout(() => setToastMessage(null), 2500);
+      return;
+    }
+
     strokeBBoxRef.current = { minX: x, maxX: x, minY: y, maxY: y };
 
     if (activeTool === 'ai-erase') {
-      const maskCanvas = maskCanvasRef.current;
-      if (maskCanvas) {
-        const maskCtx = maskCanvas.getContext('2d');
-        maskCtx.beginPath();
-        maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-        maskCtx.fillStyle = 'rgba(236, 72, 153, 0.75)'; // Windows Photos Magenta Generative Erase overlay
-        maskCtx.fill();
+      if (brushMode === 'generative-erase') {
+        const maskCanvas = maskCanvasRef.current;
+        if (maskCanvas) {
+          const maskCtx = maskCanvas.getContext('2d');
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+          maskCtx.fillStyle = 'rgba(236, 72, 153, 0.75)'; // Windows Photos Magenta Generative Erase
+          if (brushHardness === 'soft') {
+            maskCtx.shadowBlur = Math.round(brushSize * 0.35);
+            maskCtx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+          } else {
+            maskCtx.shadowBlur = 0;
+          }
+          maskCtx.fill();
+        }
+      } else if (brushMode === 'spot-heal') {
+        // 1-Tap Spot Healer
+        const canvas = canvasRef.current;
+        const maskCanvas = maskCanvasRef.current;
+        if (canvas && maskCanvas) {
+          const maskCtx = maskCanvas.getContext('2d');
+          maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+          maskCtx.fillStyle = 'rgba(236, 72, 153, 1)';
+          maskCtx.fill();
+
+          const r = Math.round(brushSize / 2);
+          const spotBBox = { minX: x - r, maxX: x + r, minY: y - r, maxY: y + r };
+          perfectInpaint(canvas.getContext('2d'), maskCtx, canvas.width, canvas.height, spotBBox);
+          maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+          pushToHistory();
+          setToastMessage('✓ Spot healed!');
+          setTimeout(() => setToastMessage(null), 1500);
+        }
+      } else if (brushMode === 'clone-stamp') {
+        cloneDragStartRef.current = { x, y };
+      } else if (brushMode === 'skin-smooth') {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, brushSize / 2);
+        }
+      } else if (brushMode === 'dodge-burn') {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          applyLocalDodgeBurn(canvas.getContext('2d'), x, y, brushSize / 2, dodgeBurnType === 'burn');
+        }
       }
     } else if (activeTool === 'markup') {
       const canvas = canvasRef.current;
@@ -344,6 +558,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
   // Pointer Move
   const handlePointerMove = (e) => {
+    handleContainerPointerMove(e);
     if (!isPointerDownRef.current || !imageFile || isProcessing) return;
     e.preventDefault();
 
@@ -355,13 +570,49 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     bbox.maxY = Math.max(bbox.maxY, y + brushSize);
 
     if (activeTool === 'ai-erase') {
-      const maskCanvas = maskCanvasRef.current;
-      if (maskCanvas) {
-        const maskCtx = maskCanvas.getContext('2d');
-        maskCtx.beginPath();
-        maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-        maskCtx.fillStyle = 'rgba(236, 72, 153, 0.75)';
-        maskCtx.fill();
+      if (brushMode === 'generative-erase') {
+        const maskCanvas = maskCanvasRef.current;
+        if (maskCanvas) {
+          const maskCtx = maskCanvas.getContext('2d');
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+          maskCtx.fillStyle = 'rgba(236, 72, 153, 0.75)';
+          if (brushHardness === 'soft') {
+            maskCtx.shadowBlur = Math.round(brushSize * 0.35);
+            maskCtx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+          } else {
+            maskCtx.shadowBlur = 0;
+          }
+          maskCtx.fill();
+        }
+      } else if (brushMode === 'clone-stamp') {
+        if (!cloneSource || !cloneDragStartRef.current) return;
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const dx = x - cloneDragStartRef.current.x;
+          const dy = y - cloneDragStartRef.current.y;
+          const srcX = cloneSource.x + dx;
+          const srcY = cloneSource.y + dy;
+          const r = brushSize / 2;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(canvas, srcX - r, srcY - r, brushSize, brushSize, x - r, y - r, brushSize, brushSize);
+          ctx.restore();
+        }
+      } else if (brushMode === 'skin-smooth') {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, brushSize / 2);
+        }
+      } else if (brushMode === 'dodge-burn') {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          applyLocalDodgeBurn(canvas.getContext('2d'), x, y, brushSize / 2, dodgeBurnType === 'burn');
+        }
       }
     } else if (activeTool === 'markup') {
       const canvas = canvasRef.current;
@@ -373,49 +624,89 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     }
   };
 
-  // Pointer Up: Execute AI Erase immediately
+  // Pointer Up: Execute AI Erase or push state
   const handlePointerUp = async (e) => {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     setIsDrawing(false);
+    cloneDragStartRef.current = null;
 
-    if (activeTool === 'markup') {
+    if (activeTool === 'markup' || (activeTool === 'ai-erase' && brushMode !== 'generative-erase' && brushMode !== 'spot-heal')) {
       pushToHistory();
       return;
     }
 
-    if (activeTool === 'ai-erase') {
-      const bbox = strokeBBoxRef.current;
-      if (bbox.minX === Infinity || bbox.maxX === -Infinity) return;
+    if (activeTool === 'ai-erase' && brushMode === 'generative-erase') {
+      const strokeBBox = strokeBBoxRef.current;
+      if (strokeBBox.minX === Infinity || strokeBBox.maxX === -Infinity) return;
 
-      setIsProcessing(true);
-      setToastMessage('✨ AI Erasing object...');
+      // Update batch bounding box
+      const batch = batchBBoxRef.current;
+      batch.minX = Math.min(batch.minX, strokeBBox.minX);
+      batch.maxX = Math.max(batch.maxX, strokeBBox.maxX);
+      batch.minY = Math.min(batch.minY, strokeBBox.minY);
+      batch.maxY = Math.max(batch.maxY, strokeBBox.maxY);
 
-      setTimeout(() => {
-        try {
-          const canvas = canvasRef.current;
-          const maskCanvas = maskCanvasRef.current;
-          if (!canvas || !maskCanvas) return;
-
-          const ctx = canvas.getContext('2d');
-          const maskCtx = maskCanvas.getContext('2d');
-
-          perfectInpaint(ctx, maskCtx, canvas.width, canvas.height, bbox);
-          maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-
-          pushToHistory();
-          setToastMessage('✓ Object erased with AI!');
-          setTimeout(() => setToastMessage(null), 2500);
-        } catch (err) {
-          console.error('Inpainting error:', err);
-          setToastMessage('❌ Could not erase object');
-          setTimeout(() => setToastMessage(null), 2500);
-        } finally {
-          setIsProcessing(false);
-          strokeBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
-        }
-      }, 30);
+      if (autoEraseOnRelease) {
+        // INSTANT 1-RELEASE ERASE
+        executeGenerativeErase(strokeBBox);
+      } else {
+        // BATCH MODE: keep mask and wait for "Erase All Marked"
+        setBatchMaskCount(prev => prev + 1);
+        setToastMessage(`✓ Marked object #${batchMaskCount + 1}. Paint more or tap "Erase All Marked".`);
+        setTimeout(() => setToastMessage(null), 3500);
+      }
     }
+  };
+
+  // Perform Generative Erase on specified bounding box
+  const executeGenerativeErase = (targetBBox) => {
+    const bbox = targetBBox || batchBBoxRef.current;
+    if (bbox.minX === Infinity || bbox.maxX === -Infinity) return;
+
+    setIsProcessing(true);
+    setToastMessage('✨ AI Generative Erase processing...');
+
+    setTimeout(() => {
+      try {
+        const canvas = canvasRef.current;
+        const maskCanvas = maskCanvasRef.current;
+        if (!canvas || !maskCanvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+
+        perfectInpaint(ctx, maskCtx, canvas.width, canvas.height, bbox);
+        maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+        pushToHistory();
+        setBatchMaskCount(0);
+        batchBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+        strokeBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+
+        setToastMessage('✓ Object completely erased with AI!');
+        setTimeout(() => setToastMessage(null), 2500);
+      } catch (err) {
+        console.error('Inpainting error:', err);
+        setToastMessage('❌ Could not erase object');
+        setTimeout(() => setToastMessage(null), 2500);
+      } finally {
+        setIsProcessing(false);
+      }
+    }, 40);
+  };
+
+  // Clear batch mask without inpainting
+  const handleClearMask = () => {
+    const maskCanvas = maskCanvasRef.current;
+    if (maskCanvas) {
+      maskCanvas.getContext('2d').clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    }
+    setBatchMaskCount(0);
+    batchBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+    strokeBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+    setToastMessage('Mask cleared');
+    setTimeout(() => setToastMessage(null), 1500);
   };
 
   // Rotate 90°
@@ -626,22 +917,32 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  // Preset Brush Sizes
+  const sizePresets = [
+    { label: '8px', val: 8, title: 'Tiny (Blemish / Wire)' },
+    { label: '18px', val: 18, title: 'Small (Text / Acne)' },
+    { label: '32px', val: 32, title: 'Medium (General)' },
+    { label: '56px', val: 56, title: 'Large (Objects)' },
+    { label: '95px', val: 95, title: 'Huge (People)' },
+    { label: '140px', val: 140, title: 'Max (Background)' }
+  ];
+
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '8px' : '16px' }}>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px' }}>
       <div 
         className="tools-modal-scroll"
         style={{ 
-          backgroundColor: '#ffffff', // Clean white theme matching the whole system
+          backgroundColor: '#ffffff', // Clean white theme matching system
           borderRadius: '24px', 
           width: '100%', 
-          maxWidth: '1080px', 
-          height: '94vh', 
-          maxHeight: '94vh', 
+          maxWidth: '1120px', 
+          height: '95vh', 
+          maxHeight: '95vh', 
           display: 'flex', 
           flexDirection: 'column', 
           position: 'relative', 
           border: '1.5px solid #e2e8f0', 
-          boxShadow: '0 25px 70px rgba(0,0,0,0.18)',
+          boxShadow: '0 25px 70px rgba(0,0,0,0.22)',
           overflow: 'hidden'
         }}
       >
@@ -661,11 +962,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         />
 
         {/* TOP BAR: Title, Windows Photos Toolbar, Undo/Redo & Download */}
-        <div style={{ padding: '12px 18px', backgroundColor: '#ffffff', borderBottom: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', zIndex: 10 }}>
+        <div style={{ padding: '10px 16px', backgroundColor: '#ffffff', borderBottom: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', zIndex: 10 }}>
           
           {/* Logo & Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }}>
               <Wand2 size={20} />
             </div>
             <div>
@@ -678,9 +979,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Windows 10/11 Pro Photos Style Tools Bar */}
+          {/* Windows 10/11 Pro Photos Style Tools Bar (Matching Image 5) */}
           {imageFile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div className="tools-modal-scroll" style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
               
               {/* 1. AI Generative Erase (Primary Highlighted Star Feature!) */}
               <button
@@ -689,7 +990,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="AI Object Eraser / Generative Erase (Brush to remove unwanted objects)"
                 style={{
-                  minHeight: '38px',
+                  minHeight: '36px',
                   padding: '6px 14px',
                   borderRadius: '9px',
                   border: 'none',
@@ -705,7 +1006,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 }}
               >
                 <Eraser size={16} />
-                <span>AI Brush Erase</span>
+                <span>AI Brush Studio</span>
               </button>
 
               {/* 2. Crop & Rotate */}
@@ -715,7 +1016,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Crop & Rotate"
                 style={{
-                  minHeight: '38px',
+                  minHeight: '36px',
                   padding: '6px 12px',
                   borderRadius: '9px',
                   border: 'none',
@@ -740,7 +1041,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Brightness & Contrast"
                 style={{
-                  minHeight: '38px',
+                  minHeight: '36px',
                   padding: '6px 12px',
                   borderRadius: '9px',
                   border: 'none',
@@ -765,7 +1066,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Color Filters"
                 style={{
-                  minHeight: '38px',
+                  minHeight: '36px',
                   padding: '6px 12px',
                   borderRadius: '9px',
                   border: 'none',
@@ -790,7 +1091,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Pen & Drawing"
                 style={{
-                  minHeight: '38px',
+                  minHeight: '36px',
                   padding: '6px 12px',
                   borderRadius: '9px',
                   border: 'none',
@@ -815,7 +1116,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Background Blur"
                 style={{
-                  minHeight: '38px',
+                  minHeight: '36px',
                   padding: '6px 12px',
                   borderRadius: '9px',
                   border: 'none',
@@ -844,7 +1145,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   onClick={handleUndo}
                   disabled={historyIndex <= 0}
                   className="touch-btn"
-                  title="Undo"
+                  title="Undo (Ctrl+Z)"
                   style={{
                     width: '36px',
                     height: '36px',
@@ -866,7 +1167,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   onClick={handleRedo}
                   disabled={historyIndex >= historyStack.length - 1}
                   className="touch-btn"
-                  title="Redo"
+                  title="Redo (Ctrl+Y)"
                   style={{
                     width: '36px',
                     height: '36px',
@@ -909,9 +1210,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   type="button"
                   onClick={() => handleDirectDownload('png')}
                   className="touch-btn"
-                  title="1-Click Instant Download"
+                  title="1-Click Instant Download without delay"
                   style={{
-                    minHeight: '38px',
+                    minHeight: '36px',
                     padding: '0 16px',
                     borderRadius: '10px',
                     backgroundColor: '#0f172a',
@@ -958,7 +1259,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         </div>
 
         {/* WORKSPACE AREA */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', backgroundColor: '#090d16' }}>
+        <div 
+          ref={containerRef}
+          onPointerMove={handleContainerPointerMove}
+          onPointerLeave={() => setCursorPos(prev => ({ ...prev, visible: false }))}
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', backgroundColor: '#090d16' }}
+        >
           
           {/* If No Image is Selected: Large Drag & Drop / Upload Target */}
           {!imageFile ? (
@@ -1002,7 +1308,6 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
           ) : (
             // Image Canvas Viewport
             <div 
-              ref={containerRef}
               style={{ 
                 flex: 1, 
                 display: 'flex', 
@@ -1027,7 +1332,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   objectFit: 'contain',
                   borderRadius: '12px',
                   boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
-                  cursor: activeTool === 'ai-erase' ? 'crosshair' : (activeTool === 'markup' ? 'pencil' : 'default'),
+                  cursor: isPickingCloneSource ? 'crosshair' : (activeTool === 'ai-erase' || activeTool === 'markup' ? 'none' : 'default'),
                   touchAction: 'none'
                 }}
               />
@@ -1045,6 +1350,127 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   display: activeTool === 'ai-erase' ? 'block' : 'none'
                 }}
               />
+
+              {/* Interactive Live Brush Ring Cursor Preview (Photoshop & Windows Photos Style) */}
+              {cursorPos.visible && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${cursorPos.x}px`,
+                    top: `${cursorPos.y}px`,
+                    transform: 'translate(-50%, -50%)',
+                    width: `${cursorPos.screenRadius * 2}px`,
+                    height: `${cursorPos.screenRadius * 2}px`,
+                    borderRadius: '50%',
+                    border: activeTool === 'markup' ? `2px solid ${markupColor}` : '2px solid #ec4899',
+                    boxShadow: '0 0 6px rgba(0,0,0,0.8), inset 0 0 6px rgba(236,72,153,0.3)',
+                    backgroundColor: activeTool === 'markup' ? 'rgba(255,255,255,0.1)' : 'rgba(236, 72, 153, 0.15)',
+                    pointerEvents: 'none',
+                    zIndex: 60,
+                    transition: 'width 0.05s ease-out, height 0.05s ease-out'
+                  }}
+                >
+                  <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#ffffff' }} />
+                </div>
+              )}
+
+              {/* Clone Source Target Marker */}
+              {cloneSource && brushMode === 'clone-stamp' && (
+                <div
+                  title="Texture Sample Source"
+                  style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: '16px',
+                    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(6px)',
+                    color: '#38bdf8',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: '900',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    border: '1px solid #38bdf8'
+                  }}
+                >
+                  <Target size={14} className="text-cyan-400" />
+                  <span>Source Sampled at ({cloneSource.x}, {cloneSource.y})</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsPickingCloneSource(true)}
+                    style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '4px', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: '900', border: 'none', cursor: 'pointer', fontSize: '10px' }}
+                  >
+                    Resample
+                  </button>
+                </div>
+              )}
+
+              {/* Floating Batch Mask Action Bar (When in Batch Multi-Object Mode) */}
+              {batchMaskCount > 0 && !autoEraseOnRelease && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: '#0f172a',
+                  padding: '8px 16px',
+                  borderRadius: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  boxShadow: '0 10px 35px rgba(0,0,0,0.4)',
+                  zIndex: 70,
+                  border: '1.5px solid #ec4899'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ec4899', fontSize: '11.5px', fontWeight: '900' }}>
+                    <Sparkles size={16} />
+                    <span>{batchMaskCount} {batchMaskCount === 1 ? 'Object Marked' : 'Objects Marked'}</span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => executeGenerativeErase()}
+                    className="touch-btn"
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: '20px',
+                      backgroundColor: '#ec4899',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 14px rgba(236,72,153,0.4)'
+                    }}
+                  >
+                    <Wand2 size={14} />
+                    <span>✨ Erase All Marked</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleClearMask}
+                    className="touch-btn"
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '16px',
+                      backgroundColor: '#334155',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Clear Mask
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1059,13 +1485,13 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
               color: '#ffffff',
               padding: '10px 20px',
               borderRadius: '30px',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: '900',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-              zIndex: 50,
+              zIndex: 80,
               border: '1.5px solid rgba(255,255,255,0.2)'
             }}>
               {isProcessing ? <Sparkles size={16} className="animate-spin text-pink-400" /> : <Check size={16} />}
@@ -1075,51 +1501,370 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
         </div>
 
-        {/* BOTTOM SUB-TOOLBAR: Interactive Controls for Active Tool */}
+        {/* BOTTOM PRO SUB-TOOLBAR: Interactive Controls for Active Tool */}
         {imageFile && (
-          <div style={{ padding: '12px 18px', backgroundColor: '#ffffff', borderTop: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', zIndex: 10 }}>
+          <div style={{ padding: '10px 16px', backgroundColor: '#ffffff', borderTop: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10 }}>
             
-            {/* SUB-TOOL: AI Erase Controls */}
+            {/* SUB-TOOL: AI Erase & Premium Brush Suite */}
             {activeTool === 'ai-erase' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '220px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#ec4899', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Sparkles size={14} /> Brush Size:
-                  </span>
-                  <input
-                    type="range"
-                    min="6"
-                    max="80"
-                    value={brushSize}
-                    onChange={(e) => setBrushSize(parseInt(e.target.value, 10))}
-                    style={{ flex: 1, accentColor: '#ec4899', height: '6px', borderRadius: '3px', cursor: 'pointer' }}
-                  />
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900', color: '#ffffff' }}>
-                    {brushSize}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                
+                {/* ROW 1: Premium Brush Modes Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                  <div className="tools-modal-scroll" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
+                    <span style={{ fontSize: '10.5px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px', flexShrink: 0 }}>
+                      Brush Tool:
+                    </span>
+
+                    {/* Mode 1: Generative Erase */}
+                    <button
+                      type="button"
+                      onClick={() => { setBrushMode('generative-erase'); setIsPickingCloneSource(false); }}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: brushMode === 'generative-erase' ? 'none' : '1px solid #e2e8f0',
+                        backgroundColor: brushMode === 'generative-erase' ? '#ec4899' : '#f8fafc',
+                        color: brushMode === 'generative-erase' ? '#ffffff' : '#0f172a',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Sparkles size={13} />
+                      <span>✨ Generative Erase</span>
+                    </button>
+
+                    {/* Mode 2: Spot Healer */}
+                    <button
+                      type="button"
+                      onClick={() => { setBrushMode('spot-heal'); setIsPickingCloneSource(false); }}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: brushMode === 'spot-heal' ? 'none' : '1px solid #e2e8f0',
+                        backgroundColor: brushMode === 'spot-heal' ? '#0f172a' : '#f8fafc',
+                        color: brushMode === 'spot-heal' ? '#ffffff' : '#0f172a',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Target size={13} />
+                      <span>🎯 Spot Healer (1-Tap)</span>
+                    </button>
+
+                    {/* Mode 3: Clone Stamp */}
+                    <button
+                      type="button"
+                      onClick={() => { 
+                        setBrushMode('clone-stamp'); 
+                        if (!cloneSource) setIsPickingCloneSource(true); 
+                      }}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: brushMode === 'clone-stamp' ? 'none' : '1px solid #e2e8f0',
+                        backgroundColor: brushMode === 'clone-stamp' ? '#0f172a' : '#f8fafc',
+                        color: brushMode === 'clone-stamp' ? '#ffffff' : '#0f172a',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Copy size={13} />
+                      <span>📋 Clone Stamp</span>
+                    </button>
+
+                    {/* Mode 4: Skin Smooth */}
+                    <button
+                      type="button"
+                      onClick={() => { setBrushMode('skin-smooth'); setIsPickingCloneSource(false); }}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: brushMode === 'skin-smooth' ? 'none' : '1px solid #e2e8f0',
+                        backgroundColor: brushMode === 'skin-smooth' ? '#0f172a' : '#f8fafc',
+                        color: brushMode === 'skin-smooth' ? '#ffffff' : '#0f172a',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Circle size={13} />
+                      <span>🌸 Skin Smooth</span>
+                    </button>
+
+                    {/* Mode 5: Dodge & Burn */}
+                    <button
+                      type="button"
+                      onClick={() => { setBrushMode('dodge-burn'); setIsPickingCloneSource(false); }}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: brushMode === 'dodge-burn' ? 'none' : '1px solid #e2e8f0',
+                        backgroundColor: brushMode === 'dodge-burn' ? '#0f172a' : '#f8fafc',
+                        color: brushMode === 'dodge-burn' ? '#ffffff' : '#0f172a',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <Flame size={13} />
+                      <span>☀️ Light & Shadow</span>
+                    </button>
+                  </div>
+
+                  {/* Mode Specific Quick Options */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {brushMode === 'generative-erase' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '900' }}>Mode:</span>
+                        <button
+                          type="button"
+                          onClick={() => setAutoEraseOnRelease(true)}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            backgroundColor: autoEraseOnRelease ? '#ec4899' : 'transparent',
+                            color: autoEraseOnRelease ? '#ffffff' : '#64748b',
+                            fontSize: '10px',
+                            fontWeight: '900',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ⚡ Auto Erase
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAutoEraseOnRelease(false)}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            backgroundColor: !autoEraseOnRelease ? '#0f172a' : 'transparent',
+                            color: !autoEraseOnRelease ? '#ffffff' : '#64748b',
+                            fontSize: '10px',
+                            fontWeight: '900',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          📝 Batch Mark
+                        </button>
+                      </div>
+                    )}
+
+                    {brushMode === 'clone-stamp' && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPickingCloneSource(true)}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '8px',
+                          border: isPickingCloneSource ? '2px solid #38bdf8' : '1px solid #cbd5e1',
+                          backgroundColor: isPickingCloneSource ? '#0284c7' : '#f8fafc',
+                          color: isPickingCloneSource ? '#ffffff' : '#0f172a',
+                          fontSize: '10.5px',
+                          fontWeight: '900',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Target size={13} />
+                        <span>{isPickingCloneSource ? 'Tap Photo to Pick Source...' : 'Pick Source Texture'}</span>
+                      </button>
+                    )}
+
+                    {brushMode === 'dodge-burn' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px 6px', borderRadius: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setDodgeBurnType('dodge')}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            backgroundColor: dodgeBurnType === 'dodge' ? '#f59e0b' : 'transparent',
+                            color: dodgeBurnType === 'dodge' ? '#ffffff' : '#64748b',
+                            fontSize: '10px',
+                            fontWeight: '900',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ☀️ Dodge (Brighten)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDodgeBurnType('burn')}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            backgroundColor: dodgeBurnType === 'burn' ? '#0f172a' : 'transparent',
+                            color: dodgeBurnType === 'burn' ? '#ffffff' : '#64748b',
+                            fontSize: '10px',
+                            fontWeight: '900',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🌙 Burn (Darken)
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Change Photo Button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#f1f5f9',
+                        color: '#0f172a',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '10.5px',
+                        fontWeight: '900',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Change Photo
+                    </button>
                   </div>
                 </div>
 
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
-                  💡 <strong>Tip:</strong> Brush over any unwanted object, text, or blemish to erase it instantly!
+                {/* ROW 2: Complete Brush Size & Feathering Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  
+                  {/* Continuous Slider with Steppers */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px', maxWidth: '420px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Size:
+                    </span>
+
+                    {/* Step Minus */}
+                    <button
+                      type="button"
+                      onClick={() => setBrushSize(prev => Math.max(4, prev - 4))}
+                      style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', cursor: 'pointer' }}
+                      title="Decrease Size (-4px)"
+                    >
+                      <Minus size={13} />
+                    </button>
+
+                    {/* Slider Range */}
+                    <input
+                      type="range"
+                      min="4"
+                      max="160"
+                      value={brushSize}
+                      onChange={(e) => setBrushSize(parseInt(e.target.value, 10))}
+                      style={{ flex: 1, accentColor: '#ec4899', height: '6px', borderRadius: '3px', cursor: 'pointer' }}
+                    />
+
+                    {/* Step Plus */}
+                    <button
+                      type="button"
+                      onClick={() => setBrushSize(prev => Math.min(160, prev + 4))}
+                      style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', cursor: 'pointer' }}
+                      title="Increase Size (+4px)"
+                    >
+                      <Plus size={13} />
+                    </button>
+
+                    {/* Exact Size Badge */}
+                    <div style={{ minWidth: '42px', height: '26px', padding: '0 6px', borderRadius: '6px', backgroundColor: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: '900', color: '#ffffff' }}>
+                      {brushSize}px
+                    </div>
+                  </div>
+
+                  {/* Quick Preset Size Chips */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', marginRight: '2px' }}>Presets:</span>
+                    {sizePresets.map(preset => (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        onClick={() => setBrushSize(preset.val)}
+                        title={preset.title}
+                        style={{
+                          padding: '4px 9px',
+                          borderRadius: '6px',
+                          border: brushSize === preset.val ? '1.5px solid #ec4899' : '1px solid #cbd5e1',
+                          backgroundColor: brushSize === preset.val ? '#fdf2f8' : '#ffffff',
+                          color: brushSize === preset.val ? '#ec4899' : '#334155',
+                          fontSize: '10.5px',
+                          fontWeight: brushSize === preset.val ? '900' : '800',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Brush Hardness / Feathering */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', marginRight: '4px' }}>Edge:</span>
+                    <button
+                      type="button"
+                      onClick={() => setBrushHardness('soft')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: brushHardness === 'soft' ? 'none' : '1px solid #cbd5e1',
+                        backgroundColor: brushHardness === 'soft' ? '#0f172a' : '#ffffff',
+                        color: brushHardness === 'soft' ? '#ffffff' : '#334155',
+                        fontSize: '10.5px',
+                        fontWeight: '900',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Feathered (Soft)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBrushHardness('hard')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: brushHardness === 'hard' ? 'none' : '1px solid #cbd5e1',
+                        backgroundColor: brushHardness === 'hard' ? '#0f172a' : '#ffffff',
+                        color: brushHardness === 'hard' ? '#ffffff' : '#334155',
+                        fontSize: '10.5px',
+                        fontWeight: '900',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Sharp (Hard)
+                    </button>
+                  </div>
+
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="touch-btn"
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    backgroundColor: '#f1f5f9',
-                    color: '#0f172a',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '11px',
-                    fontWeight: '900',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Change Photo
-                </button>
               </div>
             )}
 
@@ -1241,11 +1986,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 <input
                   type="range"
                   min="2"
-                  max="20"
+                  max="40"
                   value={markupSize}
                   onChange={(e) => setMarkupSize(parseInt(e.target.value, 10))}
                   style={{ width: '80px', accentColor: '#0f172a' }}
                 />
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a' }}>{markupSize}px</span>
               </div>
             )}
 
