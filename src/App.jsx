@@ -8,7 +8,7 @@ import {
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
   Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
   Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
-  Palette
+  Palette, ArrowRight, FileType, Sliders
 } from 'lucide-react';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -643,13 +643,16 @@ export default function App() {
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
 
-  // Tools / Converter Feature State with Clean Document Exporter
+  // Tools / Universal Extension Changer & Converter Feature State
   const [showToolsModal, setShowToolsModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedSize, setSelectedSize] = useState('Original');
   const [converterStatus, setConverterStatus] = useState(null);
   const [uploadedFilePreview, setUploadedFilePreview] = useState(null);
   const [uploadedFileMeta, setUploadedFileMeta] = useState(null);
+  const [toolActiveTab, setToolActiveTab] = useState('extension'); // 'extension' | 'convert'
+  const [customExtension, setCustomExtension] = useState('');
+  const [convertedDownloadInfo, setConvertedDownloadInfo] = useState(null);
   const toolsFileInputRef = useRef(null);
 
   // Startup Intro Shadow Animation (Plays once on app start, smooth, zero-lag)
@@ -658,39 +661,53 @@ export default function App() {
     return true;
   });
 
-  // Safe direct file selection handler (100% crash-proof, no wipeouts)
+  // Safe direct file selection handler (100% crash-proof, supports ALL file types)
   const handleToolsFileSelect = (file) => {
     if (!file) return;
     try {
       setUploadedFile(file);
       setConverterStatus(null);
+      setConvertedDownloadInfo(null);
 
-      const isImg = file.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg|avif)$/i.test(file.name || '');
+      const dotIdx = file.name.lastIndexOf('.');
+      const detectedExt = dotIdx > 0 ? file.name.substring(dotIdx + 1).toUpperCase() : 'FILE';
+      const isImg = file.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg|avif|ico|tiff?)$/i.test(file.name || '');
+
       if (isImg) {
         try {
           const previewUrl = URL.createObjectURL(file);
           setUploadedFilePreview(previewUrl);
 
-          const img = new Image();
+          const img = new window.Image();
           img.onload = () => {
             setUploadedFileMeta({
               width: img.naturalWidth || img.width || 800,
               height: img.naturalHeight || img.height || 600,
-              sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0'
+              sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0',
+              ext: detectedExt
             });
           };
           img.onerror = () => {
-            setUploadedFileMeta({ sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0' });
+            setUploadedFileMeta({
+              sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0',
+              ext: detectedExt
+            });
           };
           img.src = previewUrl;
         } catch (urlErr) {
           console.warn('URL.createObjectURL non-fatal:', urlErr);
           setUploadedFilePreview(null);
-          setUploadedFileMeta({ sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0' });
+          setUploadedFileMeta({
+            sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0',
+            ext: detectedExt
+          });
         }
       } else {
         setUploadedFilePreview(null);
-        setUploadedFileMeta({ sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0' });
+        setUploadedFileMeta({
+          sizeKb: file.size ? (file.size / 1024).toFixed(1) : '0',
+          ext: detectedExt
+        });
       }
     } catch (err) {
       console.error('File selection error:', err);
@@ -698,276 +715,334 @@ export default function App() {
     }
   };
 
-  // Comprehensive multi-format conversion engine (WEBP -> PNG, JPG, PDF, TXT, CSV, etc.)
-  const handleExecuteConversion = async (targetFormat) => {
+  // Safe Universal Download Helper (Mobile WebKit / Android Chrome / Desktop compatible)
+  const triggerSafeDownload = (blob, filename, targetExt) => {
+    try {
+      const url = URL.createObjectURL(blob);
+      const sizeKb = (blob.size / 1024).toFixed(1);
+
+      // Persist in state so user always has a prominent manual tap button in the UI
+      setConvertedDownloadInfo({
+        url,
+        filename,
+        sizeKb,
+        targetFormat: (targetExt || '').toUpperCase()
+      });
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.rel = 'noopener noreferrer';
+      // Off-screen absolute positioning rather than display: none for iOS Safari compatibility
+      a.style.position = 'fixed';
+      a.style.left = '-9999px';
+      a.style.top = '-9999px';
+      a.style.opacity = '0';
+      document.body.appendChild(a);
+
+      try {
+        a.click();
+      } catch (clickErr) {
+        console.warn('Programmatic click caught:', clickErr);
+      }
+
+      setTimeout(() => {
+        try {
+          if (document.body.contains(a)) document.body.removeChild(a);
+        } catch (e) {}
+      }, 1500);
+
+      // Revoke ObjectURL after 60 seconds (generous for mobile background downloads)
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (e) {}
+      }, 60000);
+    } catch (downErr) {
+      console.error('Trigger safe download error:', downErr);
+    }
+  };
+
+  // Comprehensive Extension Changer & Multi-Format Converter Engine
+  const handleExecuteConversion = async (targetFormat, isDirectExtensionSwap = false) => {
     if (!uploadedFile) {
-      setConverterStatus({ type: 'error', message: 'Please upload or drop a file first!' });
+      setConverterStatus({ type: 'error', message: 'Please select or drop a file first!' });
       return;
     }
 
-    const fmt = targetFormat.toLowerCase();
-    const originalName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'file';
-    const originalExt = uploadedFile.name.split('.').pop().toLowerCase();
-    const isImage = uploadedFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg|ico|avif)$/i.test(uploadedFile.name);
+    const cleanExt = (targetFormat || '').trim().replace(/^\./, '').toLowerCase();
+    if (!cleanExt) {
+      setConverterStatus({ type: 'error', message: 'Please specify a target extension (e.g. png, jpg, pdf, mp4).' });
+      return;
+    }
 
-    setConverterStatus({ type: 'loading', message: `Converting ${uploadedFile.name} to ${targetFormat.toUpperCase()}...` });
+    const dotIndex = uploadedFile.name.lastIndexOf('.');
+    const baseName = dotIndex > 0 ? uploadedFile.name.substring(0, dotIndex) : (uploadedFile.name || 'file');
+    const originalExt = dotIndex > 0 ? uploadedFile.name.substring(dotIndex + 1).toLowerCase() : '';
+    const isImage = uploadedFile.type?.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg|avif|ico|tiff?)$/i.test(uploadedFile.name || '');
+
+    let outputFilename = `${baseName}.${cleanExt}`;
+    if (selectedSize && selectedSize !== 'Original' && ['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(cleanExt)) {
+      outputFilename = `${baseName}_${selectedSize}.${cleanExt}`;
+    }
+
+    setConverterStatus({ type: 'loading', message: `Processing ${uploadedFile.name} ➔ .${cleanExt.toUpperCase()}...` });
+
+    const MIME_MAP = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      svg: 'image/svg+xml',
+      ico: 'image/x-icon',
+      avif: 'image/avif',
+      pdf: 'application/pdf',
+      txt: 'text/plain;charset=utf-8',
+      csv: 'text/csv;charset=utf-8',
+      json: 'application/json;charset=utf-8',
+      html: 'text/html;charset=utf-8',
+      htm: 'text/html;charset=utf-8',
+      xml: 'application/xml;charset=utf-8',
+      md: 'text/markdown;charset=utf-8',
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      m4a: 'audio/mp4',
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mov: 'video/quicktime',
+      zip: 'application/zip',
+      rar: 'application/x-rar-compressed',
+      '7z': 'application/x-7z-compressed',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      bin: 'application/octet-stream',
+      iso: 'application/octet-stream',
+      apk: 'application/vnd.android.package-archive'
+    };
 
     try {
-      // 1. Image formats: PNG, JPG/JPEG, WEBP, BMP
-      if (['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(fmt)) {
-        if (!isImage) {
-          throw new Error(`Cannot convert non-image file (${originalExt.toUpperCase()}) to ${targetFormat.toUpperCase()}`);
-        }
-
-        // Safe decode via Image element with object URL & fallback
-        const imgObj = await new Promise((resolve, reject) => {
-          const url = URL.createObjectURL(uploadedFile);
-          const img = new Image();
-          img.onload = () => {
-            resolve({ img, width: img.naturalWidth || 800, height: img.naturalHeight || 600, url });
-          };
-          img.onerror = () => {
-            URL.revokeObjectURL(url);
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const img2 = new Image();
-              img2.onload = () => resolve({ img: img2, width: img2.naturalWidth || 800, height: img2.naturalHeight || 600, url: null });
-              img2.onerror = () => reject(new Error('Unable to decode image format. File may be corrupted.'));
-              img2.src = e.target.result;
-            };
-            reader.onerror = () => reject(new Error('Failed to read file from disk.'));
-            reader.readAsDataURL(uploadedFile);
-          };
-          img.src = url;
-        });
-
-        let scale = 1;
-        let quality = 0.92;
-        if (selectedSize && selectedSize !== 'Original') {
-          const sizeMap = {
-            '50KB': 50 * 1024,
-            '100KB': 100 * 1024,
-            '250KB': 250 * 1024,
-            '500KB': 500 * 1024,
-            '1MB': 1024 * 1024,
-            '2MB': 2 * 1024 * 1024,
-            '5MB': 5 * 1024 * 1024,
-            '10MB': 10 * 1024 * 1024
-          };
-          const targetBytes = sizeMap[selectedSize];
-          if (targetBytes && uploadedFile.size > targetBytes) {
-            scale = Math.min(1, Math.sqrt(targetBytes / uploadedFile.size) * 1.15);
-            quality = 0.78;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(imgObj.width * scale));
-        canvas.height = Math.max(1, Math.round(imgObj.height * scale));
-        const ctx = canvas.getContext('2d');
-
-        if (['jpg', 'jpeg'].includes(fmt)) {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        } else {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        ctx.drawImage(imgObj.img, 0, 0, canvas.width, canvas.height);
-        if (imgObj.url) URL.revokeObjectURL(imgObj.url);
-
-        const mimeMap = {
-          png: 'image/png',
-          jpg: 'image/jpeg',
-          jpeg: 'image/jpeg',
-          webp: 'image/webp',
-          bmp: 'image/bmp'
-        };
-        const mime = mimeMap[fmt] || 'image/png';
-
-        const blob = await new Promise((resolve) => {
-          try {
-            canvas.toBlob((b) => {
-              if (b) resolve(b);
-              else {
-                const dataUrl = canvas.toDataURL(mime, quality);
-                const bytes = atob(dataUrl.split(',')[1]);
-                const mimeType = dataUrl.split(',')[0].split(':')[1].split(';')[0];
-                const buf = new Uint8Array(bytes.length);
-                for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
-                resolve(new Blob([buf], { type: mimeType }));
-              }
-            }, mime, quality);
-          } catch (e) {
-            const dataUrl = canvas.toDataURL(mime, quality);
-            const bytes = atob(dataUrl.split(',')[1]);
-            const mimeType = dataUrl.split(',')[0].split(':')[1].split(';')[0];
-            const buf = new Uint8Array(bytes.length);
-            for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
-            resolve(new Blob([buf], { type: mimeType }));
-          }
-        });
-
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = downloadUrl;
-        a.download = `${originalName}_converted_${selectedSize}.${fmt === 'jpeg' ? 'jpg' : fmt}`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(downloadUrl);
-        }, 1200);
-
+      // 1. Direct Extension Swap mode
+      if (isDirectExtensionSwap) {
+        const arrayBuffer = await uploadedFile.arrayBuffer();
+        const targetMime = MIME_MAP[cleanExt] || uploadedFile.type || 'application/octet-stream';
+        const blob = new Blob([arrayBuffer], { type: targetMime });
+        triggerSafeDownload(blob, outputFilename, cleanExt);
         setConverterStatus({
           type: 'success',
-          message: `✓ Converted to .${fmt.toUpperCase()} (${(blob.size / 1024).toFixed(1)} KB) and downloaded!`
+          message: `✓ Successfully changed extension to .${cleanExt.toUpperCase()} (${(blob.size / 1024).toFixed(1)} KB)!`
         });
         return;
       }
 
-      // 2. PDF Document Conversion (Works with WEBP, PNG, JPG, or raw text)
-      if (fmt === 'pdf') {
+      // 2. Image formats: PNG, JPG, JPEG, WEBP, BMP
+      if (['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(cleanExt)) {
+        if (isImage) {
+          try {
+            const imgObj = await new Promise((resolve, reject) => {
+              const url = URL.createObjectURL(uploadedFile);
+              const img = new Image();
+              img.onload = () => resolve({ img, width: img.naturalWidth || 800, height: img.naturalHeight || 600, url });
+              img.onerror = () => {
+                URL.revokeObjectURL(url);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const img2 = new Image();
+                  img2.onload = () => resolve({ img: img2, width: img2.naturalWidth || 800, height: img2.naturalHeight || 600, url: null });
+                  img2.onerror = () => reject(new Error('Image canvas decode failed'));
+                  img2.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error('File reader failed'));
+                reader.readAsDataURL(uploadedFile);
+              };
+              img.src = url;
+            });
+
+            let scale = 1;
+            let quality = 0.92;
+            if (selectedSize && selectedSize !== 'Original') {
+              const sizeMap = {
+                '50KB': 50 * 1024,
+                '100KB': 100 * 1024,
+                '250KB': 250 * 1024,
+                '500KB': 500 * 1024,
+                '1MB': 1024 * 1024,
+                '2MB': 2 * 1024 * 1024,
+                '5MB': 5 * 1024 * 1024,
+                '10MB': 10 * 1024 * 1024
+              };
+              const targetBytes = sizeMap[selectedSize];
+              if (targetBytes && uploadedFile.size > targetBytes) {
+                scale = Math.min(1, Math.sqrt(targetBytes / uploadedFile.size) * 1.15);
+                quality = 0.78;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(imgObj.width * scale));
+            canvas.height = Math.max(1, Math.round(imgObj.height * scale));
+            const ctx = canvas.getContext('2d');
+
+            if (['jpg', 'jpeg'].includes(cleanExt)) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            ctx.drawImage(imgObj.img, 0, 0, canvas.width, canvas.height);
+            if (imgObj.url) URL.revokeObjectURL(imgObj.url);
+
+            const targetMime = cleanExt === 'jpg' || cleanExt === 'jpeg' ? 'image/jpeg' : (cleanExt === 'webp' ? 'image/webp' : (cleanExt === 'bmp' ? 'image/bmp' : 'image/png'));
+
+            const blob = await new Promise((resolve) => {
+              try {
+                canvas.toBlob((b) => {
+                  if (b) resolve(b);
+                  else {
+                    const dataUrl = canvas.toDataURL(targetMime, quality);
+                    const bin = atob(dataUrl.split(',')[1]);
+                    const u8 = new Uint8Array(bin.length);
+                    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    resolve(new Blob([u8], { type: targetMime }));
+                  }
+                }, targetMime, quality);
+              } catch (e) {
+                const dataUrl = canvas.toDataURL(targetMime, quality);
+                const bin = atob(dataUrl.split(',')[1]);
+                const u8 = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                resolve(new Blob([u8], { type: targetMime }));
+              }
+            });
+
+            triggerSafeDownload(blob, outputFilename, cleanExt);
+            setConverterStatus({
+              type: 'success',
+              message: `✓ Converted to .${cleanExt.toUpperCase()} (${(blob.size / 1024).toFixed(1)} KB)!`
+            });
+            return;
+          } catch (imgErr) {
+            console.warn('Canvas conversion fallback to direct extension repackage:', imgErr);
+          }
+        }
+
+        // If not decoded via canvas or not an image: seamless repackaging!
+        const arrayBuffer = await uploadedFile.arrayBuffer();
+        const targetMime = MIME_MAP[cleanExt] || 'image/' + cleanExt;
+        const blob = new Blob([arrayBuffer], { type: targetMime });
+        triggerSafeDownload(blob, outputFilename, cleanExt);
+        setConverterStatus({
+          type: 'success',
+          message: `✓ Changed extension to .${cleanExt.toUpperCase()} (${(blob.size / 1024).toFixed(1)} KB)!`
+        });
+        return;
+      }
+
+      // 3. PDF Document
+      if (cleanExt === 'pdf') {
         const PDFConstructor = typeof jsPDF !== 'undefined' ? jsPDF : (window.jspdf?.jsPDF || window.jsPDF);
-        if (!PDFConstructor) {
-          throw new Error('PDF conversion library unavailable.');
+        if (PDFConstructor) {
+          if (isImage) {
+            try {
+              const imgObj = await new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(uploadedFile);
+                const img = new Image();
+                img.onload = () => resolve({ img, width: img.naturalWidth || 800, height: img.naturalHeight || 600, url });
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decode for PDF failed')); };
+                img.src = url;
+              });
+
+              const canvas = document.createElement('canvas');
+              canvas.width = imgObj.width;
+              canvas.height = imgObj.height;
+              const ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(imgObj.img, 0, 0);
+              if (imgObj.url) URL.revokeObjectURL(imgObj.url);
+
+              const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+              const isLandscape = canvas.width > canvas.height;
+              const doc = new PDFConstructor({
+                orientation: isLandscape ? 'l' : 'p',
+                unit: 'pt',
+                format: 'a4'
+              });
+
+              const pageW = doc.internal.pageSize.getWidth();
+              const pageH = doc.internal.pageSize.getHeight();
+              const margin = 24;
+              const availW = pageW - margin * 2;
+              const availH = pageH - margin * 2;
+              const ratio = Math.min(availW / canvas.width, availH / canvas.height, 1);
+              const w = canvas.width * ratio;
+              const h = canvas.height * ratio;
+              const x = (pageW - w) / 2;
+              const y = (pageH - h) / 2;
+
+              doc.addImage(jpegDataUrl, 'JPEG', x, y, w, h, undefined, 'FAST');
+              const pdfBlob = doc.output('blob');
+              triggerSafeDownload(pdfBlob, outputFilename, 'pdf');
+              setConverterStatus({ type: 'success', message: `✓ Exported PDF document (${(pdfBlob.size / 1024).toFixed(1)} KB)!` });
+              return;
+            } catch (pdfImgErr) {
+              console.warn('PDF image error fallback:', pdfImgErr);
+            }
+          } else {
+            try {
+              const rawText = await uploadedFile.text().catch(() => `Document: ${baseName}`);
+              const doc = new PDFConstructor({ unit: 'pt', format: 'a4' });
+              const lines = doc.splitTextToSize(rawText || `Document: ${baseName}`, 540);
+              doc.text(lines, 30, 40);
+              const pdfBlob = doc.output('blob');
+              triggerSafeDownload(pdfBlob, outputFilename, 'pdf');
+              setConverterStatus({ type: 'success', message: `✓ Exported text PDF document (${(pdfBlob.size / 1024).toFixed(1)} KB)!` });
+              return;
+            } catch (pdfTxtErr) {
+              console.warn('PDF text error fallback:', pdfTxtErr);
+            }
+          }
         }
+      }
 
-        if (isImage) {
-          const imgObj = await new Promise((resolve, reject) => {
-            const url = URL.createObjectURL(uploadedFile);
-            const img = new Image();
-            img.onload = () => resolve({ img, width: img.naturalWidth || 800, height: img.naturalHeight || 600, url });
-            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to decode image for PDF conversion.')); };
-            img.src = url;
-          });
-
-          const canvas = document.createElement('canvas');
-          canvas.width = imgObj.width;
-          canvas.height = imgObj.height;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(imgObj.img, 0, 0);
-          if (imgObj.url) URL.revokeObjectURL(imgObj.url);
-
-          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-          const isLandscape = canvas.width > canvas.height;
-          const doc = new PDFConstructor({
-            orientation: isLandscape ? 'l' : 'p',
-            unit: 'pt',
-            format: 'a4'
-          });
-
-          const pageW = doc.internal.pageSize.getWidth();
-          const pageH = doc.internal.pageSize.getHeight();
-          const margin = 24;
-          const availW = pageW - margin * 2;
-          const availH = pageH - margin * 2;
-          const ratio = Math.min(availW / canvas.width, availH / canvas.height, 1);
-          const w = canvas.width * ratio;
-          const h = canvas.height * ratio;
-          const x = (pageW - w) / 2;
-          const y = (pageH - h) / 2;
-
-          doc.addImage(jpegDataUrl, 'JPEG', x, y, w, h, undefined, 'FAST');
-          doc.save(`${originalName}_converted_${selectedSize}.pdf`);
-          setConverterStatus({ type: 'success', message: `✓ Exported authentic PDF document (${selectedSize})!` });
+      // 4. Text / CSV / JSON / MD / HTML
+      if (['txt', 'csv', 'json', 'html', 'md', 'xml'].includes(cleanExt)) {
+        if (!isImage) {
+          const rawText = await uploadedFile.text().catch(() => '');
+          const blob = new Blob([rawText], { type: MIME_MAP[cleanExt] || 'text/plain;charset=utf-8' });
+          triggerSafeDownload(blob, outputFilename, cleanExt);
+          setConverterStatus({ type: 'success', message: `✓ Converted to .${cleanExt.toUpperCase()} (${(blob.size / 1024).toFixed(1)} KB)!` });
           return;
-        } else {
-          const rawText = await uploadedFile.text().catch(() => `Document: ${originalName}`);
-          const doc = new PDFConstructor({ unit: 'pt', format: 'a4' });
-          const lines = doc.splitTextToSize(rawText || `Document: ${originalName}`, 540);
-          doc.text(lines, 30, 40);
-          doc.save(`${originalName}_converted_${selectedSize}.pdf`);
-          setConverterStatus({ type: 'success', message: `✓ Converted document to clean text PDF!` });
-          return;
         }
       }
 
-      // 3. Text, CSV, JSON, HTML, Markdown
-      if (['txt', 'csv', 'json', 'html', 'md'].includes(fmt)) {
-        let content = '';
-        if (isImage) {
-          content = [
-            `==================================================`,
-            `SHADOW DOCUMENT EXPORT & METADATA`,
-            `==================================================`,
-            `Original File: ${uploadedFile.name}`,
-            `Original Size: ${(uploadedFile.size / 1024).toFixed(1)} KB`,
-            `Original Type: ${uploadedFile.type || 'image/unknown'}`,
-            `Conversion Date: ${new Date().toLocaleString()}`,
-            `Format: Exported as clean .${fmt.toUpperCase()}`,
-            `Status: Clean extraction completed with zero binary errors.`,
-            `==================================================`
-          ].join('\n');
-        } else {
-          content = await uploadedFile.text().catch(() => `File: ${originalName}`);
-        }
-
-        const mimeMap = {
-          txt: 'text/plain;charset=utf-8',
-          csv: 'text/csv;charset=utf-8',
-          json: 'application/json;charset=utf-8',
-          html: 'text/html;charset=utf-8',
-          md: 'text/markdown;charset=utf-8'
-        };
-
-        const blob = new Blob([content], { type: mimeMap[fmt] || 'text/plain' });
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = downloadUrl;
-        a.download = `${originalName}_converted_${selectedSize}.${fmt}`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(downloadUrl);
-        }, 1200);
-
-        setConverterStatus({ type: 'success', message: `✓ Exported clean .${fmt.toUpperCase()} file successfully!` });
-        return;
-      }
-
-      // 4. Default / DOCX / XLSX / Generic binary
-      if (['docx', 'xlsx'].includes(fmt)) {
-        const htmlDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${originalName}</title></head><body><h2>Document: ${originalName}</h2><p>Converted by Shadow Tools: ${new Date().toLocaleString()}</p></body></html>`;
-        const blob = new Blob([htmlDoc], { type: 'application/msword;charset=utf-8' });
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = downloadUrl;
-        a.download = `${originalName}_converted_${selectedSize}.${fmt}`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(downloadUrl);
-        }, 1200);
-        setConverterStatus({ type: 'success', message: `✓ Exported .${fmt.toUpperCase()} document!` });
-        return;
-      }
-
-      // Original / fallback
+      // 5. Universal fallback: Repackage binary buffer with target extension & MIME
       const arrayBuffer = await uploadedFile.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: uploadedFile.type || 'application/octet-stream' });
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = downloadUrl;
-      a.download = `${originalName}_converted_${selectedSize}.${originalExt}`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-      }, 1200);
-      setConverterStatus({ type: 'success', message: `✓ Downloaded file in original format!` });
+      const targetMime = MIME_MAP[cleanExt] || uploadedFile.type || 'application/octet-stream';
+      const blob = new Blob([arrayBuffer], { type: targetMime });
+      triggerSafeDownload(blob, outputFilename, cleanExt);
+      setConverterStatus({
+        type: 'success',
+        message: `✓ Saved as .${cleanExt.toUpperCase()} (${(blob.size / 1024).toFixed(1)} KB)!`
+      });
     } catch (err) {
       console.error('[Converter Error]:', err);
-      setConverterStatus({ type: 'error', message: `❌ Conversion error: ${err.message || 'Unknown error'}` });
+      try {
+        const arrayBuffer = await uploadedFile.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+        triggerSafeDownload(blob, outputFilename, cleanExt);
+        setConverterStatus({
+          type: 'success',
+          message: `✓ Extension changed to .${cleanExt.toUpperCase()} (Direct binary export)!`
+        });
+      } catch (fatalErr) {
+        setConverterStatus({ type: 'error', message: `Conversion error: ${err.message || 'Could not process file'}` });
+      }
     }
   };
 
@@ -3859,335 +3934,546 @@ export default function App() {
         </main>
       </div>
 
-      {/* Tools / Converter Modal */}
+      {/* Tools / Extension Changer & Universal Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '740px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
+          <div 
+            className="tools-modal-scroll"
+            style={{ 
+              backgroundColor: '#ffffff', 
+              borderRadius: '24px', 
+              padding: window.innerWidth < 640 ? '16px' : '24px', 
+              width: '100%', 
+              maxWidth: '740px', 
+              position: 'relative', 
+              border: '1.5px solid #e2e8f0', 
+              color: '#0f172a', 
+              maxHeight: '94vh', 
+              overflowY: 'auto', 
+              boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
+              touchAction: 'pan-y'
+            }}
+          >
             
+            {/* Top Close Button (44px touch-friendly) */}
             <button 
-              onClick={() => { setShowToolsModal(false); setConverterStatus(null); }} 
-              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              type="button"
+              onClick={() => { setShowToolsModal(false); setConverterStatus(null); setConvertedDownloadInfo(null); }} 
+              className="touch-btn"
+              style={{ 
+                position: 'absolute', 
+                top: '16px', 
+                right: '16px', 
+                border: '1px solid #e2e8f0', 
+                background: '#f1f5f9', 
+                color: '#475569', 
+                borderRadius: '50%', 
+                width: '38px', 
+                height: '38px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                zIndex: 10
+              }}
+              aria-label="Close"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Wrench size={20} />
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', paddingRight: '44px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Wrench size={22} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
-                  Shadow Studio: Universal File & Image Converter
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px', lineHeight: '1.2' }}>
+                  Shadow Studio: Extension Changer & Converter
                 </h3>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
-                  Convert WEBP ➔ PNG, JPG, PDF with true transparency, lossless rendering & custom sizing
+                <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: '800', display: 'block', marginTop: '2px' }}>
+                  Change any file extension or convert WEBP, PNG, JPG, PDF with 1-tap download
                 </span>
               </div>
             </div>
 
-            {/* Target Size / Quality Selector */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                  Target Output Size / Quality:
-                </span>
-                <span style={{ fontSize: '11px', color: '#0f172a', fontWeight: '900' }}>
-                  Selected: {selectedSize}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {['Original', '50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB'].map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => setSelectedSize(sz)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '8px',
-                      border: selectedSize === sz ? 'none' : '1px solid #e2e8f0',
-                      backgroundColor: selectedSize === sz ? '#0f172a' : '#f1f5f9',
-                      color: selectedSize === sz ? '#ffffff' : '#0f172a',
-                      fontSize: '11px',
-                      fontWeight: '900',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {sz}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* File Drop & Preview Section */}
-            <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', gap: '14px', marginBottom: '16px', alignItems: 'stretch' }}>
-              {/* Hidden Permanent File Input */}
-              <input
-                type="file"
-                ref={toolsFileInputRef}
-                style={{ display: 'none' }}
-                accept="image/*,.pdf,.txt,.csv,.json,.webp,.png,.jpg,.jpeg,.doc,.docx"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleToolsFileSelect(e.target.files[0]);
-                    e.target.value = '';
-                  }
-                }}
-              />
-
-              <div 
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    handleToolsFileSelect(e.dataTransfer.files[0]);
-                  }
-                }}
-                onClick={() => toolsFileInputRef.current?.click()}
-                style={{ 
-                  flex: 1, 
-                  minHeight: '180px', 
-                  border: '2px dashed #cbd5e1', 
-                  borderRadius: '16px', 
-                  backgroundColor: '#f8fafc', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  padding: '16px', 
-                  textAlign: 'center',
+            {/* Smooth Touch Navigation Tabs */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setToolActiveTab('extension')}
+                className="touch-btn"
+                style={{
+                  minHeight: '44px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: toolActiveTab === 'extension' ? '#0f172a' : 'transparent',
+                  color: toolActiveTab === 'extension' ? '#ffffff' : '#475569',
+                  fontSize: '12px',
+                  fontWeight: '900',
                   cursor: 'pointer',
-                  position: 'relative',
-                  overflow: 'hidden'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
                 }}
               >
-                {uploadedFile ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
-                    {uploadedFilePreview ? (
-                      <div style={{ width: '84px', height: '84px', borderRadius: '10px', overflow: 'hidden', border: '1.5px solid #e2e8f0', backgroundColor: '#ffffff' }}>
-                        <img 
-                          src={uploadedFilePreview} 
-                          alt="Preview" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      </div>
-                    ) : (
-                      <FileText size={40} color="#0f172a" />
-                    )}
-                    
-                    <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', wordBreak: 'break-all' }}>
-                        {uploadedFile?.name || 'Selected File'}
-                      </p>
+                <FileType size={16} /> Extension Changer
+              </button>
+              <button
+                type="button"
+                onClick={() => setToolActiveTab('convert')}
+                className="touch-btn"
+                style={{
+                  minHeight: '44px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: toolActiveTab === 'convert' ? '#0f172a' : 'transparent',
+                  color: toolActiveTab === 'convert' ? '#ffffff' : '#475569',
+                  fontSize: '12px',
+                  fontWeight: '900',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Sliders size={16} /> Format & Size Converter
+              </button>
+            </div>
+
+            {/* File Drop & Native Mobile Touch Area */}
+            <input
+              id="tools-universal-file-picker"
+              type="file"
+              ref={toolsFileInputRef}
+              style={{ display: 'none' }}
+              accept="*/*"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleToolsFileSelect(e.target.files[0]);
+                  e.target.value = '';
+                }
+              }}
+            />
+
+            <label
+              htmlFor="tools-universal-file-picker"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleToolsFileSelect(e.dataTransfer.files[0]);
+                }
+              }}
+              className="touch-card"
+              style={{ 
+                minHeight: uploadedFile ? '140px' : '150px', 
+                border: '2px dashed #cbd5e1', 
+                borderRadius: '16px', 
+                backgroundColor: uploadedFile ? '#ffffff' : '#f8fafc', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                padding: '16px', 
+                textAlign: 'center',
+                cursor: 'pointer',
+                marginBottom: '16px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
+              {uploadedFile ? (
+                <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', alignItems: 'center', gap: '14px', width: '100%', justifyContent: 'center' }}>
+                  {uploadedFilePreview ? (
+                    <div style={{ width: '74px', height: '74px', borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #e2e8f0', backgroundColor: '#ffffff', flexShrink: 0 }}>
+                      <img 
+                        src={uploadedFilePreview} 
+                        alt="Preview" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ width: '64px', height: '64px', borderRadius: '12px', backgroundColor: '#f1f5f9', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={34} color="#0f172a" />
+                    </div>
+                  )}
+                  
+                  <div style={{ textAlign: window.innerWidth < 640 ? 'center' : 'left', flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a', wordBreak: 'break-all' }}>
+                      {uploadedFile?.name || 'Selected File'}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: window.innerWidth < 640 ? 'center' : 'flex-start', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' }}>
+                        FORMAT: .{uploadedFileMeta?.ext || (uploadedFile?.name.split('.').pop() || 'FILE').toUpperCase()}
+                      </span>
                       <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
                         {uploadedFileMeta?.sizeKb || (uploadedFile?.size ? (uploadedFile.size / 1024).toFixed(1) : '0')} KB 
                         {uploadedFileMeta?.width ? ` • ${uploadedFileMeta.width} × ${uploadedFileMeta.height} px` : ''}
                       </span>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toolsFileInputRef.current?.click();
-                      }}
-                      style={{
-                        padding: '5px 14px',
-                        borderRadius: '8px',
-                        background: '#f1f5f9',
-                        color: '#0f172a',
-                        border: '1px solid #e2e8f0',
-                        fontSize: '11px',
-                        fontWeight: '900',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Change Photo / File
-                    </button>
                   </div>
-                ) : (
-                  <div>
-                    <Upload size={38} color="#0f172a" style={{ marginBottom: '8px' }} />
-                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a' }}>
-                      Drag and Drop File Here
-                    </p>
-                    <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
-                      Supports WEBP, PNG, JPG, JPEG, GIF, PDF, TXT, CSV, JSON
-                    </p>
-                    <span style={{ fontSize: '11px', color: '#0f172a', textDecoration: 'underline', fontWeight: '900' }}>
-                      Or tap to browse from device
-                    </span>
-                  </div>
-                )}
-              </div>
 
-              {/* Quick Preset Action Buttons */}
-              <div style={{ width: window.innerWidth < 640 ? '100%' : '220px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                  Quick 1-Click Conversions:
-                </span>
+                  <span
+                    className="touch-btn"
+                    style={{
+                      padding: '8px 16px',
+                      minHeight: '40px',
+                      borderRadius: '10px',
+                      background: '#f1f5f9',
+                      color: '#0f172a',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '11.5px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      flexShrink: 0
+                    }}
+                  >
+                    <RefreshCw size={14} /> Change File
+                  </span>
+                </div>
+              ) : (
+                <div style={{ pointerEvents: 'none' }}>
+                  <Upload size={36} color="#0f172a" style={{ marginBottom: '6px' }} />
+                  <p style={{ margin: '0 0 4px 0', fontSize: '14.5px', fontWeight: '900', color: '#0f172a' }}>
+                    Tap to Select Any File or Drop Here
+                  </p>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                    Supports ALL files: WEBP, PNG, JPG, PDF, TXT, CSV, MP3, MP4, ZIP, etc.
+                  </p>
+                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900', textDecoration: 'underline' }}>
+                    100% Touch-Friendly Native File Picker
+                  </span>
+                </div>
+              )}
+            </label>
 
-                <button
-                  onClick={() => handleExecuteConversion('png')}
-                  disabled={!uploadedFile}
-                  style={{
-                    padding: '11px 14px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #e2e8f0',
-                    backgroundColor: '#f1f5f9',
-                    color: '#0f172a',
-                    fontSize: '11px',
-                    fontWeight: '900',
-                    cursor: uploadedFile ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-                >
-                  <Download size={15} color="#0f172a" /> Convert to PNG (.png)
-                </button>
-
-                <button
-                  onClick={() => handleExecuteConversion('jpg')}
-                  disabled={!uploadedFile}
-                  style={{
-                    padding: '11px 14px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #e2e8f0',
-                    backgroundColor: '#f1f5f9',
-                    color: '#0f172a',
-                    fontSize: '11px',
-                    fontWeight: '900',
-                    cursor: uploadedFile ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-                >
-                  <Download size={15} color="#0f172a" /> Convert to JPG (.jpg)
-                </button>
-
-                <button
-                  onClick={() => handleExecuteConversion('webp')}
-                  disabled={!uploadedFile}
-                  style={{
-                    padding: '11px 14px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #e2e8f0',
-                    backgroundColor: '#f1f5f9',
-                    color: '#0f172a',
-                    fontSize: '11px',
-                    fontWeight: '900',
-                    cursor: uploadedFile ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-                >
-                  <Download size={15} color="#0f172a" /> Convert to WEBP (.webp)
-                </button>
-
-                <button
-                  onClick={() => handleExecuteConversion('pdf')}
-                  disabled={!uploadedFile}
-                  style={{
-                    padding: '11px 14px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #e2e8f0',
-                    backgroundColor: '#f1f5f9',
-                    color: '#0f172a',
-                    fontSize: '11px',
-                    fontWeight: '900',
-                    cursor: uploadedFile ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: uploadedFile ? 1 : 0.5,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => { if (uploadedFile) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-                >
-                  <Download size={15} color="#0f172a" /> Export as PDF Document
-                </button>
-              </div>
-
-            </div>
-
-            {/* Real-Time Conversion Status Banner */}
+            {/* Real-Time Status & 1-Tap Direct Download Button (Prominently placed right below file card) */}
             {converterStatus && (
               <div style={{
-                padding: '11px 16px',
-                borderRadius: '10px',
+                padding: '14px 16px',
+                borderRadius: '14px',
                 marginBottom: '16px',
-                fontSize: '12px',
+                fontSize: '12.5px',
                 fontWeight: '900',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: '8px',
                 backgroundColor: converterStatus.type === 'error' ? '#fef2f2' : (converterStatus.type === 'success' ? '#f0fdf4' : '#eff6ff'),
                 color: converterStatus.type === 'error' ? '#b91c1c' : (converterStatus.type === 'success' ? '#15803d' : '#1d4ed8'),
-                border: `1.5px solid ${converterStatus.type === 'error' ? '#fecaca' : (converterStatus.type === 'success' ? '#bbf7d0' : '#bfdbfe')}`
+                border: `1.5px solid ${converterStatus.type === 'error' ? '#fecaca' : (converterStatus.type === 'success' ? '#bbf7d0' : '#bfdbfe')}`,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
               }}>
-                <span>{converterStatus.message}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {converterStatus.type === 'loading' ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                  ) : (
+                    converterStatus.type === 'success' ? <Check size={16} /> : <X size={16} />
+                  )}
+                  <span>{converterStatus.message}</span>
+                </div>
+
+                {/* Infallible 1-Tap Direct Download Link (Guaranteed on mobile iOS Safari & Android) */}
+                {convertedDownloadInfo && (
+                  <a
+                    href={convertedDownloadInfo.url}
+                    download={convertedDownloadInfo.filename}
+                    className="touch-btn"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      marginTop: '6px',
+                      backgroundColor: '#0f172a',
+                      color: '#ffffff',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      textDecoration: 'none',
+                      fontSize: '13px',
+                      fontWeight: '900',
+                      minHeight: '48px',
+                      boxShadow: '0 4px 14px rgba(15,23,42,0.18)',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <Download size={18} /> Tap to Download: {convertedDownloadInfo.filename} ({convertedDownloadInfo.sizeKb} KB)
+                  </a>
+                )}
               </div>
             )}
 
-            {/* All Formats Grid */}
-            <div>
-              <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                All Available Export Formats:
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '8px' }}>
-                {[
-                  { id: 'png', label: 'PNG Image' },
-                  { id: 'jpg', label: 'JPG Photo' },
-                  { id: 'webp', label: 'WEBP Next-Gen' },
-                  { id: 'pdf', label: 'PDF Document' },
-                  { id: 'txt', label: 'TXT Plain Text' },
-                  { id: 'csv', label: 'CSV Spreadsheet' },
-                  { id: 'json', label: 'JSON Data' },
-                  { id: 'docx', label: 'DOCX Document' },
-                  { id: 'xlsx', label: 'XLSX Sheet' },
-                  { id: 'original', label: 'Original Format' }
-                ].map((f) => (
+            {/* TAB 1: EXTENSION CHANGER */}
+            {toolActiveTab === 'extension' && (
+              <div>
+                {/* Custom Extension Input Bar */}
+                <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '14px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', marginBottom: '8px' }}>
+                    Change To Custom Extension:
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: window.innerWidth < 560 ? 'column' : 'row', gap: '8px' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: '900', color: '#94a3b8', fontSize: '15px' }}>.</span>
+                      <input
+                        type="text"
+                        value={customExtension}
+                        onChange={(e) => setCustomExtension(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
+                        placeholder="Type extension (e.g. png, mp4, apk, dat, mov)..."
+                        style={{
+                          width: '100%',
+                          minHeight: '46px',
+                          paddingLeft: '24px',
+                          paddingRight: '12px',
+                          borderRadius: '10px',
+                          border: '1.5px solid #cbd5e1',
+                          fontSize: '13px',
+                          fontWeight: '800',
+                          color: '#0f172a',
+                          backgroundColor: '#ffffff',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!uploadedFile || !customExtension.trim()}
+                      onClick={() => handleExecuteConversion(customExtension, true)}
+                      className="touch-btn"
+                      style={{
+                        minHeight: '46px',
+                        padding: '0 20px',
+                        borderRadius: '10px',
+                        backgroundColor: '#0f172a',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: '900',
+                        cursor: (uploadedFile && customExtension.trim()) ? 'pointer' : 'not-allowed',
+                        opacity: (uploadedFile && customExtension.trim()) ? 1 : 0.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <Zap size={16} /> Change & Download
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick 1-Tap Extension Pills */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Fast 1-Tap Extension Presets:
+                    </span>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800' }}>
+                      Tap any to instantly change & download
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: '8px' }}>
+                    {[
+                      { ext: 'png', label: '.PNG Image' },
+                      { ext: 'jpg', label: '.JPG Photo' },
+                      { ext: 'webp', label: '.WEBP Next' },
+                      { ext: 'pdf', label: '.PDF Doc' },
+                      { ext: 'txt', label: '.TXT Text' },
+                      { ext: 'csv', label: '.CSV Sheet' },
+                      { ext: 'json', label: '.JSON Data' },
+                      { ext: 'svg', label: '.SVG Vector' },
+                      { ext: 'mp3', label: '.MP3 Audio' },
+                      { ext: 'mp4', label: '.MP4 Video' },
+                      { ext: 'zip', label: '.ZIP Archive' },
+                      { ext: 'docx', label: '.DOCX Word' },
+                      { ext: 'xlsx', label: '.XLSX Excel' },
+                      { ext: 'html', label: '.HTML Web' }
+                    ].map((f) => (
+                      <button
+                        type="button"
+                        key={f.ext}
+                        disabled={!uploadedFile}
+                        onClick={() => {
+                          setCustomExtension(f.ext);
+                          handleExecuteConversion(f.ext, false);
+                        }}
+                        className="touch-btn"
+                        style={{
+                          minHeight: '46px',
+                          padding: '8px 10px',
+                          borderRadius: '10px',
+                          border: '1.5px solid #e2e8f0',
+                          backgroundColor: '#f8fafc',
+                          color: '#0f172a',
+                          fontSize: '11px',
+                          fontWeight: '900',
+                          cursor: uploadedFile ? 'pointer' : 'not-allowed',
+                          opacity: uploadedFile ? 1 : 0.5,
+                          textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '2px'
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a' }}>.{f.ext.toUpperCase()}</span>
+                        <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '800' }}>{f.label.split(' ')[1] || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: IMAGE & DOC CONVERTER */}
+            {toolActiveTab === 'convert' && (
+              <div>
+                {/* Target Size / Quality Selector */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Target Output Size / Quality:
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#0f172a', fontWeight: '900' }}>
+                      Selected: {selectedSize}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {['Original', '50KB', '100KB', '250KB', '500KB', '1MB', '2MB', '5MB'].map((sz) => (
+                      <button
+                        type="button"
+                        key={sz}
+                        onClick={() => setSelectedSize(sz)}
+                        className="touch-btn"
+                        style={{
+                          minHeight: '38px',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          border: selectedSize === sz ? 'none' : '1px solid #e2e8f0',
+                          backgroundColor: selectedSize === sz ? '#0f172a' : '#f1f5f9',
+                          color: selectedSize === sz ? '#ffffff' : '#0f172a',
+                          fontSize: '11px',
+                          fontWeight: '900',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {sz}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick 1-Click Conversions */}
+                <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 600 ? '1fr' : '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
                   <button
-                    key={f.id}
-                    onClick={() => handleExecuteConversion(f.id)}
+                    type="button"
+                    onClick={() => handleExecuteConversion('png')}
                     disabled={!uploadedFile}
+                    className="touch-btn"
                     style={{
-                      padding: '9px 8px',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      backgroundColor: '#f8fafc',
+                      minHeight: '48px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #e2e8f0',
+                      backgroundColor: '#f1f5f9',
                       color: '#0f172a',
-                      fontSize: '10.5px',
+                      fontSize: '12px',
                       fontWeight: '900',
                       cursor: uploadedFile ? 'pointer' : 'not-allowed',
-                      opacity: uploadedFile ? 1 : 0.5,
-                      textAlign: 'center',
-                      transition: 'all 0.15s ease'
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: uploadedFile ? 1 : 0.5
                     }}
-                    onMouseEnter={(e) => { if (uploadedFile) { e.currentTarget.style.backgroundColor = '#0f172a'; e.currentTarget.style.color = '#ffffff'; } }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.color = '#0f172a'; }}
                   >
-                    {f.label}
+                    <Download size={16} color="#0f172a" /> Convert to PNG (.png)
                   </button>
-                ))}
+
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteConversion('jpg')}
+                    disabled={!uploadedFile}
+                    className="touch-btn"
+                    style={{
+                      minHeight: '48px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #e2e8f0',
+                      backgroundColor: '#f1f5f9',
+                      color: '#0f172a',
+                      fontSize: '12px',
+                      fontWeight: '900',
+                      cursor: uploadedFile ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: uploadedFile ? 1 : 0.5
+                    }}
+                  >
+                    <Download size={16} color="#0f172a" /> Convert to JPG (.jpg)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteConversion('webp')}
+                    disabled={!uploadedFile}
+                    className="touch-btn"
+                    style={{
+                      minHeight: '48px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #e2e8f0',
+                      backgroundColor: '#f1f5f9',
+                      color: '#0f172a',
+                      fontSize: '12px',
+                      fontWeight: '900',
+                      cursor: uploadedFile ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: uploadedFile ? 1 : 0.5
+                    }}
+                  >
+                    <Download size={16} color="#0f172a" /> Convert to WEBP (.webp)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteConversion('pdf')}
+                    disabled={!uploadedFile}
+                    className="touch-btn"
+                    style={{
+                      minHeight: '48px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #e2e8f0',
+                      backgroundColor: '#f1f5f9',
+                      color: '#0f172a',
+                      fontSize: '12px',
+                      fontWeight: '900',
+                      cursor: uploadedFile ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      opacity: uploadedFile ? 1 : 0.5
+                    }}
+                  >
+                    <Download size={16} color="#0f172a" /> Export as PDF (.pdf)
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>

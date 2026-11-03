@@ -321,3 +321,27 @@
     animation: watcher-alert-pop 450ms ease-out both;
   }
 }
+
+/* Touch-Optimized Tools & Extension Changer Styles */
+.touch-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.touch-btn:active {
+  transform: scale(0.96);
+}
+.touch-card {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
+}
+.touch-card:active {
+  transform: scale(0.995);
+}
+.tools-modal-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
