@@ -3614,6 +3614,8 @@ export default function App() {
         {/* Profile & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
+            type="button"
+            className="touch-btn"
             onClick={() => {
               if (userProfile) {
                 setShowProfileModal(true);
@@ -3637,7 +3639,8 @@ export default function App() {
               width: '38px',
               height: '38px',
               overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              touchAction: 'manipulation'
             }}
           >
             {userProfile ? (
@@ -3744,6 +3747,40 @@ export default function App() {
             >
               {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
               <span className="mobile-hide-text">{isMuted ? "MUTED" : "SOUND ON"}</span>
+            </button>
+
+            {/* Quick Profile / Login Header Button */}
+            <button 
+              type="button"
+              onClick={() => {
+                if (userProfile) {
+                  setShowProfileModal(true);
+                } else {
+                  setAuthMode('login');
+                  setShowAuthModal(true);
+                }
+              }} 
+              title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
+              className="header-btn touch-btn"
+              style={{
+                border: '1px solid #e2e8f0',
+                background: userProfile ? '#f0fdf4' : '#f8fafc',
+                color: userProfile ? '#166534' : '#0f172a',
+                padding: '7px 11px',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontWeight: '900',
+                fontSize: '11px',
+                letterSpacing: '0.3px',
+                transition: 'all 0.15s ease',
+                touchAction: 'manipulation'
+              }}
+            >
+              <UserCircle size={15} />
+              <span>{userProfile ? (userProfile.name?.split(' ')[0] || 'PROFILE') : 'LOG IN'}</span>
             </button>
           </div>
         </header>
@@ -5802,6 +5839,254 @@ export default function App() {
                 SWITCH ACCOUNT
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Authentication & Account Modal (Log In / Sign Up) */}
+      {showAuthModal && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAuthModal(false);
+          }}
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            backgroundColor: 'rgba(15, 23, 42, 0.55)', 
+            backdropFilter: 'blur(8px)', 
+            zIndex: 350, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '16px' 
+          }}
+        >
+          <div 
+            style={{ 
+              backgroundColor: '#ffffff', 
+              borderRadius: '24px', 
+              padding: '28px 24px', 
+              width: '100%', 
+              maxWidth: '380px', 
+              position: 'relative', 
+              border: '1.5px solid #e2e8f0', 
+              color: '#0f172a', 
+              textAlign: 'center', 
+              boxShadow: '0 25px 60px rgba(0,0,0,0.18)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Close Button */}
+            <button 
+              type="button"
+              onClick={() => setShowAuthModal(false)} 
+              className="touch-btn"
+              style={{ 
+                position: 'absolute', 
+                top: '16px', 
+                right: '16px', 
+                border: '1px solid #e2e8f0', 
+                background: '#f8fafc', 
+                color: '#64748b', 
+                borderRadius: '50%', 
+                width: '32px', 
+                height: '32px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Profile Icon Header */}
+            <div style={{ width: '52px', height: '52px', borderRadius: '16px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px auto', boxShadow: '0 4px 14px rgba(15,23,42,0.18)' }}>
+              <UserCircle size={28} />
+            </div>
+
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
+              {authMode === 'login' ? 'Welcome to Shadow' : 'Create Your Account'}
+            </h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '11.5px', color: '#64748b', fontWeight: '800', lineHeight: '1.45', padding: '0 8px' }}>
+              {authMode === 'login' 
+                ? 'Sign in to access your cloud-synced notes, expenses, reminders and routes.' 
+                : 'Sign up to enable instant cross-device cloud sync and personal notifications.'}
+            </p>
+
+            {/* Log In & Sign Up Tab Selector */}
+            <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: '12px', padding: '4px', marginBottom: '18px', border: '1px solid #e2e8f0' }}>
+              <button 
+                type="button"
+                onClick={() => setAuthMode('login')}
+                className="touch-btn"
+                style={{ 
+                  flex: 1, 
+                  padding: '9px', 
+                  borderRadius: '9px', 
+                  border: 'none', 
+                  backgroundColor: authMode === 'login' ? '#0f172a' : 'transparent', 
+                  color: authMode === 'login' ? '#ffffff' : '#64748b', 
+                  fontWeight: '900', 
+                  fontSize: '12px', 
+                  cursor: 'pointer', 
+                  transition: 'all 0.15s ease',
+                  boxShadow: authMode === 'login' ? '0 2px 8px rgba(15,23,42,0.2)' : 'none'
+                }}
+              >
+                Log In
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAuthMode('signup')}
+                className="touch-btn"
+                style={{ 
+                  flex: 1, 
+                  padding: '9px', 
+                  borderRadius: '9px', 
+                  border: 'none', 
+                  backgroundColor: authMode === 'signup' ? '#0f172a' : 'transparent', 
+                  color: authMode === 'signup' ? '#ffffff' : '#64748b', 
+                  fontWeight: '900', 
+                  fontSize: '12px', 
+                  cursor: 'pointer', 
+                  transition: 'all 0.15s ease',
+                  boxShadow: authMode === 'signup' ? '0 2px 8px rgba(15,23,42,0.2)' : 'none'
+                }}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            {/* Google GSI Standard One-Tap / Account Chooser */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '44px', marginBottom: '10px' }}>
+              <div ref={googleBtnRef}></div>
+            </div>
+
+            {/* Fallback Direct Google 1-Click Popup Button */}
+            <button 
+              type="button"
+              disabled={isAuthLoading}
+              onClick={() => triggerGoogleAuth(authMode)}
+              className="touch-btn"
+              style={{ 
+                width: '100%', 
+                padding: '12px', 
+                borderRadius: '12px', 
+                border: '1.5px solid #0f172a', 
+                backgroundColor: '#ffffff', 
+                color: '#0f172a', 
+                fontWeight: '900', 
+                fontSize: '12.5px', 
+                cursor: isAuthLoading ? 'wait' : 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '10px',
+                marginBottom: '16px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+              }}
+            >
+              {/* Google G Logo SVG */}
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>{isAuthLoading ? 'Opening Google Sign-In...' : (authMode === 'login' ? 'Continue with Google' : 'Sign Up with Google')}</span>
+            </button>
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+              <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '900', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                or quick email access
+              </span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+            </div>
+
+            {/* Direct Email Access Form */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const em = (directEmailInput || '').trim();
+                if (!em || !em.includes('@')) {
+                  alert('Please enter a valid Gmail / Email address.');
+                  return;
+                }
+                processAuthWithBackend(em, em.split('@')[0], '', authMode);
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+            >
+              <input 
+                type="email" 
+                value={directEmailInput}
+                onChange={(e) => setDirectEmailInput(e.target.value)}
+                placeholder="Enter your Gmail / Email"
+                required
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #cbd5e1',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  color: '#0f172a',
+                  backgroundColor: '#f8fafc',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+
+              <button 
+                type="submit"
+                disabled={isAuthLoading}
+                className="touch-btn"
+                style={{
+                  width: '100%',
+                  padding: '11px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: '#0f172a',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontWeight: '900',
+                  cursor: isAuthLoading ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 8px rgba(15,23,42,0.15)'
+                }}
+              >
+                {authMode === 'login' ? <LogIn size={15} /> : <UserPlus size={15} />}
+                <span>{authMode === 'login' ? 'Log In with Email' : 'Sign Up with Email'}</span>
+              </button>
+            </form>
+
+            {/* Switch Mode Footer */}
+            <div style={{ marginTop: '16px', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+              {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+              <button 
+                type="button"
+                onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0f172a',
+                  fontWeight: '900',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  fontSize: '11px'
+                }}
+              >
+                {authMode === 'login' ? 'Sign Up here' : 'Log In here'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
