@@ -577,6 +577,18 @@ const isExpenseInMonth = (item, ymStr) => {
   return false;
 };
 
+// Convert VAPID base64 string to Uint8Array for PushManager subscription
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -584,14 +596,27 @@ export default function App() {
   const [voiceFeedbackMessage, setVoiceFeedbackMessage] = useState('');
   const [assistantStatus, setAssistantStatus] = useState("Shadow System Active...");
 
+  // Web Push PWA Subscription State
+  const [isPushSubscribed, setIsPushSubscribed] = useState(() => {
+    try {
+      return localStorage.getItem('jarvis_pwa_push_subscribed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+  const [pushFeedbackMessage, setPushFeedbackMessage] = useState('');
+
   // Real Database Google Auth State (Login / Sign Up with Backend verification)
   // Mobile & Desktop System Permissions State
   const [mobilePermissions, setMobilePermissions] = useState(() => {
     try {
+      const notifPerm = typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported';
+      const storedNotif = typeof localStorage !== 'undefined' ? localStorage.getItem('jarvis_perm_notif') : null;
       return {
         mic: localStorage.getItem('jarvis_perm_mic') || 'prompt',
         location: localStorage.getItem('jarvis_perm_loc') || 'prompt',
-        notifications: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+        notifications: notifPerm === 'granted' || storedNotif === 'granted' ? 'granted' : notifPerm
       };
     } catch {
       return { mic: 'prompt', location: 'prompt', notifications: 'prompt' };
@@ -652,11 +677,15 @@ export default function App() {
     setIsRequestingPerms(true);
     const results = { ...mobilePermissions };
 
-    // 1. Notifications
+    // 1. Notifications & PWA Web Push
     if ('Notification' in window) {
       try {
         const p = await Notification.requestPermission();
         results.notifications = p;
+        if (p === 'granted') {
+          try { localStorage.setItem('jarvis_perm_notif', 'granted'); } catch (e) {}
+          setTimeout(() => subscribeToPushNotifications(), 100);
+        }
       } catch (e) {}
     }
 
@@ -705,6 +734,88 @@ export default function App() {
       return null;
     }
   });
+
+  // PWA Web Push Subscription & Remote Dispatch Engine
+  const subscribeToPushNotifications = useCallback(async (targetEmail = null) => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('[PWA Push] Web Push not supported on this browser/environment.');
+      return { success: false, reason: 'unsupported' };
+    }
+
+    try {
+      let permission = Notification.permission;
+      if (permission !== 'granted') {
+        permission = await Notification.requestPermission().catch(() => 'default');
+        setMobilePermissions(prev => ({ ...prev, notifications: permission }));
+      }
+      if (permission !== 'granted') {
+        return { success: false, reason: 'denied' };
+      }
+
+      // Fetch dynamic VAPID Public Key from backend server
+      const vapidRes = await fetch(`${BACKEND_URL}/api/notifications/vapid-key`);
+      const vapidData = await vapidRes.json();
+      if (!vapidData.success || !vapidData.publicKey) {
+        throw new Error(vapidData.error || 'Failed to retrieve VAPID key');
+      }
+
+      // Ensure Service Worker is ready
+      const reg = await navigator.serviceWorker.ready;
+      let subscription = await reg.pushManager.getSubscription();
+
+      if (!subscription) {
+        const convertedKey = urlBase64ToUint8Array(vapidData.publicKey);
+        subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedKey
+        });
+      }
+
+      const emailToUse = targetEmail || userProfile?.email || 'anonymous';
+      const subRes = await fetch(`${BACKEND_URL}/api/notifications/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailToUse,
+          subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+          deviceInfo: `${navigator.platform || ''} ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}`
+        })
+      });
+      const subData = await subRes.json();
+
+      setIsPushSubscribed(true);
+      try { localStorage.setItem('jarvis_pwa_push_subscribed', 'true'); } catch (e) {}
+      console.log('[PWA Push] Registered push subscription with backend:', subData);
+      return { success: true, subscription };
+    } catch (err) {
+      console.warn('[PWA Push Subscribe Error]:', err);
+      return { success: false, error: err.message };
+    }
+  }, [userProfile?.email]);
+
+  const triggerTestPushNotification = useCallback(async () => {
+    setIsSendingTestPush(true);
+    setPushFeedbackMessage('Sending test push to your device...');
+    try {
+      await subscribeToPushNotifications();
+      const emailToUse = userProfile?.email || 'anonymous';
+      const res = await fetch(`${BACKEND_URL}/api/notifications/test-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToUse })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPushFeedbackMessage('✅ Test Push Sent! Check your device notification center.');
+      } else {
+        setPushFeedbackMessage(`⚠️ ${data.message || 'Push queued'}`);
+      }
+    } catch (err) {
+      setPushFeedbackMessage(`❌ Error: ${err.message}`);
+    } finally {
+      setIsSendingTestPush(false);
+    }
+  }, [userProfile?.email, subscribeToPushNotifications]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -3922,7 +4033,7 @@ export default function App() {
         </button>
 
         {/* Profile & Stop Button at Bottom */}
-        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+        <div className="sidebar-bottom-group" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             type="button"
             className="touch-btn"
@@ -4005,11 +4116,42 @@ export default function App() {
                 <h1 className="header-title" style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.4px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
                 <span className="mobile-hide-text" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v2.6 OS</span>
               </div>
-              <span className="header-subtitle" style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+              <span className="header-subtitle mobile-hide-text" style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {/* Direct PWA Push Test Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPermissionsModal(true);
+                triggerTestPushNotification();
+              }}
+              disabled={isSendingTestPush}
+              title="Test PWA Push Notification: Sends live alert to this device"
+              className="header-btn touch-btn"
+              style={{
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#0f172a',
+                padding: '7px 11px',
+                borderRadius: '10px',
+                cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontWeight: '900',
+                fontSize: '11px',
+                letterSpacing: '0.3px',
+                transition: 'all 0.15s ease',
+                touchAction: 'manipulation'
+              }}
+            >
+              <Bell size={14} color="#0f172a" />
+              <span className="mobile-hide-text">{isSendingTestPush ? "SENDING..." : "TEST PUSH"}</span>
+            </button>
+
             {/* Real Mobile & Desktop Permissions Setup Button */}
             <button
               onClick={() => setShowPermissionsModal(true)}
@@ -4090,7 +4232,7 @@ export default function App() {
               }}
             >
               <UserCircle size={15} />
-              <span>{userProfile ? (userProfile.name?.split(' ')[0] || 'PROFILE') : 'LOG IN'}</span>
+              <span className="mobile-hide-text">{userProfile ? (userProfile.name?.split(' ')[0] || 'PROFILE') : 'LOG IN'}</span>
             </button>
           </div>
         </header>
@@ -4133,6 +4275,79 @@ export default function App() {
                 <div className="status-badge" style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '5px 10px', borderRadius: '10px', fontSize: '10.5px', fontWeight: '800', color: '#475569', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
                   📍 Gujarat (IST)
                 </div>
+              </div>
+            </div>
+
+            {/* PWA Background Web Push Notification Quick Test Card */}
+            <div style={{ 
+              backgroundColor: '#ffffff', 
+              border: '1.5px solid #e2e8f0', 
+              borderRadius: '16px', 
+              padding: '12px 16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              flexWrap: 'wrap', 
+              gap: '10px', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.03)' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Bell size={18} color="#ffffff" />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px' }}>PWA Push Notifications</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: (mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#16a34a' : '#d97706', backgroundColor: (mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#f0fdf4' : '#fffbeb', padding: '1px 7px', borderRadius: '4px', border: `1px solid ${(mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#bbf7d0' : '#fde68a'}` }}>
+                      {(mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '✓ ACTIVE' : 'PENDING'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {pushFeedbackMessage || 'Live OS notification ticker running even when app is closed'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsSendingTestPush(true);
+                    setPushFeedbackMessage('Requesting permission & sending push...');
+                    try {
+                      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted') {
+                        const p = await Notification.requestPermission();
+                        setMobilePermissions(prev => ({ ...prev, notifications: p }));
+                        if (p === 'granted') {
+                          try { localStorage.setItem('jarvis_perm_notif', 'granted'); } catch (e) {}
+                        }
+                      }
+                      await triggerTestPushNotification();
+                    } catch (e) {
+                      setPushFeedbackMessage(`❌ ${e.message}`);
+                      setIsSendingTestPush(false);
+                    }
+                  }}
+                  disabled={isSendingTestPush}
+                  className="touch-btn"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '10px',
+                    backgroundColor: '#0f172a',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '11.5px',
+                    fontWeight: '900',
+                    cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)'
+                  }}
+                >
+                  <Bell size={14} color="#ffffff" />
+                  <span>{isSendingTestPush ? 'SENDING PUSH...' : '🔔 TEST PWA PUSH'}</span>
+                </button>
               </div>
             </div>
 
@@ -6025,17 +6240,77 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
               
               {/* Notifications Permission */}
-              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Bell size={20} color="#0f172a" />
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Notifications</div>
-                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Watcher alerts & PWA reminders</div>
+              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Bell size={20} color="#0f172a" />
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Notifications</div>
+                      <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Watcher alerts & PWA push notifications</div>
+                    </div>
                   </div>
+                  {(() => {
+                    const isNotifGranted = mobilePermissions.notifications === 'granted' || (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') || (typeof localStorage !== 'undefined' && localStorage.getItem('jarvis_perm_notif') === 'granted');
+                    return (
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: isNotifGranted ? '#16a34a' : '#d97706' }}>
+                        {isNotifGranted ? (isPushSubscribed ? '✓ PWA PUSH ACTIVE' : '✓ GRANTED') : 'PENDING'}
+                      </span>
+                    );
+                  })()}
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.notifications === 'granted' ? '#16a34a' : '#d97706' }}>
-                  {mobilePermissions.notifications === 'granted' ? '✓ GRANTED' : 'PENDING'}
-                </span>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsSendingTestPush(true);
+                      setPushFeedbackMessage('Requesting push permissions & dispatching test...');
+                      try {
+                        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted') {
+                          const p = await Notification.requestPermission();
+                          setMobilePermissions(prev => ({ ...prev, notifications: p }));
+                          if (p === 'granted') {
+                            try { localStorage.setItem('jarvis_perm_notif', 'granted'); } catch (e) {}
+                          } else {
+                            setPushFeedbackMessage('⚠️ Permission not granted. Please allow notifications in browser settings.');
+                            setIsSendingTestPush(false);
+                            return;
+                          }
+                        }
+                        await triggerTestPushNotification();
+                      } catch (err) {
+                        setPushFeedbackMessage(`❌ Error: ${err.message}`);
+                        setIsSendingTestPush(false);
+                      }
+                    }}
+                    disabled={isSendingTestPush}
+                    style={{
+                      flex: 1,
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #0f172a',
+                      backgroundColor: '#0f172a',
+                      color: '#ffffff',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      textTransform: 'uppercase',
+                      boxShadow: '0 2px 6px rgba(15,23,42,0.15)'
+                    }}
+                  >
+                    <Bell size={13} color="#ffffff" />
+                    {isSendingTestPush ? 'SENDING PUSH...' : '🔔 TEST PWA PUSH NOW'}
+                  </button>
+                </div>
+                {pushFeedbackMessage && (
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#0f172a', backgroundColor: '#e2e8f0', padding: '6px 10px', borderRadius: '6px' }}>
+                    {pushFeedbackMessage}
+                  </div>
+                )}
               </div>
 
               {/* Microphone Permission */}
