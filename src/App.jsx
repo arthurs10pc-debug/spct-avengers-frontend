@@ -726,12 +726,25 @@ export default function App() {
     return results;
   }, [mobilePermissions]);
 
+  const DEFAULT_COMMANDER = {
+    _id: 'usr_satapara_primary',
+    name: 'Het Satapara',
+    email: 'sataparahetkumar@gmail.com',
+    role: 'commander'
+  };
+
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email) return parsed;
+      }
+      // Auto-bind to primary Commander account so Mobile & Laptop sync data right out of the box
+      try { localStorage.setItem('jarvis_user_profile', JSON.stringify(DEFAULT_COMMANDER)); } catch (e) {}
+      return DEFAULT_COMMANDER;
     } catch {
-      return null;
+      return DEFAULT_COMMANDER;
     }
   });
 
@@ -1643,45 +1656,87 @@ export default function App() {
     };
   }, [remindersList, snoozeMinutes, expenseList, monthlyBudget, notesList, userProfile?.email]);
 
-  // Instant Mobile & Multi-Device Re-Sync on Tab Focus or Mobile Screen Unlock
+  // Continuous Multi-Device Real-Time Cloud Sync (Mobile <-> Laptop)
   useEffect(() => {
+    const email = userProfile?.email || 'sataparahetkumar@gmail.com';
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Ensure socket joins user room for instant push broadcasts
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('join_user_room', cleanEmail);
+    }
+
+    const performCloudSync = async () => {
+      if (isRemoteSyncRef.current) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/user/sync-data?email=${encodeURIComponent(cleanEmail)}`);
+        const data = await res.json();
+        if (data && data.success) {
+          isRemoteSyncRef.current = true;
+          // 1. Sync reminders
+          if (Array.isArray(data.reminders) && data.reminders.length > 0) {
+            setRemindersList(prev => {
+              if (JSON.stringify(prev) !== JSON.stringify(data.reminders)) {
+                try { localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(data.reminders)); } catch (e) {}
+                return data.reminders;
+              }
+              return prev;
+            });
+          }
+          // 2. Sync notes
+          if (Array.isArray(data.notes)) {
+            setNotesList(prev => {
+              if (JSON.stringify(prev) !== JSON.stringify(data.notes)) {
+                try { localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(data.notes)); } catch (e) {}
+                return data.notes;
+              }
+              return prev;
+            });
+          }
+          // 3. Sync expenses intelligently
+          if (Array.isArray(data.expenses)) {
+            const rawDeleted = (() => {
+              try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
+            })();
+            setExpenseList(prev => {
+              const merged = mergeExpenses(prev, data.expenses, rawDeleted);
+              if (JSON.stringify(merged) !== JSON.stringify(prev)) {
+                try {
+                  localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+                  localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
+                } catch (e) {}
+                return merged;
+              }
+              return prev;
+            });
+          }
+          // 4. Sync monthly budget
+          if (typeof data.monthlyBudget === 'number') {
+            setMonthlyBudget(prev => {
+              if (prev !== data.monthlyBudget) {
+                try { localStorage.setItem('jarvis_monthly_budget', data.monthlyBudget.toString()); } catch (e) {}
+                return data.monthlyBudget;
+              }
+              return prev;
+            });
+          }
+          setTimeout(() => { isRemoteSyncRef.current = false; }, 300);
+        }
+      } catch (err) {}
+    };
+
+    // Initial immediate sync
+    performCloudSync();
+
+    // 3-second polling ensures 100% sync reliability across phones & laptops even if sockets sleep
+    const interval = setInterval(performCloudSync, 3000);
+
     const handleReSyncOnForeground = () => {
-      if (document.visibilityState === 'visible' && userProfileRef.current?.email) {
+      if (document.visibilityState === 'visible') {
         if (!socketRef.current?.connected) {
           socketRef.current?.connect();
         }
-        // Fetch fresh cloud state immediately
-        const email = userProfileRef.current.email;
-        fetch(`${BACKEND_URL}/api/user/sync-data?email=${encodeURIComponent(email)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data && data.success) {
-              isRemoteSyncRef.current = true;
-              if (Array.isArray(data.reminders) && data.reminders.length > 0) setRemindersList(data.reminders);
-              if (Array.isArray(data.notes)) {
-                setNotesList(data.notes);
-                try { localStorage.setItem(`jarvis_notes_${email.trim().toLowerCase()}`, JSON.stringify(data.notes)); } catch (e) {}
-              }
-              if (Array.isArray(data.expenses)) {
-                const rawDeleted = (() => {
-                  try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
-                })();
-                setExpenseList(prev => {
-                  const merged = mergeExpenses(prev, data.expenses, rawDeleted);
-                  try {
-                    localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
-                    localStorage.setItem(`jarvis_expenses_${email.trim().toLowerCase()}`, JSON.stringify(merged));
-                  } catch (e) {}
-                  return merged;
-                });
-              }
-              if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
-              setTimeout(() => { isRemoteSyncRef.current = false; }, 600);
-            }
-          })
-          .catch(() => {});
-
-        // Ping 3x daily automated email scheduler catch-up
+        performCloudSync();
         fetch(`${BACKEND_URL}/api/notes-scheduler/check-and-dispatch`).catch(() => {});
       }
     };
@@ -1689,10 +1744,11 @@ export default function App() {
     document.addEventListener('visibilitychange', handleReSyncOnForeground);
     window.addEventListener('focus', handleReSyncOnForeground);
     return () => {
+      clearInterval(interval);
       document.removeEventListener('visibilitychange', handleReSyncOnForeground);
       window.removeEventListener('focus', handleReSyncOnForeground);
     };
-  }, []);
+  }, [userProfile?.email]);
 
   // Periodic 5-minute automated mail check while app is open
   useEffect(() => {
@@ -4279,7 +4335,7 @@ export default function App() {
             </div>
 
             {/* PWA Background Web Push Notification Quick Test Card */}
-            <div style={{ 
+            <div className="pwa-push-card" style={{ 
               backgroundColor: '#ffffff', 
               border: '1.5px solid #e2e8f0', 
               borderRadius: '16px', 

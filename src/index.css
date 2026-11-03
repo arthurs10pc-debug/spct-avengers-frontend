@@ -68,10 +68,10 @@ html, body {
     right: 0 !important;
     width: 100vw !important;
     min-width: 100vw !important;
-    height: 56px !important;
-    max-height: 56px !important;
-    padding: 3px 6px !important;
-    gap: 2px !important;
+    height: 52px !important;
+    max-height: 52px !important;
+    padding: 2px 4px !important;
+    gap: 1px !important;
     flex-direction: row !important;
     justify-content: space-around !important;
     align-items: center !important;
@@ -79,17 +79,27 @@ html, body {
     border-top: 1.5px solid #e2e8f0 !important;
     background-color: #ffffff !important;
     z-index: 9999 !important;
-    box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06) !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .app-sidebar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
   .sidebar-logo-box {
     display: none !important;
   }
+  .watcher-pill {
+    display: none !important;
+  }
   .app-sidebar button {
     width: auto !important;
-    min-width: 38px !important;
-    padding: 3px 2px !important;
+    min-width: 36px !important;
+    padding: 2px 2px !important;
     gap: 1px !important;
     flex-shrink: 0 !important;
   }
@@ -100,15 +110,23 @@ html, body {
   .sidebar-bottom-group {
     margin-top: 0 !important;
     flex-direction: row !important;
-    gap: 4px !important;
+    gap: 2px !important;
   }
 
   /* Full 100vw Screen for Main Content with room for bottom bar */
   .app-main-content {
     width: 100vw !important;
     min-width: 100vw !important;
-    padding-bottom: 64px !important;
+    padding-bottom: 0 !important;
     overflow-x: hidden !important;
+  }
+
+  .dashboard-main {
+    padding: 8px 10px 62px 10px !important;
+    gap: 8px !important;
+  }
+  .dashboard-main > div {
+    gap: 8px !important;
   }
 
   /* Header on Mobile: Zero Overlap, Clean 1-Row Pill Buttons */
@@ -134,6 +152,12 @@ html, body {
   }
   .mobile-hide-text {
     display: none !important;
+  }
+
+  .pwa-push-card {
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
+    gap: 6px !important;
   }
 }
 
