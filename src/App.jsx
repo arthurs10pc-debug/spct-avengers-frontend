@@ -507,6 +507,76 @@ const ShadowStartupAnimation = ({ onComplete }) => {
 };
 
 
+// Non-destructive intelligent expense merge (deduplicates, preserves IDs, honors deletes, orders newest first)
+const mergeExpenses = (localList = [], remoteList = [], deletedIds = []) => {
+  const deletedSet = new Set((Array.isArray(deletedIds) ? deletedIds : []).map(id => String(id)));
+  const map = new Map();
+
+  const processExp = (exp) => {
+    if (!exp) return;
+    const rawId = exp.id || `tx_${exp.date || ''}_${exp.title || ''}_${exp.amount || ''}`;
+    const id = String(rawId);
+    if (deletedSet.has(id)) return; // Exclude deleted expenses
+
+    const item = {
+      ...exp,
+      id,
+      title: String(exp.title || 'Expense').trim(),
+      amount: parseFloat(exp.amount) || 0,
+      category: exp.category || 'Food & Snacks',
+      type: exp.type || 'expense',
+      date: exp.date || new Date().toISOString().slice(0, 10),
+      createdAt: exp.createdAt || (exp.date ? new Date(exp.date).getTime() : Date.now()) || Date.now()
+    };
+
+    if (map.has(id)) {
+      const prev = map.get(id);
+      if ((item.createdAt || 0) >= (prev.createdAt || 0)) {
+        map.set(id, { ...prev, ...item });
+      }
+    } else {
+      map.set(id, item);
+    }
+  };
+
+  if (Array.isArray(localList)) localList.forEach(processExp);
+  if (Array.isArray(remoteList)) remoteList.forEach(processExp);
+
+  const merged = Array.from(map.values());
+  merged.sort((a, b) => {
+    const timeA = a.createdAt || (a.date ? new Date(a.date).getTime() : 0);
+    const timeB = b.createdAt || (b.date ? new Date(b.date).getTime() : 0);
+    return timeB - timeA;
+  });
+  return merged;
+};
+
+// Flexible month matcher for expense items across diverse date formats
+const isExpenseInMonth = (item, ymStr) => {
+  if (!item) return false;
+  if (!item.date) return true;
+  const dStr = String(item.date).trim();
+  if (dStr.startsWith(ymStr) || dStr.includes(ymStr)) return true;
+
+  try {
+    const dt = new Date(dStr);
+    if (!isNaN(dt.getTime())) {
+      const itemYm = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (itemYm === ymStr) return true;
+    }
+  } catch (e) {}
+
+  const parts = dStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    const [targetYear, targetMonth] = ymStr.split('-');
+    const mNum = parseInt(targetMonth, 10);
+    if (parts.includes(targetYear) && (parts.includes(targetMonth) || parts.includes(String(mNum)))) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -1202,9 +1272,22 @@ export default function App() {
   const [expenseList, setExpenseList] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_expenses');
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
+      let parsed = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(parsed)) parsed = [];
+      const userProfileRaw = localStorage.getItem('jarvis_user_profile');
+      if (userProfileRaw) {
+        const u = JSON.parse(userProfileRaw);
+        if (u?.email) {
+          const userSaved = localStorage.getItem(`jarvis_expenses_${u.email.trim().toLowerCase()}`);
+          if (userSaved) {
+            const userParsed = JSON.parse(userSaved);
+            if (Array.isArray(userParsed)) {
+              parsed = mergeExpenses(parsed, userParsed, []);
+            }
+          }
+        }
+      }
+      return parsed;
     } catch (e) {
       return [];
     }
@@ -1343,8 +1426,11 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
+      if (userProfile?.email) {
+        localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(expenseList));
+      }
     } catch (e) {}
-  }, [expenseList]);
+  }, [expenseList, userProfile?.email]);
 
   useEffect(() => {
     try {
@@ -1385,7 +1471,17 @@ export default function App() {
             setSnoozeMinutes(data.snoozeMinutes);
           }
           if (Array.isArray(data.expenses)) {
-            setExpenseList(data.expenses);
+            const rawDeleted = (() => {
+              try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
+            })();
+            setExpenseList(prev => {
+              const merged = mergeExpenses(prev, data.expenses, rawDeleted);
+              try {
+                localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+                localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(merged));
+              } catch (e) {}
+              return merged;
+            });
           }
           if (typeof data.monthlyBudget === 'number') {
             setMonthlyBudget(data.monthlyBudget);
@@ -1455,7 +1551,19 @@ export default function App() {
                 setNotesList(data.notes);
                 try { localStorage.setItem(`jarvis_notes_${email.trim().toLowerCase()}`, JSON.stringify(data.notes)); } catch (e) {}
               }
-              if (Array.isArray(data.expenses)) setExpenseList(data.expenses);
+              if (Array.isArray(data.expenses)) {
+                const rawDeleted = (() => {
+                  try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
+                })();
+                setExpenseList(prev => {
+                  const merged = mergeExpenses(prev, data.expenses, rawDeleted);
+                  try {
+                    localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+                    localStorage.setItem(`jarvis_expenses_${email.trim().toLowerCase()}`, JSON.stringify(merged));
+                  } catch (e) {}
+                  return merged;
+                });
+              }
               if (typeof data.monthlyBudget === 'number') setMonthlyBudget(data.monthlyBudget);
               setTimeout(() => { isRemoteSyncRef.current = false; }, 600);
             }
@@ -1673,7 +1781,17 @@ export default function App() {
           setSnoozeMinutes(resData.user.snoozeMinutes);
         }
         if (Array.isArray(resData.user.expenses)) {
-          setExpenseList(resData.user.expenses);
+          const rawDeleted = (() => {
+            try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
+          })();
+          setExpenseList(prev => {
+            const merged = mergeExpenses(prev, resData.user.expenses, rawDeleted);
+            try {
+              localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+              localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
         }
         if (typeof resData.user.monthlyBudget === 'number') {
           setMonthlyBudget(resData.user.monthlyBudget);
@@ -1719,7 +1837,19 @@ export default function App() {
         isRemoteSyncRef.current = true;
         if (Array.isArray(dbUser.reminders) && dbUser.reminders.length > 0) setRemindersList(dbUser.reminders);
         if (typeof dbUser.snoozeMinutes === 'number') setSnoozeMinutes(dbUser.snoozeMinutes);
-        if (Array.isArray(dbUser.expenses)) setExpenseList(dbUser.expenses);
+        if (Array.isArray(dbUser.expenses)) {
+          const rawDeleted = (() => {
+            try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
+          })();
+          setExpenseList(prev => {
+            const merged = mergeExpenses(prev, dbUser.expenses, rawDeleted);
+            try {
+              localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+              localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
+        }
         if (typeof dbUser.monthlyBudget === 'number') setMonthlyBudget(dbUser.monthlyBudget);
         if (Array.isArray(dbUser.notes)) setNotesList(dbUser.notes);
         setTimeout(() => { isRemoteSyncRef.current = false; }, 400);
@@ -2657,6 +2787,36 @@ export default function App() {
       return;
     }
 
+    // Intent 7: EXPENSE / KHARCHA (e.g. "Aaj ka expense dikhao", "Expense add karo 50 chai", "Kharcha dikhao")
+    if (lowerQ.includes('expense') || lowerQ.includes('kharcha') || lowerQ.includes('spend') || lowerQ.includes('budget')) {
+      if (lowerQ.includes('add') || lowerQ.includes('likho') || lowerQ.includes('likh do') || lowerQ.includes('karo') || lowerQ.includes('kar do')) {
+        const numMatch = rawQ.match(/\d+(\.\d+)?/);
+        const amount = numMatch ? parseFloat(numMatch[0]) : 50;
+        let title = rawQ.replace(/.*(?:add|likho|likh do|karo|kar do)/i, '')
+          .replace(/\b\d+(\.\d+)?\b/g, '')
+          .replace(/\b(rupaye|rupee|rs|ka|ke|ki|for)\b/gi, '')
+          .trim();
+        if (!title || title.length < 2) title = 'Expense Entry';
+        handleQuickAddExpense(title, amount, 'Food & Snacks');
+        setShowExpenseModal(true);
+        const confMsg = `Logged expense of ₹${amount} for "${title}".`;
+        setVoiceFeedbackMessage(confMsg);
+        speakText(confMsg);
+        return;
+      } else {
+        setShowExpenseModal(true);
+        const now = new Date();
+        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const itemsThisMonth = (expenseList || []).filter(item => item && item.type !== 'income' && isExpenseInMonth(item, ym));
+        const spent = itemsThisMonth.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
+        const rem = Math.max(0, monthlyBudget - spent);
+        const confMsg = `This month's spend is ₹${spent.toLocaleString()}. Remaining budget is ₹${rem.toLocaleString()}.`;
+        setVoiceFeedbackMessage(confMsg);
+        speakText(confMsg);
+        return;
+      }
+    }
+
     const fallbackMsg = `Shadow heard: "${rawQ}". Try saying: "Shadow meri note main add kardo ki aaj mall jana hai" or "Shadow reminder set karo 5 baje".`;
     setVoiceFeedbackMessage(fallbackMsg);
     speakText(fallbackMsg);
@@ -2688,8 +2848,17 @@ export default function App() {
         try { localStorage.setItem('jarvis_snooze_duration', data.snoozeMinutes.toString()); } catch (e) {}
       }
       if (Array.isArray(data.expenses)) {
-        setExpenseList(data.expenses);
-        try { localStorage.setItem('jarvis_expenses', JSON.stringify(data.expenses)); } catch (e) {}
+        const rawDeleted = (() => {
+          try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
+        })();
+        setExpenseList(prev => {
+          const merged = mergeExpenses(prev, data.expenses, rawDeleted);
+          try {
+            localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+            localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
       if (typeof data.monthlyBudget === 'number') {
         setMonthlyBudget(data.monthlyBudget);
@@ -3262,7 +3431,7 @@ export default function App() {
     }
   };
 
-  // Safe Expense Handlers (Prepend new expense to top)
+  // Safe Expense Handlers (Prepend new expense to top with instant multi-device sync)
   const handleAddExpense = (e) => {
     if (e) e.preventDefault();
     if (!expenseTitle.trim() || !expenseAmount) {
@@ -3271,27 +3440,90 @@ export default function App() {
     }
     const now = new Date();
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const dateStr = `${ym}-${String(now.getDate()).padStart(2, '0')}`;
     const newExp = {
-      id: 'tx_' + Date.now(),
+      id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
       type: transactionType || 'expense',
       title: expenseTitle.trim(),
       amount: parseFloat(expenseAmount),
       category: transactionType === 'income' ? (expenseCategory || 'Salary & Wages') : (expenseCategory || 'Food & Snacks'),
-      date: `${ym}-${String(now.getDate()).padStart(2, '0')}`
+      date: dateStr,
+      createdAt: Date.now()
     };
-    setExpenseList(prev => [newExp, ...prev]);
+
+    setExpenseList(prev => {
+      const updated = [newExp, ...prev.filter(item => item && item.id !== newExp.id)];
+      try {
+        localStorage.setItem('jarvis_expenses', JSON.stringify(updated));
+        if (userProfile?.email) {
+          localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(updated));
+        }
+      } catch (err) {}
+      return updated;
+    });
+
     setExpenseTitle('');
     setExpenseAmount('');
+
+    if (userProfile?.email) {
+      const cleanEmail = userProfile.email.trim().toLowerCase();
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('sync_user_data_realtime', {
+          email: cleanEmail,
+          expenses: [newExp, ...expenseList],
+          monthlyBudget
+        });
+      }
+      fetch(`${BACKEND_URL}/api/expenses/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, expense: newExp }),
+        keepalive: true
+      }).catch(err => console.warn('Instant expense sync backgrounded:', err));
+    }
   };
 
   const handleQuickAddExpense = (title, amount, category) => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const dateStr = `${ym}-${String(now.getDate()).padStart(2, '0')}`;
     const newExp = {
-      title,
-      amount: parseFloat(amount),
+      id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+      type: 'expense',
+      title: (title || 'Expense').trim(),
+      amount: parseFloat(amount) || 0,
       category: category || 'Food & Snacks',
-      date: new Date().toLocaleDateString()
+      date: dateStr,
+      createdAt: Date.now()
     };
-    setExpenseList(prev => [newExp, ...prev]);
+
+    setExpenseList(prev => {
+      const updated = [newExp, ...prev.filter(item => item && item.id !== newExp.id)];
+      try {
+        localStorage.setItem('jarvis_expenses', JSON.stringify(updated));
+        if (userProfile?.email) {
+          localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(updated));
+        }
+      } catch (err) {}
+      return updated;
+    });
+
+    if (userProfile?.email) {
+      const cleanEmail = userProfile.email.trim().toLowerCase();
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('sync_user_data_realtime', {
+          email: cleanEmail,
+          expenses: [newExp, ...expenseList],
+          monthlyBudget
+        });
+      }
+      fetch(`${BACKEND_URL}/api/expenses/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, expense: newExp }),
+        keepalive: true
+      }).catch(() => {});
+    }
   };
 
   const handleExportExpensesCSV = () => {
@@ -3318,15 +3550,93 @@ export default function App() {
 
   const handleClearAllExpenses = () => {
     if (window.confirm("Are you sure you want to clear all expense records?")) {
+      const allIds = expenseList.map(e => String(e.id || '')).filter(Boolean);
+      try {
+        const raw = localStorage.getItem('jarvis_deleted_expense_ids');
+        const deletedIds = raw ? JSON.parse(raw) : [];
+        const mergedDeleted = Array.from(new Set([...deletedIds, ...allIds]));
+        localStorage.setItem('jarvis_deleted_expense_ids', JSON.stringify(mergedDeleted.slice(-300)));
+      } catch (e) {}
+
       setExpenseList([]);
+      try {
+        localStorage.setItem('jarvis_expenses', JSON.stringify([]));
+        if (userProfile?.email) {
+          localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify([]));
+        }
+      } catch (err) {}
+
+      if (userProfile?.email) {
+        const cleanEmail = userProfile.email.trim().toLowerCase();
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('sync_user_data_realtime', {
+            email: cleanEmail,
+            expenses: [],
+            isClearAllExpenses: true
+          });
+        }
+        fetch(`${BACKEND_URL}/api/expenses/clear`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail }),
+          keepalive: true
+        }).catch(() => {});
+      }
     }
   };
 
-  const handleDeleteExpense = (index) => {
-    const exp = expenseList[index];
-    const confirmDelete = window.confirm(`Are you sure you want to delete "${exp.title}" (₹${exp.amount})? (Yes/No)`);
-    if (confirmDelete) {
-      setExpenseList(prev => prev.filter((_, idx) => idx !== index));
+  const handleDeleteExpense = (target) => {
+    const targetId = typeof target === 'object' ? target?.id : target;
+    const exp = expenseList.find(e => String(e.id) === String(targetId)) ||
+      (typeof target === 'number' ? expenseList[target] : null) ||
+      (typeof target === 'object' ? target : null);
+
+    if (!exp) return;
+
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${exp.title || 'this expense'}" (₹${exp.amount})?`);
+    if (!confirmDelete) return;
+
+    const expId = String(exp.id || targetId || `tx_${exp.date || ''}_${exp.title || ''}_${exp.amount || ''}`);
+
+    try {
+      const raw = localStorage.getItem('jarvis_deleted_expense_ids');
+      const deletedIds = raw ? JSON.parse(raw) : [];
+      if (expId && !deletedIds.includes(expId)) {
+        deletedIds.push(expId);
+        localStorage.setItem('jarvis_deleted_expense_ids', JSON.stringify(deletedIds.slice(-300)));
+      }
+    } catch (e) {}
+
+    setExpenseList(prev => {
+      const updated = prev.filter(e => {
+        if (expId && e.id) return String(e.id) !== expId;
+        return !(e.title === exp.title && e.amount === exp.amount && e.date === exp.date);
+      });
+      try {
+        localStorage.setItem('jarvis_expenses', JSON.stringify(updated));
+        if (userProfile?.email) {
+          localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(updated));
+        }
+      } catch (err) {}
+      return updated;
+    });
+
+    if (userProfile?.email) {
+      const cleanEmail = userProfile.email.trim().toLowerCase();
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('sync_user_data_realtime', {
+          email: cleanEmail,
+          deletedExpenseIds: [expId],
+          expenses: expenseList.filter(e => String(e.id) !== expId),
+          monthlyBudget
+        });
+      }
+      fetch(`${BACKEND_URL}/api/expenses/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, id: expId }),
+        keepalive: true
+      }).catch(() => {});
     }
   };
 
@@ -3866,7 +4176,7 @@ export default function App() {
             {/* 4 Executive KPI Metric Cards */}
             {(() => {
               const monthlyExpenses = (expenseList || []).filter(item => item && item.type !== 'income');
-              const monthlyItems = monthlyExpenses.filter(item => !item.date || String(item.date).startsWith(selectedExpenseMonth) || String(item.date).includes(selectedExpenseMonth));
+              const monthlyItems = monthlyExpenses.filter(item => isExpenseInMonth(item, selectedExpenseMonth));
               const monthlySpent = monthlyItems.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
               const budgetPct = monthlyBudget > 0 ? Math.min(Math.round((monthlySpent / monthlyBudget) * 100), 100) : 0;
               const triggeredCount = (remindersList || []).filter(r => r && r.completed).length;
@@ -6095,11 +6405,7 @@ export default function App() {
       {/* Pure Expense Manager & Monthly Report Modal */}
       {showExpenseModal && (() => {
         const monthlyExpenses = (expenseList || []).filter(item => item && item.type !== 'income');
-        const monthlyItems = monthlyExpenses.filter(item => {
-          if (!item) return false;
-          if (!item.date) return true;
-          return String(item.date).startsWith(selectedExpenseMonth) || String(item.date).includes(selectedExpenseMonth);
-        });
+        const monthlyItems = monthlyExpenses.filter(item => isExpenseInMonth(item, selectedExpenseMonth));
 
         const monthlySpent = monthlyItems.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
         const monthlyRemainingBudget = monthlyBudget - monthlySpent;
@@ -6444,7 +6750,7 @@ export default function App() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleDeleteExpense(item.id || idx)}
+                              onClick={() => handleDeleteExpense(item)}
                               style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px', color: '#94a3b8' }}
                               title="Delete expense"
                             >
