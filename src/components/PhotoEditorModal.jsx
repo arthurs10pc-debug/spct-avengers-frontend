@@ -243,6 +243,8 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [downloadInfo, setDownloadInfo] = useState(null);
+  const [downloadFormat, setDownloadFormat] = useState('jpg'); // Default JPG download as requested
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // Live Brush Cursor overlay
   const [cursorPos, setCursorPos] = useState({ x: -200, y: -200, visible: false, screenRadius: 16 });
@@ -334,22 +336,44 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
       setToastMessage('✓ Image loaded! Brush any object to erase.');
       setTimeout(() => setToastMessage(null), 3000);
+
+      if (source.startsWith('blob:')) {
+        URL.revokeObjectURL(source);
+      }
     };
+
+    img.onerror = () => {
+      setToastMessage('❌ Could not parse this image file. Please try another format.');
+      setTimeout(() => setToastMessage(null), 3500);
+      if (source.startsWith('blob:')) {
+        URL.revokeObjectURL(source);
+      }
+    };
+
     img.src = source;
   }, []);
 
-  // Handle file select or drop
+  // Handle file select or drop (Supports ALL photo formats)
   const handleFileSelect = (file) => {
     if (!file) return;
+
+    // Verify it is an image file or common image extension
+    const isImage = file.type.startsWith('image/') || 
+      /\.(jpe?g|png|webp|avif|gif|bmp|ico|tiff?|svg|heic|heif|raw|cr2|nef|arw)$/i.test(file.name);
+
+    if (!isImage) {
+      setToastMessage('⚠️ Please drop or select a valid image file (JPG, PNG, WEBP, etc.)');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
     setImageFile(file);
     const dotIdx = file.name.lastIndexOf('.');
     setImageName(dotIdx > 0 ? file.name.substring(0, dotIdx) : (file.name || 'photo'));
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      loadImageToCanvas(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    // High performance zero-overhead Object URL for fast photo loading
+    const objectUrl = URL.createObjectURL(file);
+    loadImageToCanvas(objectUrl);
   };
 
   // Undo action
@@ -869,16 +893,30 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     setTimeout(() => setToastMessage(null), 1500);
   };
 
-  // 1-Click Direct Download without delay
-  const handleDirectDownload = (format = 'png') => {
+  // 1-Click Direct Download in JPG (Default) or PNG without delay
+  const handleDirectDownload = (format = 'jpg') => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
-    const ext = format === 'jpg' ? 'jpg' : 'png';
-    const filename = `${imageName}_edited.${ext}`;
+    const isJpg = format === 'jpg';
+    const mime = isJpg ? 'image/jpeg' : 'image/png';
+    const ext = isJpg ? 'jpg' : 'png';
+    const cleanName = imageName.replace(/\.[^/.]+$/, "");
+    const filename = `${cleanName}_edited.${ext}`;
 
-    canvas.toBlob((blob) => {
+    // For JPG export, render on a crisp white background to prevent transparent alpha from turning black
+    let exportCanvas = canvas;
+    if (isJpg) {
+      exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const expCtx = exportCanvas.getContext('2d');
+      expCtx.fillStyle = '#ffffff';
+      expCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      expCtx.drawImage(canvas, 0, 0);
+    }
+
+    exportCanvas.toBlob((blob) => {
       if (!blob) return;
 
       const url = URL.createObjectURL(blob);
@@ -907,10 +945,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       setTimeout(() => {
         try {
           if (document.body.contains(a)) document.body.removeChild(a);
+          URL.revokeObjectURL(url);
         } catch (e) {}
       }, 1500);
 
-      setToastMessage(`✓ Downloaded ${filename} (${(blob.size / 1024).toFixed(1)} KB)!`);
+      setToastMessage(`✓ Downloaded ${filename} (${(blob.size / 1024).toFixed(1)} KB) in JPG!`);
       setTimeout(() => setToastMessage(null), 3000);
     }, mime, 0.95);
   };
@@ -928,9 +967,38 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   ];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px' }}>
+    <div 
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px' }}
+    >
       <div 
         className="tools-modal-scroll"
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!isDraggingOver) setIsDraggingOver(true);
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDraggingOver(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.currentTarget === e.target) {
+            setIsDraggingOver(false);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDraggingOver(false);
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileSelect(e.dataTransfer.files[0]);
+          }
+        }}
         style={{ 
           backgroundColor: '#ffffff', // Clean white theme matching system
           borderRadius: '24px', 
@@ -947,12 +1015,41 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         }}
       >
         
+        {/* Universal Drag & Drop Visual Glow Overlay */}
+        {isDraggingOver && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.88)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '3px dashed #ec4899',
+            borderRadius: '24px',
+            color: '#ffffff',
+            pointerEvents: 'none'
+          }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', boxShadow: '0 8px 30px rgba(236,72,153,0.5)' }}>
+              <Upload size={40} color="#ffffff" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '900', letterSpacing: '-0.3px' }}>
+              Drop Any Photo to Open
+            </h3>
+            <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#cbd5e1', fontWeight: '800' }}>
+              Supports all photo formats: JPG, JPEG, PNG, WEBP, AVIF, HEIC, GIF, BMP, SVG, TIFF, RAW
+            </p>
+          </div>
+        )}
+
         {/* Hidden File Picker */}
         <input 
           type="file" 
           ref={fileInputRef} 
           style={{ display: 'none' }} 
-          accept="image/*,.webp,.png,.jpg,.jpeg,.gif,.bmp,.svg,.avif" 
+          accept="image/*,.jpg,.jpeg,.png,.webp,.avif,.gif,.bmp,.ico,.tiff,.tif,.svg,.heic,.heif,.raw,.cr2,.nef,.arw" 
           onChange={(e) => {
             if (e.target.files && e.target.files[0]) {
               handleFileSelect(e.target.files[0]);
@@ -1205,12 +1302,50 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   <RefreshCw size={16} />
                 </button>
 
-                {/* Direct 1-Click Download Button */}
+                {/* Format Selector: JPG (Default) / PNG */}
+                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDownloadFormat('jpg')}
+                    title="Download as JPG (Standard photo format)"
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: downloadFormat === 'jpg' ? '#0f172a' : 'transparent',
+                      color: downloadFormat === 'jpg' ? '#ffffff' : '#64748b',
+                      fontSize: '10.5px',
+                      fontWeight: '900',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    JPG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDownloadFormat('png')}
+                    title="Download as PNG (Lossless format)"
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: downloadFormat === 'png' ? '#0f172a' : 'transparent',
+                      color: downloadFormat === 'png' ? '#ffffff' : '#64748b',
+                      fontSize: '10.5px',
+                      fontWeight: '900',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    PNG
+                  </button>
+                </div>
+
+                {/* Direct 1-Click Download Button (JPG by default) */}
                 <button
                   type="button"
-                  onClick={() => handleDirectDownload('png')}
+                  onClick={() => handleDirectDownload(downloadFormat)}
                   className="touch-btn"
-                  title="1-Click Instant Download without delay"
+                  title={`1-Click Instant Download in .${downloadFormat.toUpperCase()}`}
                   style={{
                     minHeight: '36px',
                     padding: '0 16px',
@@ -1227,8 +1362,8 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     boxShadow: '0 4px 12px rgba(15,23,42,0.18)'
                   }}
                 >
-                  <Download size={16} />
-                  <span>Download</span>
+                  <Download size={15} />
+                  <span>Download .{downloadFormat.toUpperCase()}</span>
                 </button>
               </>
             )}
@@ -1296,10 +1431,10 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 <Upload size={38} />
               </div>
               <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.3px' }}>
-                Drag & Drop Photo Here or Tap to Browse
+                Drag & Drop Any Photo Here or Tap to Browse
               </h2>
-              <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#94a3b8', fontWeight: '800', maxWidth: '440px' }}>
-                Supports WEBP, PNG, JPG, JPEG, GIF, BMP, SVG, AVIF. Directly open in full resolution and erase unwanted objects!
+              <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#94a3b8', fontWeight: '800', maxWidth: '460px' }}>
+                Supports all formats: JPG, JPEG, PNG, WEBP, AVIF, HEIC, GIF, BMP, SVG, TIFF, RAW. Directly open in full resolution, erase objects, and download in JPG!
               </p>
               <span className="touch-btn" style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '900', fontSize: '13px' }}>
                 Select Image From Device
