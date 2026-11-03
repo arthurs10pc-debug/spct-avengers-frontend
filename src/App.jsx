@@ -8,8 +8,9 @@ import {
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
   Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
   Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
-  Palette, ArrowRight, FileType, Sliders
+  Palette, ArrowRight, FileType, Sliders, Wand2, Eraser
 } from 'lucide-react';
+import PhotoEditorModal from './components/PhotoEditorModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
   : "https://spct-avengers-backend.onrender.com";
@@ -1048,6 +1049,7 @@ export default function App() {
 
   // Google Keep Style Notes & 3x Daily Email Reminder State
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showPhotoEditModal, setShowPhotoEditModal] = useState(false);
   const [notesList, setNotesList] = useState(() => {
     try {
       const email = userProfile?.email ? userProfile.email.trim().toLowerCase() : 'guest';
@@ -3582,6 +3584,33 @@ export default function App() {
           )}
         </button>
 
+        {/* Edit Photo / AI Eraser Button (Directly below Notes) */}
+        <button 
+          onClick={() => setShowPhotoEditModal(true)} 
+          title="Edit Photo & Windows-style AI Object Eraser" 
+          style={{ 
+            background: showPhotoEditModal ? '#f1f5f9' : 'transparent', 
+            border: 'none', 
+            color: '#0f172a', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '3px', 
+            cursor: 'pointer', 
+            padding: '5px 4px', 
+            borderRadius: '10px', 
+            width: '56px',
+            position: 'relative',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <Image size={18} />
+            <Sparkles size={10} style={{ position: 'absolute', top: -4, right: -6, color: '#ec4899' }} />
+          </div>
+          <span style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: '1.1' }}>Edit Photo</span>
+        </button>
+
         {/* Profile & Stop Button at Bottom */}
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
@@ -3920,6 +3949,34 @@ export default function App() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>Real-Time Market Data</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Daily Briefing →</span>
+                    </div>
+                  </div>
+
+                  {/* Card 5: Photo Studio & AI Object Eraser */}
+                  <div 
+                    className="kpi-card"
+                    onClick={() => setShowPhotoEditModal(true)}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ec4899'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Edit Photo & Studio</span>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fdf2f8', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fbcfe8' }}>
+                        <Wand2 size={16} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="kpi-number" style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>
+                        AI Eraser
+                      </div>
+                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
+                        Windows Photos Generative Erase
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                      <span>✨ Drag & Drop Image to Open</span>
+                      <span style={{ color: '#ec4899', fontWeight: '900' }}>Open Editor →</span>
                     </div>
                   </div>
 
@@ -4478,6 +4535,12 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Photo Studio / AI Object Eraser Modal */}
+      <PhotoEditorModal 
+        isOpen={showPhotoEditModal} 
+        onClose={() => setShowPhotoEditModal(false)} 
+      />
 
       {showNotesModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
