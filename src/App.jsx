@@ -3149,13 +3149,20 @@ export default function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // Sort notes so pinned notes are strictly at the top
+      const sortedForEmail = [...notesList].sort((a, b) => {
+        const aPinned = a && (a.pinned === true || a.pinned === 'true') ? 1 : 0;
+        const bPinned = b && (b.pinned === true || b.pinned === 'true') ? 1 : 0;
+        return bPinned - aPinned;
+      });
+
       const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: targetEmail,
           slotLabel: 'Manual Notes & Tasks Reminder',
-          notes: notesList
+          notes: sortedForEmail
         }),
         signal: controller.signal
       });
@@ -3808,7 +3815,7 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>🕒 3x Daily Auto Email Ready</span>
+                      <span>🕒 3x Daily Email (Pinned on Top)</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Notes →</span>
                     </div>
                   </div>
@@ -4255,7 +4262,7 @@ export default function App() {
 
             {/* Daily Email Schedule Banner & Feedback */}
             <div style={{ padding: '9px 14px', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', fontSize: '11px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-              <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your registered Gmail.</span>
+              <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your Gmail (📌 Pinned notes written at the top for instant reading).</span>
               {notesEmailFeedback && (
                 <span style={{ color: '#0f172a', fontWeight: '900' }}>{notesEmailFeedback}</span>
               )}
