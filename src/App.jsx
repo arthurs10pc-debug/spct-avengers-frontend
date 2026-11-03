@@ -348,10 +348,9 @@ const ShadowLogo = ({ size = 24, color = '#0f172a', innerColor = '#ffffff' }) =>
   </svg>
 );
 
-// Full Screen Startup Animation: Exact 1:1 mathematical match to the user's reference video
-// Features: Logo Emblem + Letter Reveal (S -> SH -> ... -> SHADOW) + Rotating Light Sweep + Dynamic Shadow Retraction into 3D Bevel
+// Full Screen Startup Animation: High-Performance GPU-Accelerated 60/120 FPS
+// Features: Zero-Lag Letter Reveal + Rotating Light Sweep + Dynamic Shadow Retraction into 3D Bevel
 const ShadowStartupAnimation = ({ onComplete }) => {
-  const canvasRef = useRef(null);
   const [fadingOut, setFadingOut] = useState(false);
 
   const handleFinish = useCallback(() => {
@@ -359,190 +358,23 @@ const ShadowStartupAnimation = ({ onComplete }) => {
     setFadingOut(true);
     setTimeout(() => {
       onComplete();
-    }, 380);
+    }, 320);
   }, [fadingOut, onComplete]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-    const startTime = performance.now();
-    const totalDuration = 2400; // ms
-
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      ctx.scale(dpr, dpr);
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const fullWord = "SHADOW";
-
-    // Helper functions for drawing Logo Shield on Canvas
-    const drawShield = (c, x, y, size) => {
-      c.beginPath();
-      const r = size / 2;
-      c.moveTo(x, y - r);
-      c.lineTo(x + r * 0.82, y - r * 0.55);
-      c.lineTo(x + r * 0.82, y + r * 0.22);
-      c.bezierCurveTo(x + r * 0.82, y + r * 0.7, x, y + r, x, y + r);
-      c.bezierCurveTo(x, y + r, x - r * 0.82, y + r * 0.7, x - r * 0.82, y + r * 0.22);
-      c.lineTo(x - r * 0.82, y - r * 0.55);
-      c.closePath();
-    };
-
-    const drawShieldS = (c, x, y, size) => {
-      c.beginPath();
-      const r = size / 2;
-      c.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 0.42);
-      c.rect(x - r * 0.8, y - r * 0.21, r * 1.6, r * 0.42);
-      c.rect(x - r * 0.8, y + r * 0.38, r * 1.6, r * 0.42);
-      c.rect(x - r * 0.8, y - r * 0.8, r * 0.45, r * 0.9);
-      c.rect(x + r * 0.35, y - r * 0.21, r * 0.45, r * 0.9);
-      c.closePath();
-    };
-
-    const render = (now) => {
-      const elapsed = now - startTime;
-
-      if (elapsed >= totalDuration) {
-        handleFinish();
-        return;
-      }
-
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-
-      // 1. Background: Pure White Theme
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, w, h);
-
-      // Responsive font sizing based on viewport
-      const fontSize = Math.min(w * 0.14, h * 0.12, 84);
-      ctx.font = `900 ${fontSize}px "Montserrat", "Inter", -apple-system, sans-serif`;
-      ctx.textBaseline = 'middle';
-
-      // 2. Stationary Letter Placement (Letters stay anchored as they appear, no jumping)
-      const letterWidths = [];
-      let totalWidth = 0;
-      for (let i = 0; i < fullWord.length; i++) {
-        const mw = ctx.measureText(fullWord[i]).width;
-        letterWidths.push(mw);
-        totalWidth += mw;
-      }
-      const letterSpacing = Math.max(3, fontSize * 0.08);
-      const fullWordWidth = totalWidth + (fullWord.length - 1) * letterSpacing;
-
-      const cx = w / 2;
-      const cy = h / 2 + (fontSize * 0.36); // offset down to balance logo on top
-
-      const startX = cx - fullWordWidth / 2;
-      const letterPositions = [];
-      let curX = startX;
-      for (let i = 0; i < fullWord.length; i++) {
-        letterPositions.push(curX + letterWidths[i] / 2);
-        curX += letterWidths[i] + letterSpacing;
-      }
-
-      // 3. Letter Reveal Progress (0ms to 650ms: S -> SH -> ... -> SHADOW)
-      let visibleCount = fullWord.length;
-      if (elapsed < 650) {
-        visibleCount = Math.max(1, Math.min(fullWord.length, Math.floor((elapsed / 650) * fullWord.length) + 1));
-      }
-
-      // 4. Exact Video Motion Match: Rotating Light Sweep & Dynamic Shadow Length
-      // Video timeline:
-      // 0 - 600ms: Initial down-left shadow (~135-150 deg)
-      // 600 - 1300ms: Smooth sweep down towards 170 deg
-      // 1300 - 1750ms: Sweep to horizontal left (~195 deg)
-      // 1750 - 2100ms: Smooth retraction from offscreen down to 8px 3D bevel!
-      // 2100 - 2400ms: Settle in 3D bevel & hold before fading out
-      let angle;
-      let shadowLen = Math.max(w, h) * 1.5;
-
-      if (elapsed < 600) {
-        const p = elapsed / 600;
-        angle = (Math.PI * 0.72) + (p * 0.14);
-      } else if (elapsed < 1300) {
-        const p = (elapsed - 600) / 700;
-        angle = (Math.PI * 0.86) + (p * 0.32);
-      } else if (elapsed < 1750) {
-        const p = (elapsed - 1300) / 450;
-        angle = (Math.PI * 1.18) - (p * 0.18);
-      } else {
-        const p = Math.min(1, (elapsed - 1750) / 320);
-        angle = Math.PI * 0.85; // stable tight 3D angle
-        // Ease-out shadow retraction
-        const ease = 1 - Math.pow(1 - p, 3);
-        shadowLen = (1 - ease) * (Math.max(w, h) * 1.5) + (ease * 8);
-      }
-
-      const cosA = Math.cos(angle);
-      const sinA = Math.sin(angle);
-
-      // Logo Emblem geometry above text
-      const logoSize = fontSize * 0.62;
-      const logoY = cy - (fontSize * 1.15);
-
-      // 5. Draw Dynamic Flat Long Shadow (Adaptive step size for 60/120 FPS performance)
-      ctx.fillStyle = '#cbd5e1';
-      const step = Math.max(2.5, Math.min(w, h) * 0.005);
-      const numSteps = Math.max(1, Math.floor(shadowLen / step));
-
-      for (let s = numSteps; s >= 1; s--) {
-        const ox = s * step * cosA;
-        const oy = s * step * sinA;
-
-        // Shadow for Logo Shield
-        drawShield(ctx, cx + ox, logoY + oy, logoSize);
-        ctx.fill();
-
-        // Shadow for Visible Letters
-        ctx.textAlign = 'center';
-        for (let i = 0; i < visibleCount; i++) {
-          ctx.fillText(fullWord[i], letterPositions[i] + ox, cy + oy);
-        }
-      }
-
-      // 6. Draw Main Foreground Logo Shield
-      ctx.fillStyle = '#0f172a';
-      drawShield(ctx, cx, logoY, logoSize);
-      ctx.fill();
-
-      // Inner white shield cutout
-      ctx.fillStyle = '#ffffff';
-      drawShield(ctx, cx, logoY, logoSize * 0.76);
-      ctx.fill();
-
-      // Inner monogram 'S' in shield
-      ctx.fillStyle = '#0f172a';
-      drawShieldS(ctx, cx, logoY, logoSize * 0.55);
-      ctx.fill();
-
-      // 7. Draw Main Foreground Text in Heavy Jet Black #0f172a
-      ctx.fillStyle = '#0f172a';
-      ctx.textAlign = 'center';
-      for (let i = 0; i < visibleCount; i++) {
-        ctx.fillText(fullWord[i], letterPositions[i], cy);
-      }
-
-      animId = requestAnimationFrame(render);
-    };
-
-    animId = requestAnimationFrame(render);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
+    // Total duration: 1.85 seconds, then smooth fade
+    const timer = setTimeout(() => {
+      handleFinish();
+    }, 1850);
+    return () => clearTimeout(timer);
   }, [handleFinish]);
+
+  const letters = ['S', 'H', 'A', 'D', 'O', 'W'];
 
   return (
     <div
       onClick={handleFinish}
+      title="Tap to skip"
       style={{
         position: 'fixed',
         inset: 0,
@@ -552,20 +384,123 @@ const ShadowStartupAnimation = ({ onComplete }) => {
         backgroundColor: '#ffffff',
         cursor: 'pointer',
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         opacity: fadingOut ? 0 : 1,
-        transition: 'opacity 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
         userSelect: 'none',
-        WebkitUserSelect: 'none'
+        WebkitUserSelect: 'none',
+        padding: '20px'
       }}
     >
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: 'block',
-          width: '100vw',
-          height: '100dvh'
-        }}
-      />
+      <style>{`
+        @keyframes shadowLogoSweep {
+          0% {
+            opacity: 0;
+            transform: scale(0.92);
+            filter: drop-shadow(-8px 14px 10px rgba(189,195,199,0.5));
+          }
+          15% {
+            opacity: 1;
+            transform: scale(1);
+            filter: drop-shadow(-14px 22px 14px rgba(189,195,199,0.7));
+          }
+          45% {
+            filter: drop-shadow(-8px 26px 16px rgba(189,195,199,0.8)) drop-shadow(-4px 12px 10px rgba(15,23,42,0.12));
+          }
+          70% {
+            filter: drop-shadow(0px 20px 14px rgba(189,195,199,0.85)) drop-shadow(0px 10px 10px rgba(15,23,42,0.15));
+          }
+          85% {
+            transform: scale(1);
+            filter: drop-shadow(2px 5px 0px #BDC3C7) drop-shadow(4px 9px 12px rgba(15,23,42,0.2));
+          }
+          100% {
+            transform: scale(1);
+            filter: drop-shadow(2px 5px 0px #BDC3C7) drop-shadow(4px 9px 12px rgba(15,23,42,0.2));
+          }
+        }
+
+        @keyframes shadowTextSweep {
+          0% {
+            text-shadow: -4px 6px 0 #BDC3C7, -8px 12px 0 #CBD5E1;
+          }
+          30% {
+            text-shadow: -10px 18px 0 #BDC3C7, -18px 32px 0 #CBD5E1, -24px 44px 12px rgba(15,23,42,0.12);
+          }
+          55% {
+            text-shadow: -4px 20px 0 #BDC3C7, -8px 36px 0 #CBD5E1, -12px 50px 14px rgba(15,23,42,0.14);
+          }
+          75% {
+            text-shadow: 0px 16px 0 #BDC3C7, 0px 28px 0 #CBD5E1, 0px 38px 14px rgba(15,23,42,0.15);
+          }
+          88% {
+            text-shadow: 1px 3px 0 #BDC3C7, 2px 5px 0 #CBD5E1, 3px 7px 0 #CBD5E1, 4px 8px 12px rgba(15,23,42,0.18);
+          }
+          100% {
+            text-shadow: 1px 2px 0 #BDC3C7, 2px 4px 0 #CBD5E1, 3px 6px 0 #CBD5E1, 4px 8px 12px rgba(15,23,42,0.18);
+          }
+        }
+
+        @keyframes letterPop {
+          0% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.94);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .startup-logo-shield {
+          animation: shadowLogoSweep 1.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          will-change: filter, transform;
+        }
+
+        .startup-word-text {
+          animation: shadowTextSweep 1.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          will-change: text-shadow;
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px', transform: 'translateY(-10px)' }}>
+        {/* Official Geometric Stealth Shield Brand Logo */}
+        <div className="startup-logo-shield" style={{ width: '76px', height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ShadowLogo size={76} color="#0f172a" innerColor="#ffffff" />
+        </div>
+
+        {/* Stationary Letter Placement with Staggered Snap Reveal */}
+        <div 
+          className="startup-word-text" 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(36px, 9vw, 64px)',
+            fontWeight: '900',
+            color: '#0f172a',
+            letterSpacing: 'clamp(4px, 1.2vw, 8px)',
+            fontFamily: "'Montserrat', 'Inter', -apple-system, sans-serif",
+            textTransform: 'uppercase'
+          }}
+        >
+          {letters.map((letter, idx) => (
+            <span
+              key={idx}
+              style={{
+                display: 'inline-block',
+                animation: `letterPop 0.28s cubic-bezier(0.2, 0.8, 0.3, 1) ${idx * 0.08}s both`,
+                willChange: 'transform, opacity'
+              }}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -717,16 +652,11 @@ export default function App() {
   const [uploadedFileMeta, setUploadedFileMeta] = useState(null);
   const toolsFileInputRef = useRef(null);
 
-  // Startup Intro Video Splash State (Plays user's shadow-intro.mp4 on start)
-  const [showStartupSplash, setShowStartupSplash] = useState(true);
-
-  useEffect(() => {
-    // Auto-dismiss splash screen smoothly after 3.8s
-    const timer = setTimeout(() => {
-      setShowStartupSplash(false);
-    }, 3800);
-    return () => clearTimeout(timer);
-  }, []);
+  // Startup Intro Shadow Animation (Plays once on app start, smooth, zero-lag)
+  const [showStartupSplash, setShowStartupSplash] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('nosplash')) return false;
+    return true;
+  });
 
   // Safe direct file selection handler (100% crash-proof, no wipeouts)
   const handleToolsFileSelect = (file) => {
@@ -1175,8 +1105,8 @@ export default function App() {
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
 
-  // Live Countdown Timer String for Sidebar (Negative Countdown Timer "-MM:SS")
-  const [nextCountdownStr, setNextCountdownStr] = useState('-00:00');
+  // Live Countdown Timer String for Sidebar (Negative Countdown Timer "-MMm")
+  const [nextCountdownStr, setNextCountdownStr] = useState('-48m');
   const [nextRemTimeStr, setNextRemTimeStr] = useState('14:28');
   const [nextRemTitle, setNextRemTitle] = useState('Daily Focus & Routine');
 
@@ -2815,9 +2745,11 @@ export default function App() {
         const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
         const remS = nearestFutureDiffSec % 60;
         if (remH > 0) {
-          setNextCountdownStr(`-${String(remH).padStart(2, '0')}:${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
+          setNextCountdownStr(`-${remH}h ${remM}m`);
+        } else if (remM > 0) {
+          setNextCountdownStr(`-${remM}m`);
         } else {
-          setNextCountdownStr(`-${String(remM).padStart(2, '0')}:${String(remS).padStart(2, '0')}`);
+          setNextCountdownStr(`-${remS}s`);
         }
       } else {
         // All reminders for today have completed; continuously count down to tomorrow's first reminder
@@ -2831,8 +2763,11 @@ export default function App() {
         const totalTomSec = secUntilMidnight + secAfterMidnight;
         const tomH = Math.floor(totalTomSec / 3600);
         const tomM = Math.floor((totalTomSec % 3600) / 60);
-        const tomS = totalTomSec % 60;
-        setNextCountdownStr(`-${String(tomH).padStart(2, '0')}:${String(tomM).padStart(2, '0')}:${String(tomS).padStart(2, '0')}`);
+        if (tomH > 0) {
+          setNextCountdownStr(`-${tomH}h ${tomM}m`);
+        } else {
+          setNextCountdownStr(`-${tomM}m`);
+        }
       }
 
       // 2. Synchronize: Triggered reminders marked completed (✔), future ones pending
@@ -3437,7 +3372,7 @@ export default function App() {
 
       {/* Left Side Navigation Sidebar - Pure White Theme */}
       <aside className="app-sidebar" style={{ width: '68px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '8px', flexShrink: 0, zIndex: 100, boxShadow: '2px 0 10px rgba(0,0,0,0.03)' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#0f172a', border: '1.5px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.2)' }} title="Shadow OS">
+        <div className="sidebar-logo-box" style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#0f172a', border: '1.5px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.2)' }} title="Shadow OS">
           <ShadowLogo size={24} color="#ffffff" innerColor="#0f172a" />
         </div>
 
@@ -3466,10 +3401,10 @@ export default function App() {
           }}
         >
           <div style={{
-            width: '28px',
-            height: '28px',
+            width: '26px',
+            height: '26px',
             borderRadius: '50%',
-            backgroundColor: '#f8fafc',
+            backgroundColor: '#ffffff',
             border: '1.5px solid #cbd5e1',
             display: 'flex',
             alignItems: 'center',
@@ -3478,31 +3413,31 @@ export default function App() {
           }}>
             <Clock size={15} color="#0f172a" />
           </div>
-          <span style={{ 
-            backgroundColor: '#ffffff', 
-            padding: '3px 5px', 
-            borderRadius: '9px', 
-            border: '1.5px solid #cbd5e1', 
+          <span className="watcher-pill" style={{ 
+            backgroundColor: '#E8D2B5', 
+            padding: '2.5px 5px', 
+            borderRadius: '8px', 
+            border: '1px solid #cbb294', 
             whiteSpace: 'nowrap',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             lineHeight: 1.15,
-            minWidth: '46px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+            minWidth: '44px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
           }}>
-            <span style={{ fontSize: '10.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px', fontFamily: "'Montserrat', 'Inter', sans-serif" }}>
+            <span style={{ fontSize: '10px', fontWeight: '900', color: '#3d0605', letterSpacing: '-0.2px', fontFamily: "'Montserrat', 'Inter', sans-serif" }}>
               {nextRemTimeStr || '14:28'}
             </span>
             <span style={{ 
-              fontSize: '9.5px', 
+              fontSize: '9px', 
               fontWeight: '900', 
-              color: '#dc2626', 
+              color: '#881337', 
               letterSpacing: '-0.2px',
               fontFamily: "'Montserrat', 'Inter', monospace, sans-serif",
               fontVariantNumeric: 'tabular-nums'
             }}>
-              {nextCountdownStr || '-00:00'}
+              {nextCountdownStr || '-48m'}
             </span>
           </span>
           <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.2px' }}>Watcher</span>
@@ -3637,34 +3572,35 @@ export default function App() {
         
         {/* Top Header - Pure White */}
         <header className="app-header" style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
+            <div className="header-logo-box" style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
               <ShadowLogo size={22} color="#ffffff" innerColor="#0f172a" />
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={{ margin: 0, fontSize: '15px', fontWeight: '900', letterSpacing: '0.6px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
-                <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v2.6 OS</span>
+            <div style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h1 className="header-title" style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.4px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
+                <span className="mobile-hide-text" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v2.6 OS</span>
               </div>
-              <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+              <span className="header-subtitle" style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {/* Real Mobile & Desktop Permissions Setup Button */}
             <button
               onClick={() => setShowPermissionsModal(true)}
               title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
+              className="header-btn"
               style={{
                 border: '1px solid #e2e8f0',
                 background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#f0fdf4' : '#f8fafc',
                 color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#166534' : '#0f172a',
-                padding: '7px 13px',
+                padding: '7px 11px',
                 borderRadius: '10px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 fontWeight: '900',
                 fontSize: '11px',
                 letterSpacing: '0.3px',
@@ -3672,22 +3608,23 @@ export default function App() {
               }}
             >
               <Shield size={14} />
-              <span>{(mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? "PERMISSIONS OK" : "SETUP PERMISSIONS"}</span>
+              <span className="mobile-hide-text">{(mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? "PERMISSIONS OK" : "SETUP PERMISSIONS"}</span>
             </button>
 
             <button 
               onClick={() => setIsMuted(!isMuted)} 
               title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
+              className="header-btn"
               style={{
                 border: isMuted ? '2px solid #ef4444' : '1px solid #e2e8f0',
                 background: isMuted ? '#fef2f2' : '#f8fafc',
                 color: isMuted ? '#991b1b' : '#0f172a',
-                padding: '7px 13px',
+                padding: '7px 11px',
                 borderRadius: '10px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 fontWeight: '900',
                 fontSize: '11px',
                 letterSpacing: '0.3px',
@@ -3695,13 +3632,13 @@ export default function App() {
               }}
             >
               {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-              <span>{isMuted ? "MUTED" : "SOUND ON"}</span>
+              <span className="mobile-hide-text">{isMuted ? "MUTED" : "SOUND ON"}</span>
             </button>
           </div>
         </header>
 
         {/* Main Dashboard Stage - Crisp White Theme */}
-        <main style={{ 
+        <main className="dashboard-main smooth-scroll" style={{ 
           flex: 1, 
           display: 'flex', 
           flexDirection: 'column', 
@@ -3712,31 +3649,31 @@ export default function App() {
           color: '#0f172a'
         }}>
           
-          <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Top Executive Header Bar: Greeting, IST Real-time Status */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div className="executive-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#16a34a', boxShadow: '0 0 8px #16a34a' }} />
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#475569', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: '900', color: '#475569', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
                     Shadow Command Center • Cloud Connected
                   </span>
                 </div>
-                <h2 style={{ margin: '4px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.5px' }}>
+                <h2 className="greeting-title" style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.5px' }}>
                   Welcome back, {userProfile?.name?.split(' ')[0] || 'Commander'}
                 </h2>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                  <Clock size={14} color="#0f172a" />
-                  <span style={{ fontSize: '11px', fontWeight: '900', fontFamily: 'monospace', color: '#0f172a' }}>
+              <div className="status-badges-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="status-badge" style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '5px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                  <Clock size={13} color="#0f172a" />
+                  <span style={{ fontSize: '10.5px', fontWeight: '900', fontFamily: 'monospace', color: '#0f172a' }}>
                     {currentDateTimeStr || new Date().toLocaleTimeString()}
                   </span>
                 </div>
-                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: '800', color: '#475569', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                  📍 Gujarat, India (IST)
+                <div className="status-badge" style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '5px 10px', borderRadius: '10px', fontSize: '10.5px', fontWeight: '800', color: '#475569', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                  📍 Gujarat (IST)
                 </div>
               </div>
             </div>
@@ -3787,30 +3724,31 @@ export default function App() {
               const triggeredCount = (remindersList || []).filter(r => r && r.completed).length;
 
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
                   
                   {/* Card 1: Watcher */}
                   <div 
+                    className="kpi-card"
                     onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Watcher Routine</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #e2e8f0' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #BDC3C7' }}>
                         <Clock size={16} />
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a', fontFamily: "'Montserrat', 'Inter', monospace, sans-serif", letterSpacing: '0.5px' }}>
+                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a', fontFamily: "'Montserrat', 'Inter', monospace, sans-serif", letterSpacing: '0.5px' }}>
                         {nextCountdownStr}
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '800', color: '#475569', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Next: "{nextRemTitle || 'Routine'}" at {formatTimeTo12Hour(nextRemTimeStr || '09:00')}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>{triggeredCount}/{(remindersList || []).length} Triggered Today</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Watcher →</span>
                     </div>
@@ -3818,10 +3756,11 @@ export default function App() {
 
                   {/* Card 2: Expenses */}
                   <div 
+                    className="kpi-card"
                     onClick={() => setShowExpenseModal(true)}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Monthly Expenses</span>
@@ -3830,17 +3769,17 @@ export default function App() {
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
+                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
                         ₹{monthlySpent.toLocaleString('en-IN')}
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
                         Budget: ₹{monthlyBudget.toLocaleString('en-IN')} ({budgetPct}% used)
                       </div>
                     </div>
-                    <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', backgroundColor: '#ECF0F1', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
                       <div style={{ width: `${budgetPct}%`, height: '100%', backgroundColor: budgetPct > 90 ? '#dc2626' : (budgetPct > 70 ? '#ea580c' : '#16a34a'), borderRadius: '3px', transition: 'width 0.3s' }} />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>Remaining: ₹{Math.max(0, monthlyBudget - monthlySpent).toLocaleString('en-IN')}</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Log Expense →</span>
                     </div>
@@ -3848,10 +3787,11 @@ export default function App() {
 
                   {/* Card 3: Notes & Keep */}
                   <div 
+                    className="kpi-card"
                     onClick={() => setShowNotesModal(true)}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Google Keep Notes</span>
@@ -3860,14 +3800,14 @@ export default function App() {
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
+                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
                         {(notesList || []).length} Notes
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
                         {(notesList || []).filter(n => n.pinned).length} Pinned • Cloud Synced
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>🕒 3x Daily Auto Email Ready</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Notes →</span>
                     </div>
@@ -3875,10 +3815,11 @@ export default function App() {
 
                   {/* Card 4: Radar & Briefing */}
                   <div 
+                    className="kpi-card"
                     onClick={handleOpenBriefing}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'none'; }}
+                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Radar & Intelligence</span>
@@ -3887,14 +3828,14 @@ export default function App() {
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
+                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
                         {(ipoData?.live || []).length} Live IPOs
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
                         {isMonitoringActive ? '● Gujarat Radar Active' : 'Standby • Ahmedabad Live'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
                       <span>Real-Time Market Data</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Daily Briefing →</span>
                     </div>
@@ -3904,122 +3845,7 @@ export default function App() {
               );
             })()}
 
-            {/* Central Stage: Shadow AI Voice Assistant Glass Console */}
-            <div style={{
-              backgroundColor: '#ffffff',
-              border: '1.5px solid #e2e8f0',
-              borderRadius: '20px',
-              padding: '28px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
-              gap: '18px',
-              textAlign: 'center'
-            }}>
 
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-                  Natural Language Voice Intelligence
-                </span>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>
-                  {isListening ? "Listening to your voice..." : "Shadow Neural Assistant"}
-                </h3>
-              </div>
-
-              {/* High-Tech AI Sphere */}
-              <div 
-                onClick={startListening} 
-                title="Click to speak with Shadow Voice AI"
-                style={{
-                  position: 'relative',
-                  width: '130px',
-                  height: '130px',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#f8fafc',
-                  border: `3px solid ${isListening ? '#ef4444' : '#e2e8f0'}`,
-                  boxShadow: isListening 
-                    ? '0 0 35px rgba(239, 68, 68, 0.4)' 
-                    : '0 8px 24px rgba(0,0,0,0.06)',
-                  transition: 'all 0.25s ease'
-                }}
-              >
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  backgroundColor: isListening ? '#ef4444' : '#0f172a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '6px',
-                  transition: 'all 0.2s ease',
-                  border: isListening ? '2px solid #b91c1c' : '1px solid #0f172a'
-                }}>
-                  <Mic size={26} color="#ffffff" />
-                </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.5px' }}>
-                  {isListening ? 'SPEAK NOW' : 'SHADOW AI'}
-                </span>
-                <span style={{ fontSize: '8.5px', color: '#64748b', fontWeight: '800', marginTop: '2px' }}>
-                  {isListening ? 'Listening...' : 'Tap to Speak'}
-                </span>
-              </div>
-
-              {/* Live Voice Transcript Feedback Pill */}
-              {voiceTranscript && (
-                <div style={{ backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '6px 14px', fontSize: '11px', fontWeight: '800', color: '#0f172a', maxWidth: '480px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>🎙️ Recognized:</span>
-                  <span style={{ color: '#0f172a' }}>"{voiceTranscript}"</span>
-                </div>
-              )}
-
-              {/* Quick Clickable Voice Commands (Hindi & English) */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '680px' }}>
-                <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#64748b' }}>
-                  Or tap any quick command below:
-                </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-                  {[
-                    { label: '📝 Note add karo: Aaj mall jana hai', cmd: 'Shadow meri note main add kardo ki aaj mall main jaana hai' },
-                    { label: '⏰ Reminder set karo 16:00 baje ka', cmd: 'Shadow reminder set karo 16:00 baje ka' },
-                    { label: '🗺️ Iskcon se Vaishnodevi route', cmd: 'Shadow iskon sain vaishnodevi ka route set karo' },
-                    { label: '💰 Aaj ka expense dikhao', cmd: 'Shadow mera expense dikhao' }
-                  ].map((chip, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleVoiceCommand(chip.cmd)}
-                      style={{
-                        backgroundColor: '#f1f5f9',
-                        border: '1px solid #e2e8f0',
-                        color: '#0f172a',
-                        padding: '7px 14px',
-                        borderRadius: '20px',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
 
           </div>
 

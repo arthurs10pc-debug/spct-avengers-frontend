@@ -50,30 +50,158 @@ body {
 html, body {
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+/* Smooth Touch Scrolling Everywhere */
+.smooth-scroll, main, .app-sidebar, [style*="overflow"] {
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 768px) {
-  /* Keep sidebar cleanly on the left side on mobile */
+  /* Left Sidebar: Compact, touch-friendly, zero clipping */
   .app-sidebar {
-    width: 54px !important;
+    width: 52px !important;
+    min-width: 52px !important;
     padding: 8px 0 !important;
-    gap: 6px !important;
+    gap: 4px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
   .app-sidebar button {
     width: 46px !important;
     padding: 3px 2px !important;
+    gap: 2px !important;
   }
+  .app-sidebar span {
+    font-size: 8px !important;
+    letter-spacing: 0px !important;
+  }
+  .sidebar-logo-box {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+  }
+  .watcher-pill {
+    min-width: 38px !important;
+    padding: 2px 3px !important;
+    border-radius: 6px !important;
+  }
+  .watcher-pill span:first-child {
+    font-size: 9.5px !important;
+  }
+  .watcher-pill span:last-child {
+    font-size: 8.5px !important;
+  }
+
+  /* Main Content Shell */
   .app-main-content {
-    width: calc(100vw - 54px) !important;
+    width: calc(100vw - 52px) !important;
     min-width: 0 !important;
+    overflow-x: hidden !important;
   }
+
+  /* Top Header: Compact, responsive pill buttons */
   .app-header {
-    padding: 8px 12px !important;
+    padding: 8px 10px !important;
+    gap: 6px !important;
   }
-  .app-header h1 {
-    font-size: 11px !important;
+  .header-logo-box {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 7px !important;
+  }
+  .header-title {
+    font-size: 12px !important;
+    letter-spacing: 0.3px !important;
+  }
+  .header-subtitle {
+    font-size: 9px !important;
+  }
+  .header-btn {
+    padding: 6px 9px !important;
+    border-radius: 8px !important;
   }
   .mobile-hide-text {
     display: none !important;
+  }
+
+  /* Main Dashboard Stage */
+  .dashboard-main {
+    padding: 10px 8px 30px 8px !important;
+    gap: 12px !important;
+  }
+  .executive-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .greeting-title {
+    font-size: 17px !important;
+    line-height: 1.25 !important;
+  }
+  .status-badges-group {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  .status-badge {
+    padding: 4px 8px !important;
+    font-size: 9.5px !important;
+  }
+
+  /* KPI Grid & Cards */
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .kpi-card {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+  .kpi-number {
+    font-size: 22px !important;
+  }
+
+  /* Central AI Voice Console */
+  .voice-console {
+    padding: 16px 10px !important;
+    border-radius: 14px !important;
+    gap: 12px !important;
+  }
+  .voice-console h3 {
+    font-size: 16px !important;
+  }
+  .voice-orb {
+    width: 96px !important;
+    height: 96px !important;
+  }
+  .voice-orb-inner {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .voice-orb-inner svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .voice-chips {
+    gap: 6px !important;
+  }
+  .voice-chip-btn {
+    padding: 5px 9px !important;
+    font-size: 9.5px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Modals Mobile Optimizations */
+  .modal-overlay {
+    padding: 8px !important;
+  }
+  .modal-card {
+    padding: 16px 12px !important;
+    border-radius: 16px !important;
+    max-height: 94dvh !important;
+    width: 100% !important;
   }
 }

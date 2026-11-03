@@ -1,22 +1,36 @@
 {
   "short_name": "Shadow",
-  "name": "Shadow AI Dashboard",
+  "name": "Shadow OS Dashboard",
+  "description": "Executive Personal Command Center & Intelligent Workspace",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icon-192.png?v=5",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512.png?v=5",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png?v=5",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512-maskable.png?v=5",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
   "background_color": "#ffffff",
+  "theme_color": "#0f172a",
   "display": "standalone",
-  "theme_color": "#ffffff"
+  "orientation": "portrait"
 }
