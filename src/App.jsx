@@ -775,45 +775,51 @@ export default function App() {
       // Ensure Service Worker is ready
       const reg = await navigator.serviceWorker.ready;
       let subscription = await reg.pushManager.getSubscription();
+      const convertedKey = urlBase64ToUint8Array(vapidData.publicKey);
 
-      // Always fetch fresh VAPID key and re-subscribe if needed
-      // If existing subscription uses old VAPID key it will be invalidated
+      // Verify if existing subscription matches current VAPID key
       if (subscription) {
-        // Check if the existing subscription matches current server VAPID key by trying to unsubscribe old ones
-        // We store the VAPID public key used at subscribe time in localStorage
-        const storedVapid = localStorage.getItem('shadow_vapid_pub_key');
-        if (storedVapid !== vapidData.publicKey) {
-          console.log('[PWA Push] VAPID key changed, unsubscribing old subscription...');
+        let keyMatches = false;
+        try {
+          if (subscription.options && subscription.options.applicationServerKey) {
+            const currentSubKey = new Uint8Array(subscription.options.applicationServerKey);
+            if (currentSubKey.length === convertedKey.length) {
+              keyMatches = currentSubKey.every((val, i) => val === convertedKey[i]);
+            }
+          }
+        } catch (e) {
+          keyMatches = false;
+        }
+
+        if (!keyMatches) {
+          console.warn('[PWA Push] Mismatched or stale VAPID key detected. Unsubscribing to refresh...');
           try { await subscription.unsubscribe(); } catch (e) {}
           subscription = null;
-          localStorage.removeItem('shadow_vapid_pub_key');
         }
       }
 
       if (!subscription) {
-        const convertedKey = urlBase64ToUint8Array(vapidData.publicKey);
         subscription = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: convertedKey
         });
-        localStorage.setItem('shadow_vapid_pub_key', vapidData.publicKey);
       }
 
-      const emailToUse = targetEmail || userProfile?.email || 'anonymous';
+      const emailToUse = targetEmail || userProfile?.email || 'sataparahetkumar@gmail.com';
       const subRes = await fetch(`${BACKEND_URL}/api/notifications/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: emailToUse,
           subscription: subscription.toJSON ? subscription.toJSON() : subscription,
-          deviceInfo: `${navigator.platform || ''} ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}`
+          deviceInfo: `${navigator.platform || ''} ${/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'}`
         })
       });
       const subData = await subRes.json();
 
       setIsPushSubscribed(true);
       try { localStorage.setItem('jarvis_pwa_push_subscribed', 'true'); } catch (e) {}
-      console.log('[PWA Push] Registered push subscription with backend:', subData);
+      console.log('[PWA Push] Registered fresh push subscription with backend:', subData);
       return { success: true, subscription };
     } catch (err) {
       console.warn('[PWA Push Subscribe Error]:', err);
@@ -821,12 +827,30 @@ export default function App() {
     }
   }, [userProfile?.email]);
 
+  // Auto-subscribe to Web Push notifications on startup if permission is already granted
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      const email = userProfile?.email || 'sataparahetkumar@gmail.com';
+      subscribeToPushNotifications(email);
+    }
+  }, [userProfile?.email, subscribeToPushNotifications]);
+
   const triggerTestPushNotification = useCallback(async () => {
     setIsSendingTestPush(true);
-    setPushFeedbackMessage('Sending test push to your device...');
+    setPushFeedbackMessage('Connecting to push service & dispatching...');
     try {
+      // 1. Ensure fresh active subscription with verified VAPID keys
       await subscribeToPushNotifications();
-      const emailToUse = userProfile?.email || 'anonymous';
+
+      // 2. Immediately trigger native system notification right now
+      showSystemNotification('⚡ Shadow System Notification', {
+        body: 'Push notifications are live and connected to your Shadow app!',
+        icon: '/shadow-logo.png?v=3',
+        tag: `shadow-local-test-${Date.now()}`
+      });
+
+      // 3. Trigger remote WebPush from backend server
+      const emailToUse = userProfile?.email || 'sataparahetkumar@gmail.com';
       const res = await fetch(`${BACKEND_URL}/api/notifications/test-push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -834,7 +858,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        setPushFeedbackMessage('✅ Test Push Sent! Check your device notification center.');
+        setPushFeedbackMessage(`✅ Notification dispatched! Check your phone & desktop notification tray.`);
       } else {
         setPushFeedbackMessage(`⚠️ ${data.message || 'Push queued'}`);
       }
@@ -843,7 +867,7 @@ export default function App() {
     } finally {
       setIsSendingTestPush(false);
     }
-  }, [userProfile?.email, subscribeToPushNotifications]);
+  }, [userProfile?.email, subscribeToPushNotifications, showSystemNotification]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -1259,36 +1283,53 @@ export default function App() {
   // Google Keep Style Notes & 3x Daily Email Reminder State
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showPhotoEditModal, setShowPhotoEditModal] = useState(false);
+  const DEFAULT_USER_NOTES = [
+    {
+      id: "note_1793366315731",
+      title: "Obsssstion vadi bakchodi te joichhe  ne to nahi maja avae  i know tu  jois  j ads aavi j hase",
+      type: "task",
+      content: "",
+      checklist: [],
+      color: "#10b981",
+      pinned: true,
+      createdAt: "Oct 30, 2026"
+    },
+    {
+      id: "note_1793642799064",
+      title: "Papa watch",
+      content: "Papa ni watch       maru laptop and  mobile  search karvanu",
+      color: "#f59e0b",
+      pinned: false,
+      attachments: [],
+      createdAt: "Nov 2, 2026"
+    },
+    {
+      id: "note_1793642784618",
+      title: "Cloths",
+      content: "Didi na  marriege na  cloths",
+      color: "#f59e0b",
+      pinned: false,
+      attachments: [],
+      createdAt: "Nov 2, 2026"
+    },
+    {
+      id: "note_1793642771166",
+      title: "Document",
+      content: "Je je ghare thi file  ma  document padiya chhe a  badha  sarkha set  kari deva",
+      color: "#f43f5e",
+      pinned: false,
+      attachments: [],
+      createdAt: "Nov 2, 2026"
+    }
+  ];
+
   const [notesList, setNotesList] = useState(() => {
     try {
       const email = userProfile?.email ? userProfile.email.trim().toLowerCase() : 'guest';
       const saved = localStorage.getItem(`jarvis_notes_${email}`);
-      return saved ? JSON.parse(saved) : [
-        {
-          id: 'note_preset_1',
-          title: 'Daily Gujarat Route & Tasks',
-          type: 'task',
-          checklist: [
-            { id: 'c1', text: 'Check SG Highway traffic before leaving', completed: true },
-            { id: 'c2', text: 'Verify morning briefing headlines', completed: true },
-            { id: 'c3', text: 'Review today expense logs & budget', completed: false }
-          ],
-          color: '#38bdf8',
-          pinned: true,
-          createdAt: new Date().toLocaleDateString()
-        },
-        {
-          id: 'note_preset_2',
-          title: 'Shadow Guidelines',
-          type: 'text',
-          content: 'Keep real-time traffic active during peak hours. Use the clean tools converter for PDF export.',
-          color: '#f59e0b',
-          pinned: false,
-          createdAt: new Date().toLocaleDateString()
-        }
-      ];
+      return saved ? JSON.parse(saved) : DEFAULT_USER_NOTES;
     } catch {
-      return [];
+      return DEFAULT_USER_NOTES;
     }
   });
   const [noteFilterTab, setNoteFilterTab] = useState('all');
@@ -1347,9 +1388,14 @@ export default function App() {
   });
 
   const DEFAULT_REMINDERS = [
-    { task: "Morning Review & Focus", time: "08:00", completed: false },
-    { task: "Afternoon Work & Tasks", time: "13:00", completed: false },
-    { task: "Evening Wrap Up & Notes", time: "20:30", completed: false }
+    { task: "task 1", time: "10:58", completed: true },
+    { task: "task 2", time: "11:58", completed: true },
+    { task: "task 3", time: "12:58", completed: true },
+    { task: "task 4", time: "14:28", completed: true },
+    { task: "task 5", time: "15:28", completed: true },
+    { task: "task 6", time: "16:58", completed: false },
+    { task: "task 7", time: "18:13", completed: false },
+    { task: "task 8", time: "19:28", completed: false }
   ];
 
   const [remindersList, setRemindersList] = useState(() => {
@@ -1496,74 +1542,6 @@ export default function App() {
       Notification.requestPermission().catch(() => {});
     }
   }, []);
-
-  // Auto-resubscribe to Push Notifications on app start if already granted
-  // This ensures fresh subscription is registered after VAPID key rotation
-  useEffect(() => {
-    const autoResubscribe = async () => {
-      try {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        if (Notification.permission !== 'granted') return;
-
-        // Fetch fresh VAPID key from server
-        const vapidRes = await fetch(`${BACKEND_URL}/api/notifications/vapid-key`).catch(() => null);
-        if (!vapidRes) return;
-        const vapidData = await vapidRes.json().catch(() => null);
-        if (!vapidData?.publicKey) return;
-
-        const reg = await navigator.serviceWorker.ready;
-        const existingSub = await reg.pushManager.getSubscription();
-
-        // Check stored VAPID key
-        const storedVapid = localStorage.getItem('shadow_vapid_pub_key');
-        const isStale = storedVapid && storedVapid !== vapidData.publicKey;
-
-        if (existingSub && isStale) {
-          // Old subscription with wrong VAPID key – unsubscribe and re-subscribe
-          console.log('[PWA Push] VAPID key mismatch detected, refreshing subscription...');
-          await existingSub.unsubscribe();
-          localStorage.removeItem('shadow_vapid_pub_key');
-          localStorage.removeItem('jarvis_pwa_push_subscribed');
-        }
-
-        if (!existingSub || isStale) {
-          // Create fresh subscription with current VAPID key
-          const padding = '='.repeat((4 - (vapidData.publicKey.length % 4)) % 4);
-          const base64 = (vapidData.publicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
-          const rawData = window.atob(base64);
-          const outputArray = new Uint8Array(rawData.length);
-          for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-
-          const newSub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: outputArray
-          });
-
-          const userEmail = userProfile?.email || 'sataparahetkumar@gmail.com';
-          await fetch(`${BACKEND_URL}/api/notifications/subscribe`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: userEmail,
-              subscription: newSub.toJSON ? newSub.toJSON() : newSub,
-              deviceInfo: `${navigator.platform || ''} ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'} AutoRefresh`
-            })
-          }).catch(() => {});
-
-          localStorage.setItem('shadow_vapid_pub_key', vapidData.publicKey);
-          localStorage.setItem('jarvis_pwa_push_subscribed', 'true');
-          setIsPushSubscribed(true);
-          console.log('[PWA Push] Subscription refreshed successfully for:', userEmail);
-        }
-      } catch (err) {
-        console.warn('[PWA Push Auto-Resubscribe]:', err.message);
-      }
-    };
-
-    // Run once after component mounts (slight delay so SW is ready)
-    const timer = setTimeout(autoResubscribe, 3000);
-    return () => clearTimeout(timer);
-  }, [userProfile?.email]);
 
   // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat)
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -2056,11 +2034,6 @@ export default function App() {
         localStorage.setItem(`jarvis_db_user_${cleanEmail}`, JSON.stringify(profileData));
         setShowAuthModal(false);
         alert(`Success! Logged in successfully as ${profileData.name}. Welcome back!`);
-
-        // Auto-subscribe to Push Notifications on login (runs in background)
-        setTimeout(() => {
-          subscribeToPushNotifications(cleanEmail).catch(() => {});
-        }, 1500);
       } else if (resStatus === 404 || resStatus === 400 || (resData && resData.success === false)) {
         alert(`Error: This Gmail ID (${cleanEmail}) is not registered in the database.\n\nPlease click "Sign Up" first to create your account.`);
         setAuthMode('signup');
@@ -2114,11 +2087,6 @@ export default function App() {
       setUserProfile(profileData);
       setShowAuthModal(false);
       alert(`Sign Up Success! Welcome ${profileData.name}. Your account has been registered.`);
-
-      // Auto-subscribe to Push Notifications on sign up (runs in background)
-      setTimeout(() => {
-        subscribeToPushNotifications(cleanEmail).catch(() => {});
-      }, 1500);
     }
   };
 
