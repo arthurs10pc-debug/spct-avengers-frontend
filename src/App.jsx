@@ -776,12 +776,27 @@ export default function App() {
       const reg = await navigator.serviceWorker.ready;
       let subscription = await reg.pushManager.getSubscription();
 
+      // Always fetch fresh VAPID key and re-subscribe if needed
+      // If existing subscription uses old VAPID key it will be invalidated
+      if (subscription) {
+        // Check if the existing subscription matches current server VAPID key by trying to unsubscribe old ones
+        // We store the VAPID public key used at subscribe time in localStorage
+        const storedVapid = localStorage.getItem('shadow_vapid_pub_key');
+        if (storedVapid !== vapidData.publicKey) {
+          console.log('[PWA Push] VAPID key changed, unsubscribing old subscription...');
+          try { await subscription.unsubscribe(); } catch (e) {}
+          subscription = null;
+          localStorage.removeItem('shadow_vapid_pub_key');
+        }
+      }
+
       if (!subscription) {
         const convertedKey = urlBase64ToUint8Array(vapidData.publicKey);
         subscription = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: convertedKey
         });
+        localStorage.setItem('shadow_vapid_pub_key', vapidData.publicKey);
       }
 
       const emailToUse = targetEmail || userProfile?.email || 'anonymous';
@@ -1332,9 +1347,9 @@ export default function App() {
   });
 
   const DEFAULT_REMINDERS = [
-    { task: "Morning Review & Focus", time: "09:00", completed: false },
-    { task: "Afternoon Work & Tasks", time: "14:00", completed: false },
-    { task: "Evening Wrap Up & Notes", time: "20:00", completed: false }
+    { task: "Morning Review & Focus", time: "08:00", completed: false },
+    { task: "Afternoon Work & Tasks", time: "13:00", completed: false },
+    { task: "Evening Wrap Up & Notes", time: "20:30", completed: false }
   ];
 
   const [remindersList, setRemindersList] = useState(() => {
@@ -1481,6 +1496,74 @@ export default function App() {
       Notification.requestPermission().catch(() => {});
     }
   }, []);
+
+  // Auto-resubscribe to Push Notifications on app start if already granted
+  // This ensures fresh subscription is registered after VAPID key rotation
+  useEffect(() => {
+    const autoResubscribe = async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (Notification.permission !== 'granted') return;
+
+        // Fetch fresh VAPID key from server
+        const vapidRes = await fetch(`${BACKEND_URL}/api/notifications/vapid-key`).catch(() => null);
+        if (!vapidRes) return;
+        const vapidData = await vapidRes.json().catch(() => null);
+        if (!vapidData?.publicKey) return;
+
+        const reg = await navigator.serviceWorker.ready;
+        const existingSub = await reg.pushManager.getSubscription();
+
+        // Check stored VAPID key
+        const storedVapid = localStorage.getItem('shadow_vapid_pub_key');
+        const isStale = storedVapid && storedVapid !== vapidData.publicKey;
+
+        if (existingSub && isStale) {
+          // Old subscription with wrong VAPID key – unsubscribe and re-subscribe
+          console.log('[PWA Push] VAPID key mismatch detected, refreshing subscription...');
+          await existingSub.unsubscribe();
+          localStorage.removeItem('shadow_vapid_pub_key');
+          localStorage.removeItem('jarvis_pwa_push_subscribed');
+        }
+
+        if (!existingSub || isStale) {
+          // Create fresh subscription with current VAPID key
+          const padding = '='.repeat((4 - (vapidData.publicKey.length % 4)) % 4);
+          const base64 = (vapidData.publicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+
+          const newSub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: outputArray
+          });
+
+          const userEmail = userProfile?.email || 'sataparahetkumar@gmail.com';
+          await fetch(`${BACKEND_URL}/api/notifications/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: userEmail,
+              subscription: newSub.toJSON ? newSub.toJSON() : newSub,
+              deviceInfo: `${navigator.platform || ''} ${/Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'} AutoRefresh`
+            })
+          }).catch(() => {});
+
+          localStorage.setItem('shadow_vapid_pub_key', vapidData.publicKey);
+          localStorage.setItem('jarvis_pwa_push_subscribed', 'true');
+          setIsPushSubscribed(true);
+          console.log('[PWA Push] Subscription refreshed successfully for:', userEmail);
+        }
+      } catch (err) {
+        console.warn('[PWA Push Auto-Resubscribe]:', err.message);
+      }
+    };
+
+    // Run once after component mounts (slight delay so SW is ready)
+    const timer = setTimeout(autoResubscribe, 3000);
+    return () => clearTimeout(timer);
+  }, [userProfile?.email]);
 
   // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat)
   const [showBriefingModal, setShowBriefingModal] = useState(false);
@@ -1973,6 +2056,11 @@ export default function App() {
         localStorage.setItem(`jarvis_db_user_${cleanEmail}`, JSON.stringify(profileData));
         setShowAuthModal(false);
         alert(`Success! Logged in successfully as ${profileData.name}. Welcome back!`);
+
+        // Auto-subscribe to Push Notifications on login (runs in background)
+        setTimeout(() => {
+          subscribeToPushNotifications(cleanEmail).catch(() => {});
+        }, 1500);
       } else if (resStatus === 404 || resStatus === 400 || (resData && resData.success === false)) {
         alert(`Error: This Gmail ID (${cleanEmail}) is not registered in the database.\n\nPlease click "Sign Up" first to create your account.`);
         setAuthMode('signup');
@@ -2026,6 +2114,11 @@ export default function App() {
       setUserProfile(profileData);
       setShowAuthModal(false);
       alert(`Sign Up Success! Welcome ${profileData.name}. Your account has been registered.`);
+
+      // Auto-subscribe to Push Notifications on sign up (runs in background)
+      setTimeout(() => {
+        subscribeToPushNotifications(cleanEmail).catch(() => {});
+      }, 1500);
     }
   };
 
@@ -3556,41 +3649,31 @@ export default function App() {
   };
 
   const handleSendNotesEmailNow = async (explicitEmail = null) => {
-    const targetEmail = (explicitEmail || notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com').trim().toLowerCase();
+    const targetEmail = (explicitEmail || notesTargetEmail || userProfile?.email || 'sataparahetkumar@gmail.com').trim().toLowerCase();
     setIsSendingNotesEmail(true);
-    setNotesEmailFeedback(`Connecting to mail server... Sending to ${targetEmail}...`);
+    setNotesEmailFeedback(`Dispatching notes to Telegram bot, mobile push & email (${targetEmail})...`);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
-      // Sort notes so pinned notes are strictly at the top
-      const sortedForEmail = [...notesList].sort((a, b) => {
-        const aPinned = a && (a.pinned === true || a.pinned === 'true') ? 1 : 0;
-        const bPinned = b && (b.pinned === true || b.pinned === 'true') ? 1 : 0;
-        return bPinned - aPinned;
-      });
 
-      const res = await fetch(`${BACKEND_URL}/api/notes/send-reminder-email`, {
+      const res = await fetch(`${BACKEND_URL}/api/notes-scheduler/trigger?email=${encodeURIComponent(targetEmail)}&slot=Manual%20Instant%20Notes%20Briefing`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: targetEmail,
-          slotLabel: 'Manual Notes & Tasks Reminder',
-          notes: sortedForEmail
-        }),
+        body: JSON.stringify({ email: targetEmail, slot: 'Manual Instant Notes Briefing' }),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        setNotesEmailFeedback(`✅ Delivered to ${targetEmail}!`);
+        setNotesEmailFeedback(`✅ Dispatched to Telegram bot, Mobile Push & ${targetEmail}!`);
       } else {
-        setNotesEmailFeedback(`❌ ${data.error || data.message || 'Failed to dispatch email'}`);
+        setNotesEmailFeedback(`❌ ${data.error || data.message || 'Failed to dispatch notes'}`);
       }
     } catch (e) {
       if (e.name === 'AbortError') {
-        setNotesEmailFeedback(`⚠️ Email dispatch is processing in background. Check ${targetEmail} shortly.`);
+        setNotesEmailFeedback(`⚠️ Notes dispatch is processing in background.`);
       } else {
-        setNotesEmailFeedback(`❌ Mail error: ${e.message}`);
+        setNotesEmailFeedback(`❌ Dispatch notice: ${e.message}`);
       }
     } finally {
       setIsSendingNotesEmail(false);
@@ -4537,7 +4620,7 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>🕒 3x Daily Email (Pinned on Top)</span>
+                      <span>📱 3x Daily Telegram & Push (8 AM, 1 PM, 8:30 PM)</span>
                       <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Notes →</span>
                     </div>
                   </div>
@@ -5222,14 +5305,14 @@ export default function App() {
                   title="Deliver current notes directly to this Gmail ID now"
                 >
                   <Mail size={13} />
-                  {isSendingNotesEmail ? 'Sending...' : 'Send Notes to My Gmail Now'}
+                  {isSendingNotesEmail ? 'Dispatching...' : '⚡ Test Multi-Channel Notes Dispatch'}
                 </button>
               </div>
             </div>
 
-            {/* Daily Email Schedule Banner & Feedback */}
+            {/* Daily Email & Telegram Schedule Banner & Feedback */}
             <div style={{ padding: '9px 14px', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', fontSize: '11px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-              <span>🕒 3x Daily Automated Reminders: <strong>09:00 AM</strong>, <strong>02:00 PM</strong>, <strong>08:00 PM</strong> delivered to your Gmail (📌 Pinned notes written at the top for instant reading).</span>
+              <span>⚡ 3x Daily Automated Delivery: <strong>08:00 AM</strong>, <strong>01:00 PM</strong>, <strong>08:30 PM IST</strong> auto-sent to your <strong>Telegram Bot (@shadow_assistant05_bot)</strong> &amp; <strong>Mobile Phone Push</strong> (⭐ Pinned notes on top).</span>
               {notesEmailFeedback && (
                 <span style={{ color: '#0f172a', fontWeight: '900' }}>{notesEmailFeedback}</span>
               )}
