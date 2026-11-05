@@ -3194,6 +3194,16 @@ export default function App() {
     }
   };
 
+  const toggleListening = () => {
+    if (isListening) {
+      try { recognitionRef.current?.stop(); } catch (e) {}
+      setIsListening(false);
+    } else {
+      startListening();
+    }
+  };
+  const toggleAssistantListening = toggleListening;
+
   // Watcher Time-Hit Checker & Live Countdown Timer
   // Rule: Passed time reminders are ticked (✔); Remaining future reminders are unticked;
   // Timer shows positive countdown to the next future reminder today; Refreshes daily.
