@@ -733,12 +733,34 @@ export default function App() {
     role: 'commander'
   };
 
+  const canonicalUserEmail = (email) => {
+    if (!email) return 'sataparahetkumar@gmail.com';
+    const clean = String(email).trim().toLowerCase();
+    if (
+      clean === 'sataparahetkumar786@gmail.com' ||
+      clean === 'hetsatapara@gmail.com' ||
+      clean === 'anonymous' ||
+      clean === 'guest' ||
+      clean.includes('satapara')
+    ) {
+      return 'sataparahetkumar@gmail.com';
+    }
+    return clean;
+  };
+
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('jarvis_user_profile');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.email) return parsed;
+        if (parsed && parsed.email) {
+          const cEmail = canonicalUserEmail(parsed.email);
+          if (cEmail === 'sataparahetkumar@gmail.com') {
+            parsed.email = 'sataparahetkumar@gmail.com';
+            if (!parsed.name || parsed.name === 'commander') parsed.name = 'Het Satapara';
+          }
+          return parsed;
+        }
       }
       // Auto-bind to primary Commander account so Mobile & Laptop sync data right out of the box
       try { localStorage.setItem('jarvis_user_profile', JSON.stringify(DEFAULT_COMMANDER)); } catch (e) {}
@@ -1459,18 +1481,39 @@ export default function App() {
       const saved = localStorage.getItem('jarvis_expenses');
       let parsed = saved ? JSON.parse(saved) : [];
       if (!Array.isArray(parsed)) parsed = [];
-      const userProfileRaw = localStorage.getItem('jarvis_user_profile');
-      if (userProfileRaw) {
-        const u = JSON.parse(userProfileRaw);
-        if (u?.email) {
-          const userSaved = localStorage.getItem(`jarvis_expenses_${u.email.trim().toLowerCase()}`);
-          if (userSaved) {
-            const userParsed = JSON.parse(userSaved);
-            if (Array.isArray(userParsed)) {
-              parsed = mergeExpenses(parsed, userParsed, []);
+
+      // Check all possible email alias keys to prevent ANY data loss
+      const aliasKeys = [
+        'jarvis_expenses_sataparahetkumar@gmail.com',
+        'jarvis_expenses_sataparahetkumar786@gmail.com',
+        'jarvis_expenses_hetsatapara@gmail.com'
+      ];
+      aliasKeys.forEach(k => {
+        try {
+          const itemStr = localStorage.getItem(k);
+          if (itemStr) {
+            const arr = JSON.parse(itemStr);
+            if (Array.isArray(arr) && arr.length > 0) {
+              parsed = mergeExpenses(parsed, arr, []);
             }
           }
-        }
+        } catch (e) {}
+      });
+
+      const userProfileRaw = localStorage.getItem('jarvis_user_profile');
+      if (userProfileRaw) {
+        try {
+          const u = JSON.parse(userProfileRaw);
+          if (u?.email) {
+            const userSaved = localStorage.getItem(`jarvis_expenses_${u.email.trim().toLowerCase()}`);
+            if (userSaved) {
+              const userParsed = JSON.parse(userSaved);
+              if (Array.isArray(userParsed)) {
+                parsed = mergeExpenses(parsed, userParsed, []);
+              }
+            }
+          }
+        } catch (e) {}
       }
       return parsed;
     } catch (e) {
@@ -1611,6 +1654,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('jarvis_expenses', JSON.stringify(expenseList));
+      localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(expenseList));
       if (userProfile?.email) {
         localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(expenseList));
       }
@@ -1663,6 +1707,7 @@ export default function App() {
               const merged = mergeExpenses(prev, data.expenses, rawDeleted);
               try {
                 localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+                localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(merged));
                 localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(merged));
               } catch (e) {}
               return merged;
@@ -1764,6 +1809,7 @@ export default function App() {
               if (JSON.stringify(merged) !== JSON.stringify(prev)) {
                 try {
                   localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+                  localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(merged));
                   localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
                 } catch (e) {}
                 return merged;
@@ -3673,6 +3719,7 @@ export default function App() {
       const updated = [newExp, ...prev.filter(item => item && item.id !== newExp.id)];
       try {
         localStorage.setItem('jarvis_expenses', JSON.stringify(updated));
+        localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(updated));
         if (userProfile?.email) {
           localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(updated));
         }
@@ -3719,6 +3766,7 @@ export default function App() {
       const updated = [newExp, ...prev.filter(item => item && item.id !== newExp.id)];
       try {
         localStorage.setItem('jarvis_expenses', JSON.stringify(updated));
+        localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(updated));
         if (userProfile?.email) {
           localStorage.setItem(`jarvis_expenses_${userProfile.email.trim().toLowerCase()}`, JSON.stringify(updated));
         }
@@ -5212,8 +5260,8 @@ export default function App() {
       />
 
       {showNotesModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '780px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card notes-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '780px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
             
             <button 
               onClick={() => setShowNotesModal(false)} 
@@ -5229,7 +5277,7 @@ export default function App() {
                   <CheckSquare size={20} color="#0f172a" /> Google Keep Style Notes
                 </h3>
                 <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
-                  All notes and pinned notes synced across devices ({userProfile?.email || 'Guest Mode - Login to Sync'})
+                  All notes and pinned notes synced across devices ({userProfile?.email || 'sataparahetkumar@gmail.com'})
                 </span>
               </div>
 
@@ -5238,7 +5286,7 @@ export default function App() {
                 <input
                   type="email"
                   placeholder="Target Gmail ID..."
-                  value={notesTargetEmail || (userProfile?.email || 'sataparahetkumar786@gmail.com')}
+                  value={notesTargetEmail || (userProfile?.email || 'sataparahetkumar@gmail.com')}
                   onChange={(e) => setNotesTargetEmail(e.target.value)}
                   style={{
                     padding: '7px 12px',
@@ -5253,7 +5301,7 @@ export default function App() {
                   }}
                 />
                 <button
-                  onClick={() => handleSendNotesEmailNow(notesTargetEmail || userProfile?.email || 'sataparahetkumar786@gmail.com')}
+                  onClick={() => handleSendNotesEmailNow(notesTargetEmail || userProfile?.email || 'sataparahetkumar@gmail.com')}
                   disabled={isSendingNotesEmail}
                   style={{
                     backgroundColor: '#0f172a',
@@ -6005,8 +6053,8 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card watcher-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
             <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingRight: '36px' }}>
@@ -6480,8 +6528,8 @@ export default function App() {
 
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="modal-card profile-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}>
             <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             {userProfile.photo ? (
@@ -6541,6 +6589,7 @@ export default function App() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowAuthModal(false);
           }}
+          className="modal-overlay"
           style={{ 
             position: 'fixed', 
             inset: 0, 
@@ -6554,6 +6603,7 @@ export default function App() {
           }}
         >
           <div 
+            className="modal-card auth-modal-card"
             style={{ 
               backgroundColor: '#ffffff', 
               borderRadius: '24px', 
@@ -6806,8 +6856,8 @@ export default function App() {
         const avgDailySpend = Math.round(monthlySpent / currentDay);
 
         return (
-          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '750px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div className="modal-card expense-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '750px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
               <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
               {/* Header */}
@@ -6986,9 +7036,10 @@ export default function App() {
 
                 {/* Form Input Line */}
                 <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <div className="expense-form-grid" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <input
                       type="text"
+                      className="expense-form-input expense-title-input"
                       placeholder="Expense Title (e.g. Chai, Groceries, Petrol, Books)..."
                       value={expenseTitle}
                       onChange={(e) => setExpenseTitle(e.target.value)}
@@ -6996,12 +7047,14 @@ export default function App() {
                     />
                     <input
                       type="number"
+                      className="expense-form-input expense-amount-input"
                       placeholder="₹ Amount"
                       value={expenseAmount}
                       onChange={(e) => setExpenseAmount(e.target.value)}
                       style={{ flex: '1 1 100px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '12px', outline: 'none', fontWeight: '900' }}
                     />
                     <select
+                      className="expense-form-input expense-cat-select"
                       value={expenseCategory}
                       onChange={(e) => setExpenseCategory(e.target.value)}
                       style={{ flex: '1.5 1 140px', padding: '10px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '800' }}
@@ -7016,6 +7069,7 @@ export default function App() {
                     </select>
                     <button 
                       type="submit" 
+                      className="touch-btn expense-form-submit-btn"
                       style={{ 
                         padding: '10px 22px', 
                         borderRadius: '8px', 

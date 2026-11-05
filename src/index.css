@@ -59,107 +59,9 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 640px) {
-  /* Mobile Bottom Navigation Bar: thumb-friendly, full screen width */
-  .app-sidebar {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100vw !important;
-    min-width: 100vw !important;
-    height: 52px !important;
-    max-height: 52px !important;
-    padding: 2px 4px !important;
-    gap: 1px !important;
-    flex-direction: row !important;
-    justify-content: space-around !important;
-    align-items: center !important;
-    border-right: none !important;
-    border-top: 1.5px solid #e2e8f0 !important;
-    background-color: #ffffff !important;
-    z-index: 9999 !important;
-    box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.06) !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-  }
-  .app-sidebar::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-  }
-  .sidebar-logo-box {
-    display: none !important;
-  }
-  .watcher-pill {
-    display: none !important;
-  }
-  .app-sidebar button {
-    width: auto !important;
-    min-width: 36px !important;
-    padding: 2px 2px !important;
-    gap: 1px !important;
-    flex-shrink: 0 !important;
-  }
-  .app-sidebar span {
-    font-size: 7.5px !important;
-    letter-spacing: 0px !important;
-  }
-  .sidebar-bottom-group {
-    margin-top: 0 !important;
-    flex-direction: row !important;
-    gap: 2px !important;
-  }
-
-  /* Full 100vw Screen for Main Content with room for bottom bar */
-  .app-main-content {
-    width: 100vw !important;
-    min-width: 100vw !important;
-    padding-bottom: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  .dashboard-main {
-    padding: 8px 10px 62px 10px !important;
-    gap: 8px !important;
-  }
-  .dashboard-main > div {
-    gap: 8px !important;
-  }
-
-  /* Header on Mobile: Zero Overlap, Clean 1-Row Pill Buttons */
-  .app-header {
-    padding: 8px 12px !important;
-    gap: 6px !important;
-  }
-  .header-logo-box {
-    width: 30px !important;
-    height: 30px !important;
-  }
-  .header-title {
-    font-size: 13px !important;
-    letter-spacing: 0.3px !important;
-  }
-  .header-btn {
-    padding: 5px 8px !important;
-    border-radius: 8px !important;
-    min-height: 32px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-  .mobile-hide-text {
-    display: none !important;
-  }
-
-  .pwa-push-card {
-    padding: 8px 12px !important;
-    border-radius: 12px !important;
-    gap: 6px !important;
-  }
-}
+/* -------------------------------------------------------------
+   RESPONSIVE DESIGN: TABLETS & MOBILE OVERHAUL
+   ------------------------------------------------------------- */
 
 @media (min-width: 641px) and (max-width: 768px) {
   /* Tablet Sidebar */
@@ -211,10 +113,9 @@ html, body {
 }
 
 @media (max-width: 768px) {
-
-  /* Main Dashboard Stage */
+  /* Main Dashboard Stage for all handheld devices */
   .dashboard-main {
-    padding: 10px 8px 30px 8px !important;
+    padding: 10px 8px 76px 8px !important;
     gap: 12px !important;
   }
   .executive-header {
@@ -243,7 +144,7 @@ html, body {
   }
   .kpi-card {
     padding: 12px 14px !important;
-    border-radius: 12px !important;
+    border-radius: 14px !important;
   }
   .kpi-number {
     font-size: 22px !important;
@@ -278,15 +179,177 @@ html, body {
     font-size: 9.5px !important;
     border-radius: 6px !important;
   }
+}
 
-  /* Modals Mobile Optimizations */
-  .modal-overlay {
-    padding: 8px !important;
+/* -------------------------------------------------------------
+   MOBILE PHONES (<= 640px): USER FRIENDLY, BRAND NEW & TOUCH-POLISHED
+   ------------------------------------------------------------- */
+@media (max-width: 640px) {
+  /* Mobile Bottom Navigation Bar: thumb-friendly, full screen width */
+  .app-sidebar {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    height: 56px !important;
+    max-height: 56px !important;
+    padding: 4px 6px !important;
+    gap: 2px !important;
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    border-right: none !important;
+    border-top: 1px solid #e2e8f0 !important;
+    background-color: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    z-index: 9999 !important;
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
+  .app-sidebar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .sidebar-logo-box {
+    display: none !important;
+  }
+  .watcher-pill {
+    display: none !important;
+  }
+  .app-sidebar button {
+    width: auto !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 3px 6px !important;
+    gap: 2px !important;
+    flex-shrink: 0 !important;
+    border-radius: 10px !important;
+    transition: transform 0.1s ease, background 0.15s ease !important;
+  }
+  .app-sidebar button:active {
+    transform: scale(0.92) !important;
+  }
+  .app-sidebar span {
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.1px !important;
+  }
+  .sidebar-bottom-group {
+    margin-top: 0 !important;
+    flex-direction: row !important;
+    gap: 2px !important;
+  }
+
+  /* Full Screen for Main Content with safe room above the 56px bottom dock */
+  .app-main-content {
+    width: 100vw !important;
+    min-width: 100vw !important;
+    padding-bottom: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .dashboard-main {
+    padding: 10px 10px 78px 10px !important;
+    gap: 10px !important;
+  }
+  .dashboard-main > div {
+    gap: 10px !important;
+  }
+
+  /* Header on Mobile: Zero Overlap, Clean 1-Row Pill Buttons */
+  .app-header {
+    padding: 8px 12px !important;
+    gap: 6px !important;
+  }
+  .header-logo-box {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 9px !important;
+  }
+  .header-title {
+    font-size: 13.5px !important;
+    letter-spacing: 0.3px !important;
+  }
+  .header-btn {
+    padding: 6px 10px !important;
+    border-radius: 9px !important;
+    min-height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .mobile-hide-text {
+    display: none !important;
+  }
+
+  .pwa-push-card {
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    gap: 6px !important;
+  }
+
+  /* Universal Touch-Friendly Modals on Mobile */
+  .modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background-color: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
+  }
+
   .modal-card {
-    padding: 16px 12px !important;
-    border-radius: 16px !important;
-    max-height: 94dvh !important;
+    background-color: #ffffff !important;
+    border-radius: 20px !important;
+    padding: 16px 14px !important;
     width: 100% !important;
+    max-width: 600px !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25) !important;
+    box-sizing: border-box !important;
+    border: 1.5px solid #e2e8f0 !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Clean Responsive Form Layout inside Modals */
+  .expense-form-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .expense-form-input {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    box-sizing: border-box !important;
+    font-size: 13px !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+    min-height: 42px !important;
+  }
+
+  .expense-form-submit-btn {
+    width: 100% !important;
+    height: 44px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
