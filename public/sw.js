@@ -1,5 +1,5 @@
 // Shadow Dashboard Service Worker (Mobile PWA & Desktop Web Push Notifications)
-const CACHE_VERSION = 'shadow-v7';
+const CACHE_VERSION = 'shadow-v10-ultra';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -9,7 +9,13 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(keys.map((key) => caches.delete(key)));
-    }).then(() => clients.claim())
+    }).then(() => clients.claim()).then(() => {
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+        windowClients.forEach(client => {
+          client.postMessage({ type: 'FORCE_REFRESH_NEW_VERSION' });
+        });
+      });
+    })
   );
 });
 

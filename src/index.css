@@ -59,6 +59,10 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
+.mobile-quick-actions {
+  display: none !important;
+}
+
 /* -------------------------------------------------------------
    RESPONSIVE DESIGN: TABLETS & MOBILE OVERHAUL
    ------------------------------------------------------------- */
@@ -113,6 +117,11 @@ html, body {
 }
 
 @media (max-width: 768px) {
+  /* Show Mobile Quick Actions Bar */
+  .mobile-quick-actions {
+    display: grid !important;
+  }
+
   /* Main Dashboard Stage for all handheld devices */
   .dashboard-main {
     padding: 10px 8px 76px 8px !important;

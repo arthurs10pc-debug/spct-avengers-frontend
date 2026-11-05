@@ -4268,14 +4268,49 @@ export default function App() {
             </div>
             <div style={{ minWidth: 0, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <h1 className="header-title" style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.4px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW DASHBOARD</h1>
-                <span className="mobile-hide-text" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v2.6 OS</span>
+                <h1 className="header-title" style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.4px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW</h1>
+                <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v3.0 MOBILE</span>
               </div>
               <span className="header-subtitle mobile-hide-text" style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {/* Force Refresh & Sync button for Instant Mobile Update */}
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  if ('caches' in window) {
+                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+                      window.location.reload();
+                    });
+                  } else {
+                    window.location.reload();
+                  }
+                } catch (e) {
+                  window.location.reload();
+                }
+              }}
+              title="Force Update / Hard Refresh"
+              className="touch-btn"
+              style={{
+                border: '1.5px solid #0f172a',
+                background: '#0f172a',
+                color: '#ffffff',
+                padding: '6px 9px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: '900',
+                fontSize: '10px'
+              }}
+            >
+              <RotateCw size={13} color="#38bdf8" />
+              <span>SYNC UI</span>
+            </button>
             {/* Direct PWA Push Test Button */}
             <button
               type="button"
@@ -4431,6 +4466,103 @@ export default function App() {
                   📍 Gujarat (IST)
                 </div>
               </div>
+            </div>
+
+            {/* Brand New Touch-Optimized Quick Action Tiles (Active on Mobile) */}
+            <div className="mobile-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
+                className="touch-btn"
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '10px 4px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                }}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={16} />
+                </div>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.2px' }}>Watcher</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowExpenseModal(true)}
+                className="touch-btn"
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid #bbf7d0',
+                  borderRadius: '14px',
+                  padding: '10px 4px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(22,163,74,0.06)'
+                }}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#16a34a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <DollarSign size={16} />
+                </div>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.2px' }}>+ Spend</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowNotesModal(true)}
+                className="touch-btn"
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid #bfdbfe',
+                  borderRadius: '14px',
+                  padding: '10px 4px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(37,99,235,0.06)'
+                }}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckSquare size={16} />
+                </div>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.2px' }}>Notes ({notesList.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleAssistantListening}
+                className="touch-btn"
+                style={{
+                  backgroundColor: isListening ? '#fef2f2' : '#ffffff',
+                  border: `1.5px solid ${isListening ? '#fecaca' : '#e9d5ff'}`,
+                  borderRadius: '14px',
+                  padding: '10px 4px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(124,58,237,0.06)'
+                }}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: isListening ? '#dc2626' : '#7c3aed', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Mic size={16} />
+                </div>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: isListening ? '#dc2626' : '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.2px' }}>
+                  {isListening ? 'Listening' : 'Voice'}
+                </span>
+              </button>
             </div>
 
             {/* PWA Background Web Push Notification Quick Test Card */}
