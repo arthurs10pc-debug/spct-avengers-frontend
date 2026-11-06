@@ -8,7 +8,8 @@ import {
   Search, RotateCw, ExternalLink, Zap, Tag, Coffee, Bus, BookOpen, ShoppingBag, FileSpreadsheet, RefreshCw,
   Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
   Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
-  Palette, ArrowRight, FileType, Sliders, Wand2, Eraser
+  Palette, ArrowRight, FileType, Sliders, Wand2, Eraser,
+  Wifi, Battery, Signal, LayoutGrid, SlidersHorizontal
 } from 'lucide-react';
 import PhotoEditorModal from './components/PhotoEditorModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
@@ -900,6 +901,9 @@ export default function App() {
 
   // Live Header Date, Day & Time State
   const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
+  const [mobileActiveNav, setMobileActiveNav] = useState('watcher'); // 'watcher' | 'expense' | 'notes' | 'profile'
+  const [mobileCategoryFilter, setMobileCategoryFilter] = useState('All'); // 'All' | 'Watcher' | 'Expenses' | 'Notes' | 'Radar'
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
 
   // Tools / Universal Extension Changer & Converter Feature State
   const [showToolsModal, setShowToolsModal] = useState(false);
@@ -4117,8 +4121,8 @@ export default function App() {
 
         {/* Watcher Widget: Exact 1:1 match to user screenshot */}
         <button 
-          className="bottom-nav-tab"
-          onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
+          className={`bottom-nav-tab ${mobileActiveNav === 'watcher' ? 'active' : ''}`}
+          onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
           title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '14:28'} (${nextCountdownStr} remaining)`} 
           style={{ 
             background: showWatcherModal ? '#f1f5f9' : 'transparent', 
@@ -4135,18 +4139,12 @@ export default function App() {
             transition: 'all 0.15s ease'
           }}
         >
-          <div style={{
-            width: '26px',
-            height: '26px',
-            borderRadius: '50%',
-            backgroundColor: '#ffffff',
-            border: '1.5px solid #cbd5e1',
+          <div className="tab-icon-wrap" style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: '#0f172a'
+            justifyContent: 'center'
           }}>
-            <Clock size={15} color="#0f172a" />
+            <Clock size={19} />
           </div>
           <span className="watcher-pill" style={{ 
             backgroundColor: '#E8D2B5', 
@@ -4178,7 +4176,12 @@ export default function App() {
           <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.2px' }}>Watcher</span>
         </button>
 
-        <button className="bottom-nav-tab" onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: showExpenseModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+        <button 
+          className={`bottom-nav-tab ${mobileActiveNav === 'expense' ? 'active' : ''}`}
+          onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }} 
+          title="Expense Tracker" 
+          style={{ background: showExpenseModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}
+        >
           <DollarSign size={18} />
           <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Expense</span>
         </button>
@@ -4194,8 +4197,8 @@ export default function App() {
         </button>
 
         <button 
-          className="bottom-nav-tab"
-          onClick={() => setShowNotesModal(true)} 
+          className={`bottom-nav-tab ${mobileActiveNav === 'notes' ? 'active' : ''}`}
+          onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }} 
           title="Google Keep Style Notes & Task Reminders" 
           style={{ 
             background: showNotesModal ? '#f1f5f9' : 'transparent', 
@@ -4268,8 +4271,9 @@ export default function App() {
         <div className="sidebar-bottom-group" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             type="button"
-            className="bottom-nav-tab touch-btn"
+            className={`bottom-nav-tab touch-btn ${mobileActiveNav === 'profile' ? 'active' : ''}`}
             onClick={() => {
+              setMobileActiveNav('profile');
               if (userProfile) {
                 setShowProfileModal(true);
               } else {
@@ -4331,8 +4335,44 @@ export default function App() {
       {/* Main Content Area - Clean Crisp White Theme */}
       <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 68px)', backgroundColor: '#f8fafc' }}>
         
-        {/* Top Header - Pure White */}
+        {/* Dynamic Island & Phone Camera Notch Badge (Matches User Reference Image) */}
+        <div className="mobile-dynamic-island-bar">
+          <div className="mobile-status-time">
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) || '11:37'}
+          </div>
+          <div 
+            className="mobile-dynamic-island-notch" 
+            onClick={() => { setShowWatcherModal(true); setMobileActiveNav('watcher'); }}
+            title="Dynamic Island: Tap to Open Watcher"
+          >
+            <div className="camera-lens-dot" />
+            <div className="island-indicator">
+              <span className="island-pulse-dot" />
+              <span className="island-text">{nextRemTimeStr || '11:58'}</span>
+            </div>
+          </div>
+          <div className="mobile-status-icons">
+            <span style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '-0.3px' }}>5G</span>
+            <Wifi size={13} strokeWidth={2.5} />
+            <div className="battery-badge">
+              <div className="battery-level" />
+            </div>
+          </div>
+        </div>
+
+        {/* Top Header */}
         <header className="app-header" style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          {/* Mobile Left: Squarish LayoutGrid button (From user screenshot) */}
+          <button 
+            type="button" 
+            className="mobile-header-square-btn"
+            onClick={() => setShowToolsModal(true)}
+            title="Open Tools & Quick Features"
+          >
+            <LayoutGrid size={20} color="#0f172a" />
+          </button>
+
+          {/* Desktop Left / Mobile Center Logo & Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
             <div className="header-logo-box" style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
               <ShadowLogo size={22} color="#ffffff" innerColor="#0f172a" />
@@ -4340,13 +4380,37 @@ export default function App() {
             <div style={{ minWidth: 0, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <h1 className="header-title" style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.4px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW</h1>
-                <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v3.0 MOBILE</span>
+                <span className="header-pill-badge" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v3.0 PRO</span>
               </div>
               <span className="header-subtitle mobile-hide-text" style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {/* Mobile Right: Round User Profile Avatar (From user screenshot) */}
+          <button 
+            type="button"
+            className="mobile-header-avatar-btn"
+            onClick={() => {
+              setMobileActiveNav('profile');
+              if (userProfile) {
+                setShowProfileModal(true);
+              } else {
+                setAuthMode('login');
+                setShowAuthModal(true);
+              }
+            }}
+            title={userProfile ? userProfile.name : "Google Log In"}
+          >
+            {userProfile && userProfile.photo ? (
+              <img src={userProfile.photo} alt={userProfile.name} className="avatar-img" onError={(e) => { e.target.style.display = 'none'; }} />
+            ) : (
+              <span className="avatar-initial">{(userProfile?.name || 'H').charAt(0).toUpperCase()}</span>
+            )}
+            <span className="avatar-online-dot" />
+          </button>
+
+          {/* Desktop Right Header Controls */}
+          <div className="desktop-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {/* Force Refresh & Sync button for Instant Mobile Update */}
             <button
               type="button"
@@ -4511,6 +4575,77 @@ export default function App() {
         }}>
           
           <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+            {/* Mobile Hero Heading (Exact match to screenshot "Find unique furniture for your home") */}
+            <div className="mobile-hero-heading">
+              <h2>Find unique routines & focus for your day</h2>
+            </div>
+
+            {/* Mobile Search & Action Bar (Exact match to search + filter button in screenshot) */}
+            <div className="mobile-search-row">
+              <div className="mobile-search-input-wrap">
+                <Search size={18} color="#94a3b8" />
+                <input 
+                  type="text" 
+                  placeholder="Search routines, notes, expenses..." 
+                  value={mobileSearchQuery}
+                  onChange={(e) => setMobileSearchQuery(e.target.value)}
+                  className="mobile-search-input"
+                />
+              </div>
+              <button 
+                type="button" 
+                className="mobile-filter-btn"
+                onClick={() => {
+                  try { window.location.reload(); } catch(e) {}
+                }}
+                title="Sync UI & Refresh Data"
+              >
+                <SlidersHorizontal size={18} color="#ffffff" />
+              </button>
+            </div>
+
+            {/* Mobile Category Filter Chips (Exact match to All, Chair, Table... in screenshot) */}
+            <div className="mobile-category-chips">
+              {['All', 'Watcher', 'Expenses', 'Notes', 'Radar'].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`category-chip ${mobileCategoryFilter === cat ? 'active' : ''}`}
+                  onClick={() => {
+                    setMobileCategoryFilter(cat);
+                    if (cat === 'Watcher') { setMobileActiveNav('watcher'); setShowWatcherModal(true); }
+                    else if (cat === 'Expenses') { setMobileActiveNav('expense'); setShowExpenseModal(true); }
+                    else if (cat === 'Notes') { setMobileActiveNav('notes'); setShowNotesModal(true); }
+                    else if (cat === 'Radar') { setShowRoutePanel(true); }
+                  }}
+                >
+                  {cat === 'All' ? 'All' : cat === 'Watcher' ? '⏰ Watcher' : cat === 'Expenses' ? '💳 Expenses' : cat === 'Notes' ? '📝 Notes' : '🗺️ Radar'}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile Featured Hero Banner Card ("Up to 40% Discount" style from screenshot) */}
+            <div 
+              className="mobile-featured-banner-card"
+              onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
+            >
+              <div className="banner-left">
+                <span className="banner-tag">NEXT UP ROUTINE</span>
+                <h3 className="banner-title">"{nextRemTitle || 'Routine Focus'}"</h3>
+                <p className="banner-time">
+                  Due at {formatTimeTo12Hour(nextRemTimeStr || '11:58')} ({nextCountdownStr})
+                </p>
+                <button type="button" className="banner-pill-btn">
+                  Open Watcher →
+                </button>
+              </div>
+              <div className="banner-right">
+                <div className="banner-clock-circle">
+                  <Clock size={36} color="#ffffff" />
+                </div>
+              </div>
+            </div>
 
             {/* Top Executive Header Bar: Greeting, IST Real-time Status */}
             <div className="executive-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
@@ -7983,6 +8118,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Mobile Home Indicator Line (iPhone/Android standard swipe bar from screenshot) */}
+      <div className="mobile-home-indicator" />
 
     </div>
   );
