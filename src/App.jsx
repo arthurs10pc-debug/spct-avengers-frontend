@@ -4108,1017 +4108,428 @@ export default function App() {
   const currentBudgetPct = monthlyBudget > 0 ? Math.min(Math.round((currentMonthSpent / monthlyBudget) * 100), 100) : 0;
 
   return (
-    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#f0f9ff', color: '#0f172a', display: 'flex', flexDirection: 'row', fontFamily: "'Montserrat', 'Inter', -apple-system, sans-serif", fontWeight: '800', overflow: 'hidden', boxSizing: 'border-box' }}>
-      {/* Custom Full-Screen Startup Animation (White Theme + Dynamic Rotating Shadow) */}
+    <div className="app-shell zebeyond-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#070c09', color: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
+      {/* Custom Full-Screen Startup Animation */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
 
-      {/* Left Side Navigation Sidebar - Pure White Theme */}
-      <aside className="app-sidebar" style={{ width: '68px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: '8px', flexShrink: 0, zIndex: 100, boxShadow: '2px 0 10px rgba(0,0,0,0.03)' }}>
-        <div className="sidebar-logo-box" style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#0f172a', border: '1.5px solid #0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.2)' }} title="Shadow OS">
-          <ShadowLogo size={24} color="#ffffff" innerColor="#0f172a" />
+      {/* Dynamic Island on Mobile View (Matching phone frame in reference image) */}
+      <div className="mobile-dynamic-island-bar zebeyond-island">
+        <div className="mobile-status-time">
+          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) || '14:35'}
         </div>
-
-        <button className="desktop-nav-item" onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: showRoutePanel ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
-          <Navigation size={18} />
-          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Route</span>
-        </button>
-
-        {/* Watcher Widget: Exact 1:1 match to user screenshot */}
-        <button 
-          className={`bottom-nav-tab ${mobileActiveNav === 'watcher' ? 'active' : ''}`}
-          onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
-          title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '14:28'} (${nextCountdownStr} remaining)`} 
-          style={{ 
-            background: showWatcherModal ? '#f1f5f9' : 'transparent', 
-            border: 'none', 
-            color: '#0f172a', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            gap: '3px', 
-            cursor: 'pointer', 
-            padding: '3px 2px', 
-            borderRadius: '10px', 
-            width: '58px',
-            transition: 'all 0.15s ease'
-          }}
+        <div 
+          className="mobile-dynamic-island-notch" 
+          onClick={() => { setShowWatcherModal(true); setMobileActiveNav('watcher'); }}
+          title="Dynamic Island: Tap to Open Watcher"
         >
-          <div className="tab-icon-wrap" style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Clock size={19} />
-          </div>
-          <span className="watcher-pill" style={{ 
-            backgroundColor: '#E8D2B5', 
-            padding: '2.5px 5px', 
-            borderRadius: '8px', 
-            border: '1px solid #cbb294', 
-            whiteSpace: 'nowrap',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            lineHeight: 1.15,
-            minWidth: '44px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
-          }}>
-            <span style={{ fontSize: '10px', fontWeight: '900', color: '#3d0605', letterSpacing: '-0.2px', fontFamily: "'Montserrat', 'Inter', sans-serif" }}>
-              {nextRemTimeStr || '14:28'}
-            </span>
-            <span style={{ 
-              fontSize: '9px', 
-              fontWeight: '900', 
-              color: '#881337', 
-              letterSpacing: '-0.2px',
-              fontFamily: "'Montserrat', 'Inter', monospace, sans-serif",
-              fontVariantNumeric: 'tabular-nums'
-            }}>
-              {nextCountdownStr || '-48m'}
-            </span>
-          </span>
-          <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.2px' }}>Watcher</span>
-        </button>
-
-        <button 
-          className={`bottom-nav-tab ${mobileActiveNav === 'expense' ? 'active' : ''}`}
-          onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }} 
-          title="Expense Tracker" 
-          style={{ background: showExpenseModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}
-        >
-          <DollarSign size={18} />
-          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Expense</span>
-        </button>
-
-        <button className="desktop-nav-item" onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: showBriefingModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
-          <Newspaper size={18} />
-          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Briefing</span>
-        </button>
-
-        <button className="desktop-nav-item" onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: showToolsModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
-          <Wrench size={18} />
-          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Tools</span>
-        </button>
-
-        <button 
-          className={`bottom-nav-tab ${mobileActiveNav === 'notes' ? 'active' : ''}`}
-          onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }} 
-          title="Google Keep Style Notes & Task Reminders" 
-          style={{ 
-            background: showNotesModal ? '#f1f5f9' : 'transparent', 
-            border: 'none', 
-            color: '#0f172a', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            gap: '3px', 
-            cursor: 'pointer', 
-            padding: '5px 4px', 
-            borderRadius: '10px', 
-            width: '56px',
-            position: 'relative',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <CheckSquare size={18} />
-          <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Notes</span>
-          {notesList.length > 0 && (
-            <span style={{ 
-              position: 'absolute', 
-              top: '2px', 
-              right: '6px', 
-              backgroundColor: '#0f172a', 
-              color: '#ffffff', 
-              fontSize: '8px', 
-              fontWeight: '900', 
-              borderRadius: '50%', 
-              width: '14px', 
-              height: '14px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center' 
-            }}>
-              {notesList.length}
-            </span>
-          )}
-        </button>
-
-        {/* Edit Photo / AI Eraser Button (Directly below Notes) */}
-        <button 
-          className="desktop-nav-item"
-          onClick={() => setShowPhotoEditModal(true)} 
-          title="Edit Photo & Windows-style AI Object Eraser" 
-          style={{ 
-            background: showPhotoEditModal ? '#f1f5f9' : 'transparent', 
-            border: 'none', 
-            color: '#0f172a', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            gap: '3px', 
-            cursor: 'pointer', 
-            padding: '5px 4px', 
-            borderRadius: '10px', 
-            width: '56px',
-            position: 'relative',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ position: 'relative' }}>
-            <Image size={18} />
-            <Sparkles size={10} style={{ position: 'absolute', top: -4, right: -6, color: '#ec4899' }} />
-          </div>
-          <span style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.2px', textTransform: 'uppercase', textAlign: 'center', lineHeight: '1.1' }}>Edit Photo</span>
-        </button>
-
-        {/* Profile & Stop Button at Bottom */}
-        <div className="sidebar-bottom-group" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-          <button 
-            type="button"
-            className={`bottom-nav-tab touch-btn ${mobileActiveNav === 'profile' ? 'active' : ''}`}
-            onClick={() => {
-              setMobileActiveNav('profile');
-              if (userProfile) {
-                setShowProfileModal(true);
-              } else {
-                setAuthMode('login');
-                setShowAuthModal(true);
-              }
-            }} 
-            title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
-            style={{ 
-              background: showProfileModal ? '#f1f5f9' : 'transparent', 
-              border: 'none',
-              color: '#0f172a', 
-              cursor: 'pointer', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              gap: '3px',
-              padding: '5px 4px', 
-              borderRadius: '10px', 
-              width: '56px',
-              transition: 'all 0.15s ease',
-              touchAction: 'manipulation'
-            }}
-          >
-            {userProfile && userProfile.photo ? (
-              <img src={userProfile.photo} alt={userProfile.name} style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #0f172a' }} onError={(e) => { e.target.style.display = 'none'; }} />
-            ) : (
-              <UserCircle size={18} color="#0f172a" />
-            )}
-            <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Profile</span>
-          </button>
-
-          <button 
-            className="desktop-nav-item"
-            onClick={handleStopAll} 
-            title="Shadow Standby / Emergency Audio & Route Stop" 
-            style={{ 
-              background: '#fef2f2',
-              border: '1.5px solid #fecaca', 
-              color: '#dc2626', 
-              padding: '6px 4px', 
-              borderRadius: '10px', 
-              cursor: 'pointer', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              gap: '2px', 
-              width: '46px',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 1px 3px rgba(220, 38, 38, 0.1)'
-            }}
-          >
-            <Power size={15} color="#dc2626" />
-            <span style={{ fontSize: '7.5px', fontWeight: '900', letterSpacing: '0.5px', color: '#dc2626' }}>STANDBY</span>
-          </button>
-        </div>
-      </aside>
-      {/* Main Content Area - Fluid Wave Cyan-Mint Theme */}
-      <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 68px)', backgroundColor: '#f0f9ff' }}>
-        
-        {/* Dynamic Island & Phone Camera Notch Badge (Matches User Reference Image) */}
-        <div className="mobile-dynamic-island-bar">
-          <div className="mobile-status-time">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) || '11:37'}
-          </div>
-          <div 
-            className="mobile-dynamic-island-notch" 
-            onClick={() => { setShowWatcherModal(true); setMobileActiveNav('watcher'); }}
-            title="Dynamic Island: Tap to Open Watcher"
-          >
-            <div className="camera-lens-dot" />
-            <div className="island-indicator">
-              <span className="island-pulse-dot" />
-              <span className="island-text">{nextRemTimeStr || '11:58'}</span>
-            </div>
-          </div>
-          <div className="mobile-status-icons">
-            <span style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '-0.3px' }}>5G</span>
-            <Wifi size={13} strokeWidth={2.5} />
-            <div className="battery-badge">
-              <div className="battery-level" />
-            </div>
+          <div className="camera-lens-dot" />
+          <div className="island-indicator">
+            <span className="island-pulse-dot" style={{ backgroundColor: '#00f59b', boxShadow: '0 0 8px #00f59b' }} />
+            <span className="island-text">{nextRemTimeStr || '14:35'}</span>
           </div>
         </div>
+        <div className="mobile-status-icons">
+          <span style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '-0.3px', color: '#00f59b' }}>5G</span>
+          <Wifi size={13} strokeWidth={2.5} color="#00f59b" />
+          <div className="battery-badge" style={{ borderColor: '#00f59b' }}>
+            <div className="battery-level" style={{ backgroundColor: '#00f59b' }} />
+          </div>
+        </div>
+      </div>
 
-        {/* Fluid Wave Cyan-Mint Gradient Header */}
-        <header className="app-header fluid-wave-header">
-          <div className="fluid-header-top-row">
-            {/* Mobile Left: Frosted glass squarish menu button */}
-            <button 
-              type="button" 
-              className="mobile-header-square-btn"
-              onClick={() => setShowToolsModal(true)}
-              title="Open Tools & Quick Features"
-            >
-              <LayoutGrid size={20} color="#ffffff" />
-            </button>
-
-            {/* Desktop Left / Mobile Center Logo & Title */}
-            <div className="fluid-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', minWidth: 0 }}>
-              <div className="header-logo-box" style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.22)', backdropFilter: 'blur(10px)', border: '1.5px solid rgba(255, 255, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <ShadowLogo size={22} color="#ffffff" innerColor="#0284c7" />
-              </div>
-              <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                  <h1 className="header-title" style={{ margin: 0, fontSize: '16px', fontWeight: '900', letterSpacing: '0.4px', color: '#ffffff', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW</h1>
-                  <span className="header-pill-badge" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', padding: '2px 7px', borderRadius: '6px', letterSpacing: '0.5px', border: '1px solid rgba(255, 255, 255, 0.35)' }}>v3.0 PRO</span>
-                </div>
-                <span className="header-subtitle mobile-hide-text" style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
-              </div>
+      {/* ZeBeyond Sleek Obsidian Header */}
+      <header className="zebeyond-header">
+        <div className="zebeyond-header-inner">
+          {/* Brand Logo & Title */}
+          <div className="zebeyond-brand">
+            <div className="zebeyond-logo-icon">
+              <ShadowLogo size={22} color="#00f59b" innerColor="#070c09" />
             </div>
-
-            {/* Mobile Right: Round User Profile Avatar */}
-            <button 
-              type="button"
-              className="mobile-header-avatar-btn"
-              onClick={() => {
-                setMobileActiveNav('profile');
-                if (userProfile) {
-                  setShowProfileModal(true);
-                } else {
-                  setAuthMode('login');
-                  setShowAuthModal(true);
-                }
-              }}
-              title={userProfile ? userProfile.name : "Google Log In"}
-            >
-              {userProfile && userProfile.photo ? (
-                <img src={userProfile.photo} alt={userProfile.name} className="avatar-img" onError={(e) => { e.target.style.display = 'none'; }} />
-              ) : (
-                <span className="avatar-initial">{(userProfile?.name || 'H').charAt(0).toUpperCase()}</span>
-              )}
-              <span className="avatar-online-dot" />
-            </button>
-
-            {/* Desktop Right Header Controls */}
-            <div className="desktop-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              {/* Force Refresh & Sync button */}
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    if ('caches' in window) {
-                      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-                        window.location.reload();
-                      });
-                    } else {
-                      window.location.reload();
-                    }
-                  } catch (e) {
-                    window.location.reload();
-                  }
-                }}
-                title="Force Update / Hard Refresh"
-                className="touch-btn fluid-control-pill"
-                style={{
-                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontWeight: '900',
-                  fontSize: '11px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                <RotateCw size={13} color="#ffffff" />
-                <span>SYNC UI</span>
-              </button>
-
-              {/* Direct PWA Push Test Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPermissionsModal(true);
-                  triggerTestPushNotification();
-                }}
-                disabled={isSendingTestPush}
-                title="Test PWA Push Notification: Sends live alert to this device"
-                className="header-btn touch-btn fluid-control-pill"
-                style={{
-                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontWeight: '900',
-                  fontSize: '11px',
-                  letterSpacing: '0.3px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                <Bell size={14} color="#ffffff" />
-                <span className="mobile-hide-text">{isSendingTestPush ? "SENDING..." : "TEST PUSH"}</span>
-              </button>
-
-              {/* Real Mobile & Desktop Permissions Setup Button */}
-              <button
-                onClick={() => setShowPermissionsModal(true)}
-                title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
-                className="header-btn fluid-control-pill"
-                style={{
-                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
-                  background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontWeight: '900',
-                  fontSize: '11px',
-                  letterSpacing: '0.3px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                <Shield size={14} color="#ffffff" />
-                <span className="mobile-hide-text">{(mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? "PERMISSIONS OK" : "SETUP PERMISSIONS"}</span>
-              </button>
-
-              <button 
-                onClick={() => setIsMuted(!isMuted)} 
-                title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
-                className="header-btn fluid-control-pill"
-                style={{
-                  border: isMuted ? '1.5px solid #ef4444' : '1.5px solid rgba(255, 255, 255, 0.35)',
-                  background: isMuted ? 'rgba(239, 68, 68, 0.35)' : 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontWeight: '900',
-                  fontSize: '11px',
-                  letterSpacing: '0.3px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                {isMuted ? <VolumeX size={15} color="#ffffff" /> : <Volume2 size={15} color="#ffffff" />}
-                <span className="mobile-hide-text">{isMuted ? "MUTED" : "SOUND ON"}</span>
-              </button>
-
-              {/* Quick Profile / Login Header Button */}
-              <button 
-                type="button"
-                onClick={() => {
-                  if (userProfile) {
-                    setShowProfileModal(true);
-                  } else {
-                    setAuthMode('login');
-                    setShowAuthModal(true);
-                  }
-                }} 
-                title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
-                className="header-btn touch-btn fluid-control-pill"
-                style={{
-                  border: '1.5px solid rgba(255, 255, 255, 0.4)',
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  color: '#ffffff',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontWeight: '900',
-                  fontSize: '11px',
-                  letterSpacing: '0.3px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                <UserCircle size={15} color="#ffffff" />
-                <span className="mobile-hide-text">{userProfile ? (userProfile.name?.split(' ')[0] || 'PROFILE') : 'LOG IN'}</span>
-              </button>
+            <div className="zebeyond-brand-text">
+              <span className="zebeyond-brand-title">SHADOW</span>
+              <span className="zebeyond-badge">v3.0 PRO</span>
             </div>
           </div>
 
-          {/* Floating White Rounded Search Pill (Exact match to reference image) */}
-          <div className="fluid-search-pill-container">
-            <div className="fluid-search-pill">
-              <Search size={18} className="fluid-search-icon" color="#0284c7" />
+          {/* Center Nav / Status Pill (Desktop only) */}
+          <div className="zebeyond-center-status desktop-only">
+            <span className="status-live-dot" />
+            <span>Telemetry Active • Gujarat (IST)</span>
+            <span className="status-clock">{currentDateTimeStr || new Date().toLocaleTimeString()}</span>
+          </div>
+
+          {/* Right Header Actions */}
+          <div className="zebeyond-header-actions">
+            {/* Search Pill */}
+            <div className="zebeyond-search-box">
+              <Search size={15} color="#6ee7b7" />
               <input 
                 type="text" 
-                placeholder="Search routines, notes, radar..." 
+                placeholder="Search..." 
                 value={mobileSearchQuery}
                 onChange={(e) => setMobileSearchQuery(e.target.value)}
-                className="fluid-search-input"
+                className="zebeyond-search-input"
               />
-              <button 
-                type="button" 
-                className="fluid-filter-pill-btn"
-                onClick={() => {
-                  try { window.location.reload(); } catch(e) {}
-                }}
-                title="Sync UI & Refresh Data"
-              >
-                <SlidersHorizontal size={15} color="#ffffff" />
-              </button>
             </div>
+
+            {/* Direct PWA Push Alert Button (ONLY PLACE TO SETUP PUSH/ALERTS) */}
+            <button 
+              type="button"
+              className="zebeyond-icon-btn touch-btn"
+              onClick={() => setShowPermissionsModal(true)}
+              title="PWA Web Push Notifications & Permissions"
+            >
+              <Bell size={16} color={mobilePermissions.notifications === 'granted' || isPushSubscribed ? "#00f59b" : "#94a3b8"} />
+              {(mobilePermissions.notifications === 'granted' || isPushSubscribed) && <span className="icon-badge-dot" />}
+            </button>
+
+            {/* Sound Toggle */}
+            <button 
+              type="button"
+              className="zebeyond-icon-btn touch-btn desktop-only"
+              onClick={() => setIsMuted(!isMuted)}
+              title={isMuted ? "Unmute Application Sound" : "Mute Sound"}
+            >
+              {isMuted ? <VolumeX size={16} color="#ef4444" /> : <Volume2 size={16} color="#00f59b" />}
+            </button>
+
+            {/* User Profile Avatar (ONLY PLACE TO OPEN PROFILE / LOGIN) */}
+            <button 
+              type="button"
+              className="zebeyond-profile-pill touch-btn"
+              onClick={() => {
+                setMobileActiveNav('profile');
+                if (userProfile) setShowProfileModal(true);
+                else { setAuthMode('login'); setShowAuthModal(true); }
+              }}
+              title={userProfile ? userProfile.name : "Sign In with Google"}
+            >
+              {userProfile && userProfile.photo ? (
+                <img src={userProfile.photo} alt={userProfile.name} className="zebeyond-avatar-img" />
+              ) : (
+                <UserCircle size={17} color="#00f59b" />
+              )}
+              <span className="desktop-only">{userProfile ? (userProfile.name?.split(' ')[0] || 'Profile') : 'Login'}</span>
+            </button>
+
+            {/* Neon Mint Signature CTA Button */}
+            <button 
+              type="button"
+              className="zebeyond-cta-btn touch-btn"
+              onClick={() => {
+                try {
+                  if ('caches' in window) {
+                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+                      window.location.reload();
+                    });
+                  } else { window.location.reload(); }
+                } catch(e) { window.location.reload(); }
+              }}
+              title="Sync UI & Hard Refresh"
+            >
+              <RotateCw size={13} color="#042f1a" />
+              <span>SYNC UI</span>
+            </button>
           </div>
+        </div>
+      </header>
 
-          {/* Smooth Organic Wave Contour Transition into Pastel Sky Blue Content */}
-          <div className="fluid-wave-bottom-curve">
-            <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none">
-              <path d="M0,20 C320,60 480,-5 720,25 C960,60 1200,5 1440,30 L1440,60 L0,60 Z" fill="#f0f9ff" />
-            </svg>
-          </div>
-        </header>
+      {/* Main Content Area - Full Width Obsidian Stage */}
+      <main className="zebeyond-main smooth-scroll">
+        <div className="zebeyond-container">
 
-        {/* Main Dashboard Stage - Fluid Wave Glassmorphism Theme */}
-        <main className="dashboard-main smooth-scroll" style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          padding: '16px 20px', 
-          position: 'relative', 
-          overflowY: 'auto', 
-          backgroundColor: '#f0f9ff',
-          color: '#0f172a'
-        }}>
-          
-          <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-            {/* 6 Frosted Glass Action Tiles Grid (Exact 1:1 match to user screenshot Screen 3) */}
-            <div className="frosted-tiles-section">
-              <div className="frosted-tiles-grid">
-                {/* 1: Notes & Routines */}
+          {/* HERO SECTION: Exact match to Image 1 (Laptop) */}
+          <section className="zebeyond-hero">
+            <div className="zebeyond-hero-left">
+              <span className="zebeyond-tag">THE FOCUS & ROUTINE PHASE</span>
+              <h1 className="zebeyond-hero-headline">
+                Size and simulate <br />
+                <span className="neon-text">daily focus fast</span>
+              </h1>
+              <p className="zebeyond-hero-desc">
+                Generate application-specific focus and demonstrate routine performance with unprecedented speed and fidelity.
+              </p>
+              
+              <div className="zebeyond-hero-ctas">
+                {/* ONE AND ONLY BUTTON TO OPEN WATCHER */}
                 <button 
                   type="button" 
-                  className="frosted-tile touch-btn"
-                  onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
-                  title="Google Keep Notes & Reminders"
-                >
-                  <div className="frosted-icon-bubble cyan">
-                    <MessageSquare size={22} color="#0284c7" />
-                    {notesList.length > 0 && <span className="frosted-tile-badge">{notesList.length}</span>}
-                  </div>
-                  <span className="frosted-tile-label">Notes</span>
-                </button>
-
-                {/* 2: Watcher */}
-                <button 
-                  type="button" 
-                  className="frosted-tile touch-btn"
+                  className="zebeyond-hero-primary-btn touch-btn"
                   onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                  title={`Watcher: ${nextRemTitle || 'Routine'} at ${nextRemTimeStr || '14:28'}`}
+                  title="Open Watcher"
                 >
-                  <div className="frosted-icon-bubble amber">
-                    <Star size={22} color="#f59e0b" fill="#f59e0b" />
-                    <span className="frosted-tile-subtext">{nextRemTimeStr || '14:28'}</span>
-                  </div>
-                  <span className="frosted-tile-label">Watcher</span>
+                  <Clock size={16} />
+                  <span>Open Watcher ({nextCountdownStr})</span>
                 </button>
 
-                {/* 3: Alerts / Push */}
+                {/* ONE AND ONLY BUTTON TO OPEN GUJARAT RADAR */}
                 <button 
                   type="button" 
-                  className="frosted-tile touch-btn"
-                  onClick={() => setShowPermissionsModal(true)}
-                  title="System Alerts & PWA Push Setup"
-                >
-                  <div className="frosted-icon-bubble emerald">
-                    <Bell size={22} color="#10b981" />
-                    <span className="frosted-status-dot" style={{ backgroundColor: (mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#10b981' : '#f59e0b' }} />
-                  </div>
-                  <span className="frosted-tile-label">Alerts</span>
-                </button>
-
-                {/* 4: Profile */}
-                <button 
-                  type="button" 
-                  className="frosted-tile touch-btn"
-                  onClick={() => {
-                    setMobileActiveNav('profile');
-                    if (userProfile) setShowProfileModal(true);
-                    else { setAuthMode('login'); setShowAuthModal(true); }
-                  }}
-                  title={userProfile ? userProfile.name : "Log In"}
-                >
-                  <div className="frosted-icon-bubble sky">
-                    {userProfile && userProfile.photo ? (
-                      <img src={userProfile.photo} alt={userProfile.name} className="frosted-tile-avatar" onError={(e) => { e.target.style.display = 'none'; }} />
-                    ) : (
-                      <UserCircle size={22} color="#06b6d4" />
-                    )}
-                  </div>
-                  <span className="frosted-tile-label">{userProfile ? (userProfile.name?.split(' ')[0] || 'Profile') : 'Profile'}</span>
-                </button>
-
-                {/* 5: Tools */}
-                <button 
-                  type="button" 
-                  className="frosted-tile touch-btn"
-                  onClick={() => setShowToolsModal(true)}
-                  title="Tools & Converters"
-                >
-                  <div className="frosted-icon-bubble indigo">
-                    <HelpCircle size={22} color="#6366f1" />
-                  </div>
-                  <span className="frosted-tile-label">Tools</span>
-                </button>
-
-                {/* 6: Radar */}
-                <button 
-                  type="button" 
-                  className="frosted-tile touch-btn"
+                  className="zebeyond-hero-secondary-btn touch-btn"
                   onClick={() => setShowRoutePanel(true)}
-                  title="Gujarat Route Radar & Telemetry"
+                  title="Open Gujarat Radar Route Monitor"
                 >
-                  <div className="frosted-icon-bubble teal">
-                    <Navigation size={22} color="#0d9488" />
-                    {isMonitoringActive && <span className="radar-live-dot" />}
-                  </div>
-                  <span className="frosted-tile-label">Radar</span>
+                  <Navigation size={16} color="#00f59b" />
+                  <span>Gujarat Radar</span>
                 </button>
+              </div>
+
+              {/* Sub-note for nearest upcoming routine */}
+              <div className="zebeyond-hero-status-note">
+                <span className="pulse-neon-dot" />
+                <span>Next Routine: <strong>"{nextRemTitle || 'Routine Focus'}"</strong> due at {formatTimeTo12Hour(nextRemTimeStr || '14:28')}</span>
               </div>
             </div>
 
-            {/* Category Filter Chips */}
-            <div className="mobile-category-chips">
-              {['All', 'Watcher', 'Expenses', 'Notes', 'Radar'].map((cat) => (
+            {/* Right: Technical Flowchart Vector Diagram (Exact match to screenshot!) */}
+            <div className="zebeyond-hero-right">
+              <div className="zebeyond-diagram-card">
+                <div className="diagram-top-badge">
+                  <Activity size={14} color="#00f59b" />
+                  <span>LIVE ARCHITECTURE STREAM</span>
+                </div>
+                
+                {/* Wireframe Flowchart with Concept Exploration Node */}
+                <div className="diagram-flowchart">
+                  <div className="diagram-row">
+                    <div className="diagram-node node-dim">
+                      <span>Routine Benchmark</span>
+                    </div>
+                    <div className="diagram-arrow">➔</div>
+                    <div className="diagram-node node-active-neon">
+                      <span className="node-pulse" />
+                      <span>Focus Exploration</span>
+                      <small>{nextRemTitle || 'task 3'} ({nextCountdownStr})</small>
+                    </div>
+                  </div>
+
+                  <div className="diagram-connector-line" />
+
+                  <div className="diagram-row">
+                    <div className="diagram-node node-dim">
+                      <span>Cloud Keep Telemetry</span>
+                    </div>
+                    <div className="diagram-arrow">➔</div>
+                    <div className="diagram-node node-dim">
+                      <span>Financial Ledger</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="diagram-info-box">
+                  <Sparkles size={14} color="#00f59b" />
+                  <p>
+                    SHADOW telemetry continuously validates routines, Keep notes, and monthly financial ledger with sub-second background push sync.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 6 DEDICATED MODULES ROW (Horizontal cards matching the 6 vehicle icons in reference screenshot) */}
+          <section className="zebeyond-modules-section">
+            <div className="zebeyond-section-header">
+              <span className="zebeyond-section-title">SYSTEM MODULES</span>
+              <span className="zebeyond-section-subtitle">Dedicated workspaces • Zero duplicate triggers</span>
+            </div>
+
+            <div className="zebeyond-modules-grid">
+              {/* Module 1: Expenses Vault (ONLY PLACE TO OPEN EXPENSES) */}
+              <div 
+                className="zebeyond-module-card touch-btn"
+                onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
+                title="Open Expense Tracker"
+              >
+                <div className="module-icon-wrap emerald">
+                  <DollarSign size={24} color="#00f59b" />
+                </div>
+                <div className="module-content">
+                  <span className="module-title">Expenses Vault</span>
+                  <span className="module-stat">₹{currentMonthSpent.toLocaleString('en-IN')} Spent</span>
+                  <span className="module-sub">Budget: ₹{monthlyBudget.toLocaleString('en-IN')}</span>
+                </div>
+                <span className="module-action-link">Open Ledger ➔</span>
+              </div>
+
+              {/* Module 2: Google Keep Notes (ONLY PLACE TO OPEN NOTES) */}
+              <div 
+                className="zebeyond-module-card touch-btn"
+                onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
+                title="Open Google Keep Notes"
+              >
+                <div className="module-icon-wrap cyan">
+                  <CheckSquare size={24} color="#38bdf8" />
+                </div>
+                <div className="module-content">
+                  <span className="module-title">Keep Notes</span>
+                  <span className="module-stat">{notesList.length} Notes</span>
+                  <span className="module-sub">{notesList.filter(n => n.pinned).length} Pinned • Cloud Sync</span>
+                </div>
+                <span className="module-action-link">Open Notes ➔</span>
+              </div>
+
+              {/* Module 3: AI Photo Studio (ONLY PLACE TO OPEN PHOTO STUDIO) */}
+              <div 
+                className="zebeyond-module-card touch-btn"
+                onClick={() => setShowPhotoEditModal(true)}
+                title="Open AI Photo Studio & Generative Object Eraser"
+              >
+                <div className="module-icon-wrap magenta">
+                  <Wand2 size={24} color="#f472b6" />
+                </div>
+                <div className="module-content">
+                  <span className="module-title">AI Studio</span>
+                  <span className="module-stat">Object Eraser</span>
+                  <span className="module-sub">Windows Photos Magic</span>
+                </div>
+                <span className="module-action-link">Open Studio ➔</span>
+              </div>
+
+              {/* Module 4: Tools & Converters (ONLY PLACE TO OPEN TOOLS) */}
+              <div 
+                className="zebeyond-module-card touch-btn"
+                onClick={() => setShowToolsModal(true)}
+                title="Open Unit Converters & Extension Tools"
+              >
+                <div className="module-icon-wrap indigo">
+                  <Wrench size={24} color="#818cf8" />
+                </div>
+                <div className="module-content">
+                  <span className="module-title">Tools & Converters</span>
+                  <span className="module-stat">6 Fast Utilities</span>
+                  <span className="module-sub">Unit & Format Converters</span>
+                </div>
+                <span className="module-action-link">Open Tools ➔</span>
+              </div>
+
+              {/* Module 5: Market Intelligence (ONLY PLACE TO OPEN DAILY BRIEFING) */}
+              <div 
+                className="zebeyond-module-card touch-btn"
+                onClick={handleOpenBriefing}
+                title="Open Daily Market Briefing & IPO Intelligence"
+              >
+                <div className="module-icon-wrap amber">
+                  <TrendingUp size={24} color="#fbbf24" />
+                </div>
+                <div className="module-content">
+                  <span className="module-title">Market Intel</span>
+                  <span className="module-stat">{(ipoData?.live || []).length} Live IPOs</span>
+                  <span className="module-sub">Google Trending Radar</span>
+                </div>
+                <span className="module-action-link">Open Briefing ➔</span>
+              </div>
+
+              {/* Module 6: Emergency Standby (ONLY PLACE TO TRIGGER STANDBY) */}
+              <div 
+                className="zebeyond-module-card touch-btn standby-card"
+                onClick={handleStopAll}
+                title="Shadow Standby / Emergency Audio & Route Stop"
+              >
+                <div className="module-icon-wrap red">
+                  <Power size={24} color="#f87171" />
+                </div>
+                <div className="module-content">
+                  <span className="module-title" style={{ color: '#f87171' }}>Emergency Standby</span>
+                  <span className="module-stat">Silence & Stop</span>
+                  <span className="module-sub">Instant Kill Switch</span>
+                </div>
+                <span className="module-action-link" style={{ color: '#f87171' }}>Trigger Stop ➔</span>
+              </div>
+            </div>
+          </section>
+
+          {/* PERFORMANCE TELEMETRY STATS GRID: Matching Image 2 (media_1793955781413_cbfebef7.jpg) */}
+          <section className="zebeyond-telemetry-section">
+            <div className="zebeyond-section-header">
+              <span className="zebeyond-section-title">COMMAND PERFORMANCE</span>
+              <span className="zebeyond-section-subtitle">Real-time telemetry indicators</span>
+            </div>
+
+            <div className="zebeyond-stats-grid">
+              {/* Stat 1: <30 minutes (Routine countdown) */}
+              <div className="zebeyond-stat-card">
+                <span className="stat-big-number">&lt; 30 min</span>
+                <span className="stat-title">Upcoming Routine Interval</span>
+                <p className="stat-desc">
+                  Next target: "{nextRemTitle || 'Routine'}" at {formatTimeTo12Hour(nextRemTimeStr || '14:28')} ({nextCountdownStr})
+                </p>
+                <div className="stat-progress-bar">
+                  <div className="stat-bar-fill" style={{ width: '70%' }} />
+                </div>
+              </div>
+
+              {/* Stat 2: >90% (Budget Adherence) */}
+              <div className="zebeyond-stat-card">
+                <span className="stat-big-number">&gt; {currentBudgetPct}%</span>
+                <span className="stat-title">Monthly Budget Consumption</span>
+                <p className="stat-desc">
+                  ₹{currentMonthSpent.toLocaleString('en-IN')} of ₹{monthlyBudget.toLocaleString('en-IN')} ledger utilized this month.
+                </p>
+                <div className="stat-progress-bar">
+                  <div className="stat-bar-fill" style={{ width: `${currentBudgetPct}%`, backgroundColor: currentBudgetPct > 90 ? '#ef4444' : '#00f59b' }} />
+                </div>
+              </div>
+
+              {/* Stat 3: 3x Daily (Notes dispatch) */}
+              <div className="zebeyond-stat-card">
+                <span className="stat-big-number">3x Daily</span>
+                <span className="stat-title">Notes Telegram & Push Dispatch</span>
+                <p className="stat-desc">
+                  Auto-dispatches at 8:00 AM, 1:00 PM, and 8:30 PM with active pin priority.
+                </p>
+                <div className="stat-tag-row">
+                  <span className="stat-pill-tag">Telegram Bot OK</span>
+                  <span className="stat-pill-tag">WebPush Synced</span>
+                </div>
+              </div>
+
+              {/* Stat 4: 1s Stream (Gujarat Radar Polling) */}
+              <div className="zebeyond-stat-card">
+                <span className="stat-big-number">1s Stream</span>
+                <span className="stat-title">Live Gujarat Route Radar</span>
+                <p className="stat-desc">
+                  {isMonitoringActive ? `Active Telemetry: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : 'Ahmedabad ➔ Surat Telemetry Standby'}
+                </p>
+                <div className="stat-tag-row">
+                  <span className="stat-pill-tag" style={{ color: isMonitoringActive ? '#00f59b' : '#94a3b8' }}>
+                    {isMonitoringActive ? '● GPS Polling' : 'Standby'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Traffic Alert Banner (If Triggered or Monitoring) */}
+          {(trafficAlertBanner || isMonitoringActive) && (
+            <div className="zebeyond-traffic-banner">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AlertTriangle size={20} color={trafficAlertBanner ? "#ef4444" : "#00f59b"} />
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: trafficAlertBanner ? '#f87171' : '#f8fafc' }}>
+                    {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Live Gujarat Route Monitoring Active'}
+                  </h4>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    {trafficAlertBanner ? trafficAlertBanner.message : `Radar polling every 1s: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}`}
+                  </span>
+                </div>
+              </div>
+              {isMonitoringActive && (
                 <button
-                  key={cat}
                   type="button"
-                  className={`category-chip ${mobileCategoryFilter === cat ? 'active' : ''}`}
-                  onClick={() => {
-                    setMobileCategoryFilter(cat);
-                    if (cat === 'Watcher') { setMobileActiveNav('watcher'); setShowWatcherModal(true); }
-                    else if (cat === 'Expenses') { setMobileActiveNav('expense'); setShowExpenseModal(true); }
-                    else if (cat === 'Notes') { setMobileActiveNav('notes'); setShowNotesModal(true); }
-                    else if (cat === 'Radar') { setShowRoutePanel(true); }
-                  }}
-                >
-                  {cat === 'All' ? 'All' : cat === 'Watcher' ? '⏰ Watcher' : cat === 'Expenses' ? '💳 Expenses' : cat === 'Notes' ? '📝 Notes' : '🗺️ Radar'}
-                </button>
-              ))}
-            </div>
-
-            {/* Recommendation Section (Exact 1:1 match to user screenshot Screen 3) */}
-            <div className="recommendations-container">
-              <div className="recommendations-header-row">
-                <h3 className="section-title-cyan">Recommendation</h3>
-                <button type="button" className="section-link-cyan" onClick={() => setShowBriefingModal(true)}>
-                  View all ›
-                </button>
-              </div>
-
-              <div className="recommendations-grid">
-                {/* Card 1: Watcher Routine */}
-                <div 
-                  className="recommendation-card" 
-                  onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
-                >
-                  <div className="rec-card-thumbnail cyan-grad">
-                    <Clock size={34} color="#0284c7" />
-                    <span className="rec-badge">★ 4.9</span>
-                  </div>
-                  <div className="rec-card-body">
-                    <h4 className="rec-title">{nextRemTitle || 'Routine Focus'}</h4>
-                    <p className="rec-subtitle">Due at {formatTimeTo12Hour(nextRemTimeStr || '14:28')}</p>
-                    <div className="rec-footer-row">
-                      <span className="rec-countdown-tag">{nextCountdownStr}</span>
-                      <button type="button" className="rec-pill-btn">+ View</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 2: Monthly Expenses */}
-                <div 
-                  className="recommendation-card" 
-                  onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
-                >
-                  <div className="rec-card-thumbnail emerald-grad">
-                    <DollarSign size={34} color="#10b981" />
-                    <span className="rec-badge">★ 4.8</span>
-                  </div>
-                  <div className="rec-card-body">
-                    <h4 className="rec-title">Monthly Expenses</h4>
-                    <p className="rec-subtitle">Budget: ₹{monthlyBudget.toLocaleString('en-IN')}</p>
-                    <div className="rec-footer-row">
-                      <span className="rec-price-tag">₹{currentMonthSpent.toLocaleString('en-IN')}</span>
-                      <button type="button" className="rec-pill-btn">+ Spend</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 3: Notes */}
-                <div 
-                  className="recommendation-card" 
-                  onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
-                >
-                  <div className="rec-card-thumbnail sky-grad">
-                    <CheckSquare size={34} color="#06b6d4" />
-                    <span className="rec-badge">★ 4.9</span>
-                  </div>
-                  <div className="rec-card-body">
-                    <h4 className="rec-title">Google Keep Notes</h4>
-                    <p className="rec-subtitle">{notesList.length} Notes • Cloud Synced</p>
-                    <div className="rec-footer-row">
-                      <span className="rec-price-tag">{notesList.filter(n => n.pinned).length} Pinned</span>
-                      <button type="button" className="rec-pill-btn">+ Notes</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 4: Radar */}
-                <div 
-                  className="recommendation-card" 
-                  onClick={() => setShowRoutePanel(true)}
-                >
-                  <div className="rec-card-thumbnail teal-grad">
-                    <Navigation size={34} color="#0d9488" />
-                    <span className="rec-badge">★ 5.0</span>
-                  </div>
-                  <div className="rec-card-body">
-                    <h4 className="rec-title">Gujarat Radar</h4>
-                    <p className="rec-subtitle">{isMonitoringActive ? 'Active 1s Polling' : 'Ahmedabad Telemetry'}</p>
-                    <div className="rec-footer-row">
-                      <span className="rec-price-tag">Live GPS</span>
-                      <button type="button" className="rec-pill-btn">+ Radar</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Top Executive Header Bar: Greeting, IST Real-time Status */}
-            <div className="executive-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#16a34a', boxShadow: '0 0 8px #16a34a' }} />
-                  <span style={{ fontSize: '10.5px', fontWeight: '900', color: '#475569', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-                    Shadow Command Center • Cloud Connected
-                  </span>
-                </div>
-                <h2 className="greeting-title" style={{ margin: '4px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.5px' }}>
-                  Welcome back, {userProfile?.name?.split(' ')[0] || 'Commander'}
-                </h2>
-              </div>
-
-              <div className="status-badges-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="status-badge" style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '5px 10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                  <Clock size={13} color="#0f172a" />
-                  <span style={{ fontSize: '10.5px', fontWeight: '900', fontFamily: 'monospace', color: '#0f172a' }}>
-                    {currentDateTimeStr || new Date().toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="status-badge" style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '5px 10px', borderRadius: '10px', fontSize: '10.5px', fontWeight: '800', color: '#475569', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                  📍 Gujarat (IST)
-                </div>
-              </div>
-            </div>
-
-            {/* PWA Background Web Push Notification Quick Test Card */}
-            <div className="pwa-push-card" style={{ 
-              backgroundColor: '#ffffff', 
-              border: '1.5px solid #e2e8f0', 
-              borderRadius: '16px', 
-              padding: '12px 16px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              flexWrap: 'wrap', 
-              gap: '10px', 
-              boxShadow: '0 2px 8px rgba(0,0,0,0.03)' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Bell size={18} color="#ffffff" />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px' }}>PWA Push Notifications</span>
-                    <span style={{ fontSize: '10px', fontWeight: '900', color: (mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#16a34a' : '#d97706', backgroundColor: (mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#f0fdf4' : '#fffbeb', padding: '1px 7px', borderRadius: '4px', border: `1px solid ${(mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#bbf7d0' : '#fde68a'}` }}>
-                      {(mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '✓ ACTIVE' : 'PENDING'}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {pushFeedbackMessage || 'Live OS notification ticker running even when app is closed'}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setIsSendingTestPush(true);
-                    setPushFeedbackMessage('Requesting permission & sending push...');
-                    try {
-                      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted') {
-                        const p = await Notification.requestPermission();
-                        setMobilePermissions(prev => ({ ...prev, notifications: p }));
-                        if (p === 'granted') {
-                          try { localStorage.setItem('jarvis_perm_notif', 'granted'); } catch (e) {}
-                        }
-                      }
-                      await triggerTestPushNotification();
-                    } catch (e) {
-                      setPushFeedbackMessage(`❌ ${e.message}`);
-                      setIsSendingTestPush(false);
-                    }
-                  }}
-                  disabled={isSendingTestPush}
+                  onClick={handleStopRouteNavigation}
                   className="touch-btn"
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '10px',
-                    backgroundColor: '#0f172a',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '11.5px',
-                    fontWeight: '900',
-                    cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)'
-                  }}
+                  style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
                 >
-                  <Bell size={14} color="#ffffff" />
-                  <span>{isSendingTestPush ? 'SENDING PUSH...' : '🔔 TEST PWA PUSH'}</span>
+                  STOP RADAR
                 </button>
-              </div>
+              )}
             </div>
+          )}
 
-            {/* Real-time Traffic Alert Banner (If Triggered or Monitoring) */}
-            {(trafficAlertBanner || isMonitoringActive) && (
-              <div style={{ 
-                padding: '12px 18px', 
-                borderRadius: '14px', 
-                backgroundColor: trafficAlertBanner ? '#fef2f2' : '#ffffff', 
-                border: `1.5px solid ${trafficAlertBanner ? '#f87171' : '#e2e8f0'}`, 
-                color: '#0f172a', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                gap: '12px', 
-                boxShadow: '0 4px 14px rgba(0,0,0,0.04)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                  {trafficAlertBanner ? <AlertTriangle size={20} color="#dc2626" /> : <Navigation size={18} color="#0f172a" />}
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '900', color: trafficAlertBanner ? '#b91c1c' : '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Live Gujarat Route Monitoring Active'}
-                    </p>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      {trafficAlertBanner ? trafficAlertBanner.message : `Radar polling every 1s: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}`}
-                    </span>
-                  </div>
-                </div>
-
-                {isMonitoringActive && (
-                  <button
-                    onClick={handleStopRouteNavigation}
-                    style={{ backgroundColor: '#dc2626', color: '#ffffff', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
-                  >
-                    <StopCircle size={14} /> STOP
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* 4 Executive KPI Metric Cards */}
-            {(() => {
-              const monthlyExpenses = (expenseList || []).filter(item => item && item.type !== 'income');
-              const monthlyItems = monthlyExpenses.filter(item => isExpenseInMonth(item, selectedExpenseMonth));
-              const monthlySpent = monthlyItems.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
-              const budgetPct = monthlyBudget > 0 ? Math.min(Math.round((monthlySpent / monthlyBudget) * 100), 100) : 0;
-              const triggeredCount = (remindersList || []).filter(r => r && r.completed).length;
-
-              return (
-                <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-                  
-                  {/* Card 1: Watcher */}
-                  <div 
-                    className="kpi-card"
-                    onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Watcher Routine</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ECF0F1', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #BDC3C7' }}>
-                        <Clock size={16} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a', fontFamily: "'Montserrat', 'Inter', monospace, sans-serif", letterSpacing: '0.5px' }}>
-                        {nextCountdownStr}
-                      </div>
-                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#475569', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        Next: "{nextRemTitle || 'Routine'}" at {formatTimeTo12Hour(nextRemTimeStr || '09:00')}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>{triggeredCount}/{(remindersList || []).length} Triggered Today</span>
-                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Watcher →</span>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Expenses */}
-                  <div 
-                    className="kpi-card"
-                    onClick={() => setShowExpenseModal(true)}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Monthly Expenses</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #bbf7d0' }}>
-                        <DollarSign size={16} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
-                        ₹{monthlySpent.toLocaleString('en-IN')}
-                      </div>
-                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
-                        Budget: ₹{monthlyBudget.toLocaleString('en-IN')} ({budgetPct}% used)
-                      </div>
-                    </div>
-                    <div style={{ width: '100%', backgroundColor: '#ECF0F1', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${budgetPct}%`, height: '100%', backgroundColor: budgetPct > 90 ? '#dc2626' : (budgetPct > 70 ? '#ea580c' : '#16a34a'), borderRadius: '3px', transition: 'width 0.3s' }} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>Remaining: ₹{Math.max(0, monthlyBudget - monthlySpent).toLocaleString('en-IN')}</span>
-                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Log Expense →</span>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Notes & Keep */}
-                  <div 
-                    className="kpi-card"
-                    onClick={() => setShowNotesModal(true)}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Google Keep Notes</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #ddd6fe' }}>
-                        <CheckSquare size={16} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
-                        {(notesList || []).length} Notes
-                      </div>
-                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
-                        {(notesList || []).filter(n => n.pinned).length} Pinned • Cloud Synced
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>📱 3x Daily Telegram & Push (8 AM, 1 PM, 8:30 PM)</span>
-                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Open Notes →</span>
-                    </div>
-                  </div>
-
-                  {/* Card 4: Radar & Briefing */}
-                  <div 
-                    className="kpi-card"
-                    onClick={handleOpenBriefing}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Radar & Intelligence</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fed7aa' }}>
-                        <TrendingUp size={16} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="kpi-number" style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a' }}>
-                        {(ipoData?.live || []).length} Live IPOs
-                      </div>
-                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
-                        {isMonitoringActive ? '● Gujarat Radar Active' : 'Standby • Ahmedabad Live'}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>Real-Time Market Data</span>
-                      <span style={{ color: '#0f172a', fontWeight: '900' }}>Daily Briefing →</span>
-                    </div>
-                  </div>
-
-                  {/* Card 5: Photo Studio & AI Object Eraser */}
-                  <div 
-                    className="kpi-card"
-                    onClick={() => setShowPhotoEditModal(true)}
-                    style={{ backgroundColor: '#ffffff', border: '1.5px solid #BDC3C7', borderRadius: '16px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ec4899'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#BDC3C7'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Edit Photo & Studio</span>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fdf2f8', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fbcfe8' }}>
-                        <Wand2 size={16} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="kpi-number" style={{ fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>
-                        AI Eraser
-                      </div>
-                      <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginTop: '2px' }}>
-                        Windows Photos Generative Erase
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #ECF0F1', paddingTop: '8px', fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      <span>✨ Drag & Drop Image to Open</span>
-                      <span style={{ color: '#ec4899', fontWeight: '900' }}>Open Editor →</span>
-                    </div>
-                  </div>
-
-                </div>
-              );
-            })()}
-
-
-
-          </div>
-
-        </main>
-      </div>
+        </div>
+      </main>
 
       {/* Tools / Extension Changer & Universal Converter Modal */}
       {showToolsModal && (
