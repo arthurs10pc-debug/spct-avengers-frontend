@@ -739,9 +739,11 @@ export default function App() {
     if (
       clean === 'sataparahetkumar786@gmail.com' ||
       clean === 'hetsatapara@gmail.com' ||
+      clean === 'arthurs10pc@gmail.com' ||
       clean === 'anonymous' ||
       clean === 'guest' ||
-      clean.includes('satapara')
+      clean.includes('satapara') ||
+      clean.includes('arthur')
     ) {
       return 'sataparahetkumar@gmail.com';
     }
@@ -1455,6 +1457,7 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
+  const [activeAlertTime, setActiveAlertTime] = useState(null);
   const [activeAlertKey, setActiveAlertKey] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
@@ -1486,7 +1489,8 @@ export default function App() {
       const aliasKeys = [
         'jarvis_expenses_sataparahetkumar@gmail.com',
         'jarvis_expenses_sataparahetkumar786@gmail.com',
-        'jarvis_expenses_hetsatapara@gmail.com'
+        'jarvis_expenses_hetsatapara@gmail.com',
+        'jarvis_expenses_arthurs10pc@gmail.com'
       ];
       aliasKeys.forEach(k => {
         try {
@@ -2337,14 +2341,11 @@ export default function App() {
     }
   }, []);
 
-  // Ensure alarm keeps playing continuously as long as activeAlertTask modal is showing
+  // Only animation mode (NO voice, NO sound alarm as user requested: "and only animation not voice make first")
   useEffect(() => {
-    if (activeAlertTask && !isMuted) {
-      startJailerFluteAlarm();
-    } else if (!activeAlertTask) {
-      stopAlarmSound();
-    }
-  }, [activeAlertTask, isMuted, startJailerFluteAlarm, stopAlarmSound]);
+    // Keep sound stopped when alert modal triggers
+    stopAlarmSound();
+  }, [activeAlertTask, stopAlarmSound]);
 
   // Global Audio Unlock Listener on User Interaction (Prevents browser audio blocking)
   useEffect(() => {
@@ -3108,7 +3109,7 @@ export default function App() {
 
     socket.on('user_data_synced', (data) => {
       if (!data || !userProfileRef.current?.email) return;
-      if (data.email && data.email.toLowerCase() !== userProfileRef.current.email.toLowerCase()) return;
+      if (data.email && canonicalUserEmail(data.email) !== canonicalUserEmail(userProfileRef.current.email)) return;
 
       isRemoteSyncRef.current = true;
       const cleanEmail = userProfileRef.current.email.trim().toLowerCase();
@@ -3146,6 +3147,16 @@ export default function App() {
       setTimeout(() => {
         isRemoteSyncRef.current = false;
       }, 600);
+    });
+
+    // Real-Time Socket Broadcast: Instant visual animation across all open tabs/Chrome accounts
+    socket.on('reminder_triggered', (data) => {
+      if (!data || !data.task) return;
+      console.log('[Socket Broadcast] reminder_triggered received across profiles:', data);
+      setActiveAlertTask(data.task);
+      setActiveAlertTime(data.time || '');
+      setActiveAlertKey(`alert_${data.id || Date.now()}`);
+      // Strictly NO voice synthesis, NO audio sound (Animation Only as requested)
     });
     
     if ('speechSynthesis' in window) {
@@ -3331,13 +3342,20 @@ export default function App() {
         if (isHitNow && !triggeredKeysRef.current.has(reminderUniqueKey)) {
           triggeredKeysRef.current.add(reminderUniqueKey);
           setActiveAlertTask(rem.task);
+          setActiveAlertTime(rem.time);
           setActiveAlertKey(reminderUniqueKey);
           setCurrentAlertTaskId(idx);
-          if (!isMuted) {
-            startJailerFluteAlarm();
+
+          // Real-time broadcast to all other open tabs, Chrome accounts & devices
+          if (socketRef.current && socketRef.current.connected) {
+            socketRef.current.emit('broadcast_reminder_alert', {
+              task: rem.task,
+              time: rem.time,
+              email: userProfileRef.current?.email || ''
+            });
           }
 
-          showSystemNotification("Shadow Watcher Alert", {
+          showSystemNotification("⚡ Shadow Watcher Alert", {
             body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
             icon: "/shadow-logo.png?v=3"
           });
@@ -3354,20 +3372,30 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
+  }, [watcherActive, remindersList, snoozedAlerts]);
 
-  // Test Watcher Alert Handler (Instant Verification of Sound, Modal & Notification)
+  // Test Watcher Alert Handler (Instant Real-Time Animation Verification across all devices & Chrome accounts)
   const triggerTestWatcherAlert = useCallback(() => {
-    setActiveAlertTask("Demo Reminder: Team Review Meeting");
+    const demoTask = "Daily Focus & Strategy Review";
+    const demoTime = getCurrentTimeString();
+    setActiveAlertTask(demoTask);
+    setActiveAlertTime(demoTime);
     setActiveAlertKey(`test_alert_${Date.now()}`);
-    if (!isMuted) {
-      startJailerFluteAlarm();
+
+    // Broadcast across all connected tabs/Chrome profiles in real-time
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('broadcast_reminder_alert', {
+        task: demoTask,
+        time: demoTime,
+        email: userProfileRef.current?.email || ''
+      });
     }
-    showSystemNotification("Shadow Watcher Alert", {
-      body: "Scheduled Reminder: Team Review Meeting due now!",
+
+    showSystemNotification("⚡ Shadow Watcher Alert", {
+      body: `Scheduled Reminder: ${demoTask} at ${demoTime}`,
       icon: "/shadow-logo.png?v=3"
     });
-  }, [isMuted, startJailerFluteAlarm]);
+  }, []);
 
   const handleManualResetToday = useCallback(() => {
     triggeredKeysRef.current.clear();
@@ -4046,13 +4074,14 @@ export default function App() {
           <ShadowLogo size={24} color="#ffffff" innerColor="#0f172a" />
         </div>
 
-        <button onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: showRoutePanel ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+        <button className="desktop-nav-item" onClick={() => setShowRoutePanel(true)} title="Route & Map" style={{ background: showRoutePanel ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
           <Navigation size={18} />
           <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Route</span>
         </button>
 
         {/* Watcher Widget: Exact 1:1 match to user screenshot */}
         <button 
+          className="bottom-nav-tab"
           onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }} 
           title={`Watcher Reminder: "${nextRemTitle || 'Routine'}" due at ${nextRemTimeStr || '14:28'} (${nextCountdownStr} remaining)`} 
           style={{ 
@@ -4113,22 +4142,23 @@ export default function App() {
           <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.2px' }}>Watcher</span>
         </button>
 
-        <button onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: showExpenseModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+        <button className="bottom-nav-tab" onClick={() => setShowExpenseModal(true)} title="Expense Tracker" style={{ background: showExpenseModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
           <DollarSign size={18} />
           <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Expense</span>
         </button>
 
-        <button onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: showBriefingModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+        <button className="desktop-nav-item" onClick={handleOpenBriefing} title="Daily Briefing" style={{ background: showBriefingModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
           <Newspaper size={18} />
           <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Briefing</span>
         </button>
 
-        <button onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: showToolsModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
+        <button className="desktop-nav-item" onClick={() => setShowToolsModal(true)} title="Tools & Converter" style={{ background: showToolsModal ? '#f1f5f9' : 'transparent', border: 'none', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: '5px 4px', borderRadius: '10px', width: '56px', transition: 'all 0.15s ease' }}>
           <Wrench size={18} />
           <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Tools</span>
         </button>
 
         <button 
+          className="bottom-nav-tab"
           onClick={() => setShowNotesModal(true)} 
           title="Google Keep Style Notes & Task Reminders" 
           style={{ 
@@ -4172,6 +4202,7 @@ export default function App() {
 
         {/* Edit Photo / AI Eraser Button (Directly below Notes) */}
         <button 
+          className="desktop-nav-item"
           onClick={() => setShowPhotoEditModal(true)} 
           title="Edit Photo & Windows-style AI Object Eraser" 
           style={{ 
@@ -4201,7 +4232,7 @@ export default function App() {
         <div className="sidebar-bottom-group" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button 
             type="button"
-            className="touch-btn"
+            className="bottom-nav-tab touch-btn"
             onClick={() => {
               if (userProfile) {
                 setShowProfileModal(true);
@@ -4212,38 +4243,32 @@ export default function App() {
             }} 
             title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
             style={{ 
-              position: 'relative',
-              background: '#f8fafc', 
-              border: '1.5px solid #e2e8f0',
+              background: showProfileModal ? '#f1f5f9' : 'transparent', 
+              border: 'none',
               color: '#0f172a', 
-              padding: userProfile && userProfile.photo ? '2px' : '8px', 
-              borderRadius: '10px', 
               cursor: 'pointer', 
               display: 'flex', 
+              flexDirection: 'column', 
               alignItems: 'center', 
               justifyContent: 'center',
-              width: '38px',
-              height: '38px',
-              overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              gap: '3px',
+              padding: '5px 4px', 
+              borderRadius: '10px', 
+              width: '56px',
+              transition: 'all 0.15s ease',
               touchAction: 'manipulation'
             }}
           >
-            {userProfile ? (
-              userProfile.photo ? (
-                <img src={userProfile.photo} alt={userProfile.name} style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-              ) : (
-                <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{(userProfile.name || 'U').charAt(0).toUpperCase()}</span>
-              )
+            {userProfile && userProfile.photo ? (
+              <img src={userProfile.photo} alt={userProfile.name} style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #0f172a' }} onError={(e) => { e.target.style.display = 'none'; }} />
             ) : (
-              <UserCircle size={20} color="#0f172a" />
+              <UserCircle size={18} color="#0f172a" />
             )}
-            {userProfile && (
-              <span style={{ position: 'absolute', bottom: '2px', right: '2px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#16a34a', border: '1px solid #ffffff' }} />
-            )}
+            <span style={{ fontSize: '9.5px', fontWeight: '900', letterSpacing: '0.3px', textTransform: 'uppercase' }}>Profile</span>
           </button>
 
           <button 
+            className="desktop-nav-item"
             onClick={handleStopAll} 
             title="Shadow Standby / Emergency Audio & Route Stop" 
             style={{ 
@@ -4476,103 +4501,6 @@ export default function App() {
                   📍 Gujarat (IST)
                 </div>
               </div>
-            </div>
-
-            {/* Brand New Touch-Optimized Quick Action Tiles (Active on Mobile) */}
-            <div className="mobile-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => { setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                className="touch-btn"
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: '1.5px solid #e2e8f0',
-                  borderRadius: '14px',
-                  padding: '10px 4px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                }}
-              >
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Clock size={16} />
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.2px' }}>Watcher</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowExpenseModal(true)}
-                className="touch-btn"
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: '1.5px solid #bbf7d0',
-                  borderRadius: '14px',
-                  padding: '10px 4px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(22,163,74,0.06)'
-                }}
-              >
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#16a34a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <DollarSign size={16} />
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.2px' }}>+ Spend</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowNotesModal(true)}
-                className="touch-btn"
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: '1.5px solid #bfdbfe',
-                  borderRadius: '14px',
-                  padding: '10px 4px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(37,99,235,0.06)'
-                }}
-              >
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <CheckSquare size={16} />
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.2px' }}>Notes ({notesList.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleAssistantListening}
-                className="touch-btn"
-                style={{
-                  backgroundColor: isListening ? '#fef2f2' : '#ffffff',
-                  border: `1.5px solid ${isListening ? '#fecaca' : '#e9d5ff'}`,
-                  borderRadius: '14px',
-                  padding: '10px 4px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(124,58,237,0.06)'
-                }}
-              >
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: isListening ? '#dc2626' : '#7c3aed', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Mic size={16} />
-                </div>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: isListening ? '#dc2626' : '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.2px' }}>
-                  {isListening ? 'Listening' : 'Voice'}
-                </span>
-              </button>
             </div>
 
             {/* PWA Background Web Push Notification Quick Test Card */}
@@ -6359,152 +6287,136 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Sticky Watcher Alert Banner */}
+      {/* Real-Time Socket Broadcast Full-Screen Animated Reminder (NO Voice, Pure Motion Animation) */}
       {activeAlertTask && (
-        <div style={{
-          position: 'fixed',
-          top: '12px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: '#dc2626',
-          color: '#ffffff',
-          padding: '10px 20px',
-          borderRadius: '12px',
-          zIndex: 999999,
-          boxShadow: '0 8px 30px rgba(220, 38, 38, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <Bell size={20} color="#ffffff" />
-          <div>
-            <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>⏰ Watcher Reminder Alert Due Now</div>
-            <div style={{ fontSize: '13px', fontWeight: '900' }}>"{activeAlertTask}"</div>
-          </div>
-          <button
-            onClick={() => {
-              stopAlarmSound();
-              setActiveAlertTask(null);
-              setActiveAlertKey(null);
-            }}
-            style={{
-              backgroundColor: '#ffffff',
-              color: '#dc2626',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '5px 12px',
-              fontWeight: '900',
-              cursor: 'pointer',
-              fontSize: '11px'
-            }}
-          >
-            <Check size={13} style={{ marginRight: '4px' }} /> Got It
-          </button>
-        </div>
-      )}
-
-      {/* Full-Screen Watcher Reminder Alert Modal */}
-      {activeAlertTask && (
-        <div style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-          backdropFilter: 'blur(10px)', 
-          zIndex: 99999, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          padding: '24px', 
-          textAlign: 'center' 
-        }}>
-          <div style={{ 
-            width: '84px', 
-            height: '84px', 
-            borderRadius: '24px', 
-            backgroundColor: '#dc2626', 
-            color: '#ffffff', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            marginBottom: '18px',
-            boxShadow: '0 0 35px rgba(220, 38, 38, 0.4)'
-          }}>
-            <Bell size={44} />
-          </div>
-
-          <span style={{ 
-            fontSize: '12px', 
-            fontWeight: '900', 
-            color: '#dc2626', 
-            textTransform: 'uppercase', 
-            letterSpacing: '2px', 
-            marginBottom: '8px' 
-          }}>
-            ⏰ Watcher Reminder Alert
-          </span>
-
-          <h1 style={{ 
-            fontSize: '28px', 
-            fontWeight: '900', 
-            color: '#0f172a', 
-            maxWidth: '680px', 
-            lineHeight: '1.3', 
-            margin: '0 0 10px 0', 
-            padding: '0 16px',
-            wordBreak: 'break-word'
-          }}>
-            "{activeAlertTask}"
-          </h1>
-
-          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: '#64748b', fontWeight: '800' }}>
-            Scheduled reminder time has arrived!
-          </p>
-
-          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div 
+          className="reminder-anim-overlay" 
+          onClick={() => { 
+            setActiveAlertTask(null); 
+            setActiveAlertKey(null); 
+            setCurrentAlertTaskId(null); 
+          }}
+        >
+          <div className="reminder-anim-card" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Top Close Button */}
             <button
+              type="button"
               onClick={() => {
-                stopAlarmSound();
                 setActiveAlertTask(null);
                 setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
               }}
-              style={{ 
-                padding: '13px 30px', 
-                borderRadius: '12px', 
-                border: 'none', 
-                backgroundColor: '#0f172a', 
-                color: '#ffffff', 
-                fontWeight: '900', 
-                fontSize: '15px', 
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(15,23,42,0.2)',
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#f8fafc',
+                color: '#64748b',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
               }}
+              title="Dismiss Animation"
             >
-              <Check size={18} /> Got It
+              <X size={16} />
             </button>
 
-            <button
-              onClick={handleSnooze}
-              style={{ 
-                padding: '13px 26px', 
-                borderRadius: '12px', 
-                border: '1.5px solid #cbd5e1',
-                backgroundColor: '#f1f5f9', 
-                color: '#0f172a', 
-                fontWeight: '900', 
-                fontSize: '15px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px' 
-              }}
-            >
-              <Clock size={16} /> Snooze ({snoozeMinutes}m)
-            </button>
+            {/* Pulsing Luminous Beacon Icon Animation */}
+            <div className="reminder-beacon-box">
+              <div className="reminder-beacon-ring" />
+              <div className="reminder-beacon-center">
+                <Bell size={38} />
+              </div>
+            </div>
+
+            {/* Glowing Tag & Time Indicator */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '20px', padding: '4px 14px', marginBottom: '14px' }}>
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', boxShadow: '0 0 8px #ef4444' }} />
+              <span style={{ fontSize: '11px', fontWeight: '900', color: '#b91c1c', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                ⚡ Real-Time Reminder Alert
+              </span>
+              {activeAlertTime && (
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#7f1d1d', marginLeft: '4px', paddingLeft: '6px', borderLeft: '1px solid #fca5a5' }}>
+                  {formatTimeTo12Hour(activeAlertTime)}
+                </span>
+              )}
+            </div>
+
+            {/* Big Impact Reminder Title */}
+            <h1 style={{ 
+              fontSize: '25px', 
+              fontWeight: '900', 
+              color: '#0f172a', 
+              maxWidth: '460px', 
+              lineHeight: '1.25', 
+              margin: '0 auto 10px auto', 
+              padding: '0 8px',
+              wordBreak: 'break-word',
+              letterSpacing: '-0.5px'
+            }}>
+              "{activeAlertTask}"
+            </h1>
+
+            <p style={{ margin: '0 auto 24px auto', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
+              Scheduled watcher routine arrived • Synchronized across your open Chrome tabs & devices
+            </p>
+
+            {/* Clean Action Buttons */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveAlertTask(null);
+                  setActiveAlertKey(null);
+                  setCurrentAlertTaskId(null);
+                }}
+                className="touch-btn"
+                style={{ 
+                  padding: '12px 28px', 
+                  borderRadius: '12px', 
+                  border: 'none', 
+                  backgroundColor: '#0f172a', 
+                  color: '#ffffff', 
+                  fontWeight: '900', 
+                  fontSize: '13.5px', 
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(15,23,42,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Check size={16} /> Got It
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSnooze}
+                className="touch-btn"
+                style={{ 
+                  padding: '12px 22px', 
+                  borderRadius: '12px', 
+                  border: '1.5px solid #cbd5e1',
+                  backgroundColor: '#f8fafc', 
+                  color: '#0f172a', 
+                  fontWeight: '900', 
+                  fontSize: '13.5px', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px' 
+                }}
+              >
+                <Clock size={15} /> Snooze ({snoozeMinutes}m)
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -6689,7 +6601,44 @@ export default function App() {
 
             <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{userProfile.name}</h3>
             <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '18px', fontWeight: '800' }}>CONNECTED: {userProfile.connectedDate || 'ACTIVE'}</span>
+            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '14px', fontWeight: '800' }}>CONNECTED: {userProfile.connectedDate || 'ACTIVE'}</span>
+
+            {/* Quick Access Tools for Mobile */}
+            <div style={{ marginBottom: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', letterSpacing: '0.5px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                Tools & Features
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                <button 
+                  type="button"
+                  onClick={() => { setShowProfileModal(false); setShowRoutePanel(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  <Navigation size={14} color="#0f172a" /> Route & GPS
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { setShowProfileModal(false); handleOpenBriefing(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  <Newspaper size={14} color="#0f172a" /> Briefing
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { setShowProfileModal(false); setShowToolsModal(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  <Wrench size={14} color="#0f172a" /> Tools / Calc
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { setShowProfileModal(false); setShowPhotoEditModal(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  <Image size={14} color="#0f172a" /> AI Eraser
+                </button>
+              </div>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button 
