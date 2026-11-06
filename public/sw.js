@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
 // Real-time Web Push Notification Listener (Triggers even when app is closed / backgrounded)
 self.addEventListener('push', function(event) {
   let data = {
-    title: 'Shadow Dashboard Alert',
+    title: '⏰ Shadow Reminder Alert',
     body: 'Scheduled reminder or routine update.',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
@@ -37,23 +37,32 @@ self.addEventListener('push', function(event) {
     }
   }
 
+  const task = data.data?.task || data.task || '';
+  const time = data.data?.time || data.time || '';
+  const targetUrl = data.data?.url || data.url || (task ? `/?reminder=${encodeURIComponent(task)}&time=${encodeURIComponent(time)}` : '/');
+
   const options = {
-    body: data.body || 'Scheduled reminder due now.',
+    body: data.body || (task ? `Scheduled at ${time || 'now'}. Tap to view & speak alert.` : 'Scheduled reminder due now.'),
     icon: data.icon || '/icon-192.png',
     badge: data.badge || '/icon-192.png',
-    vibrate: data.vibrate || [250, 100, 250, 100, 250],
+    vibrate: data.vibrate || [300, 100, 300, 100, 300],
     tag: data.tag || `shadow-push-${Date.now()}`,
     renotify: true,
     requireInteraction: true,
-    data: data.data || { url: data.url || '/' },
+    data: {
+      url: targetUrl,
+      task: task,
+      time: time,
+      timestamp: Date.now()
+    },
     actions: [
-      { action: 'open', title: 'Open Dashboard' },
+      { action: 'open', title: 'Open & View' },
       { action: 'dismiss', title: 'Dismiss' }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Shadow Alert', options)
+    self.registration.showNotification(data.title || '⏰ Shadow Alert', options)
   );
 });
 
@@ -65,9 +74,10 @@ self.addEventListener('message', function(event) {
       body: options?.body || 'Scheduled reminder due now.',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      vibrate: [250, 100, 250, 100, 250],
+      vibrate: [300, 100, 300, 100, 300],
       tag: options?.tag || `shadow-local-${Date.now()}`,
       renotify: true,
+      requireInteraction: true,
       ...options
     };
 
@@ -85,19 +95,28 @@ self.addEventListener('notificationclick', function(event) {
     return;
   }
 
-  const targetUrl = event.notification.data?.url || '/';
+  const notifData = event.notification.data || {};
+  const targetUrl = notifData.url || '/';
+  const task = notifData.task || '';
+  const time = notifData.time || '';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // 1. If an existing Shadow tab is open, bring it to front and trigger visual pop-up animation & speech!
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
         if (client.url.includes(self.location.origin) && 'focus' in client) {
-          if (targetUrl && targetUrl !== '/') {
-            client.navigate(targetUrl);
+          if (task) {
+            client.postMessage({
+              type: 'TRIGGER_REMINDER_ANIMATION',
+              task: task,
+              time: time
+            });
           }
           return client.focus();
         }
       }
+      // 2. If no tab is open, open the full dashboard with reminder query param
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

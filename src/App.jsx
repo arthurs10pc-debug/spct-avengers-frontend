@@ -1457,7 +1457,6 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [watcherActive, setWatcherActive] = useState(true);
   const [activeAlertTask, setActiveAlertTask] = useState(null);
-  const [activeAlertTime, setActiveAlertTime] = useState(null);
   const [activeAlertKey, setActiveAlertKey] = useState(null);
   const [currentAlertTaskId, setCurrentAlertTaskId] = useState(null);
   const [snoozedAlerts, setSnoozedAlerts] = useState({});
@@ -2341,11 +2340,68 @@ export default function App() {
     }
   }, []);
 
-  // Only animation mode (NO voice, NO sound alarm as user requested: "and only animation not voice make first")
+  // Ensure alarm keeps playing continuously as long as activeAlertTask modal is showing
   useEffect(() => {
-    // Keep sound stopped when alert modal triggers
-    stopAlarmSound();
-  }, [activeAlertTask, stopAlarmSound]);
+    if (activeAlertTask && !isMuted) {
+      startJailerFluteAlarm();
+    } else if (!activeAlertTask) {
+      stopAlarmSound();
+    }
+  }, [activeAlertTask, isMuted, startJailerFluteAlarm, stopAlarmSound]);
+
+  const triggerReminderVisualAndVoice = useCallback((task, time) => {
+    if (!task) return;
+    setActiveAlertTask(task);
+    setActiveAlertKey(`alert_${Date.now()}`);
+    if (!isMuted) {
+      startJailerFluteAlarm();
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(`Reminder alert: ${task}`);
+          utter.rate = 0.95;
+          utter.pitch = 1.0;
+          window.speechSynthesis.speak(utter);
+        }
+      } catch (e) {}
+    }
+  }, [isMuted, startJailerFluteAlarm]);
+
+  const triggerReminderVisualAndVoiceRef = useRef(triggerReminderVisualAndVoice);
+  useEffect(() => {
+    triggerReminderVisualAndVoiceRef.current = triggerReminderVisualAndVoice;
+  }, [triggerReminderVisualAndVoice]);
+
+  // Service Worker and URL Query String Listener for Native Web Push Click
+  useEffect(() => {
+    // 1. Check URL parameters for ?reminder=...
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const remParam = params.get('reminder');
+      const timeParam = params.get('time') || '';
+      if (remParam) {
+        setTimeout(() => {
+          if (triggerReminderVisualAndVoiceRef.current) {
+            triggerReminderVisualAndVoiceRef.current(decodeURIComponent(remParam), timeParam);
+          }
+        }, 600);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch (e) {}
+
+    // 2. Listen for messages from Service Worker when user clicks native Windows/Android push banner
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      const handleSwMessage = (event) => {
+        if (event.data && event.data.type === 'TRIGGER_REMINDER_ANIMATION') {
+          if (triggerReminderVisualAndVoiceRef.current) {
+            triggerReminderVisualAndVoiceRef.current(event.data.task, event.data.time);
+          }
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    }
+  }, []);
 
   // Global Audio Unlock Listener on User Interaction (Prevents browser audio blocking)
   useEffect(() => {
@@ -3102,14 +3158,21 @@ export default function App() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      if (userProfileRef.current?.email) {
-        socket.emit('join_user_room', userProfileRef.current.email);
+      const email = userProfileRef.current?.email || 'sataparahetkumar@gmail.com';
+      socket.emit('join_user_room', email);
+    });
+
+    socket.on('reminder_triggered', (data) => {
+      if (!data || !data.task) return;
+      console.log('[Socket] Reminder triggered event received:', data);
+      if (triggerReminderVisualAndVoiceRef.current) {
+        triggerReminderVisualAndVoiceRef.current(data.task, data.time);
       }
     });
 
     socket.on('user_data_synced', (data) => {
       if (!data || !userProfileRef.current?.email) return;
-      if (data.email && canonicalUserEmail(data.email) !== canonicalUserEmail(userProfileRef.current.email)) return;
+      if (data.email && data.email.toLowerCase() !== userProfileRef.current.email.toLowerCase()) return;
 
       isRemoteSyncRef.current = true;
       const cleanEmail = userProfileRef.current.email.trim().toLowerCase();
@@ -3147,16 +3210,6 @@ export default function App() {
       setTimeout(() => {
         isRemoteSyncRef.current = false;
       }, 600);
-    });
-
-    // Real-Time Socket Broadcast: Instant visual animation across all open tabs/Chrome accounts
-    socket.on('reminder_triggered', (data) => {
-      if (!data || !data.task) return;
-      console.log('[Socket Broadcast] reminder_triggered received across profiles:', data);
-      setActiveAlertTask(data.task);
-      setActiveAlertTime(data.time || '');
-      setActiveAlertKey(`alert_${data.id || Date.now()}`);
-      // Strictly NO voice synthesis, NO audio sound (Animation Only as requested)
     });
     
     if ('speechSynthesis' in window) {
@@ -3342,20 +3395,13 @@ export default function App() {
         if (isHitNow && !triggeredKeysRef.current.has(reminderUniqueKey)) {
           triggeredKeysRef.current.add(reminderUniqueKey);
           setActiveAlertTask(rem.task);
-          setActiveAlertTime(rem.time);
           setActiveAlertKey(reminderUniqueKey);
           setCurrentAlertTaskId(idx);
-
-          // Real-time broadcast to all other open tabs, Chrome accounts & devices
-          if (socketRef.current && socketRef.current.connected) {
-            socketRef.current.emit('broadcast_reminder_alert', {
-              task: rem.task,
-              time: rem.time,
-              email: userProfileRef.current?.email || ''
-            });
+          if (!isMuted) {
+            startJailerFluteAlarm();
           }
 
-          showSystemNotification("⚡ Shadow Watcher Alert", {
+          showSystemNotification("Shadow Watcher Alert", {
             body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
             icon: "/shadow-logo.png?v=3"
           });
@@ -3372,30 +3418,20 @@ export default function App() {
     return () => {
       if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
     };
-  }, [watcherActive, remindersList, snoozedAlerts]);
+  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted]);
 
-  // Test Watcher Alert Handler (Instant Real-Time Animation Verification across all devices & Chrome accounts)
+  // Test Watcher Alert Handler (Instant Verification of Sound, Modal & Notification)
   const triggerTestWatcherAlert = useCallback(() => {
-    const demoTask = "Daily Focus & Strategy Review";
-    const demoTime = getCurrentTimeString();
-    setActiveAlertTask(demoTask);
-    setActiveAlertTime(demoTime);
+    setActiveAlertTask("Demo Reminder: Team Review Meeting");
     setActiveAlertKey(`test_alert_${Date.now()}`);
-
-    // Broadcast across all connected tabs/Chrome profiles in real-time
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit('broadcast_reminder_alert', {
-        task: demoTask,
-        time: demoTime,
-        email: userProfileRef.current?.email || ''
-      });
+    if (!isMuted) {
+      startJailerFluteAlarm();
     }
-
-    showSystemNotification("⚡ Shadow Watcher Alert", {
-      body: `Scheduled Reminder: ${demoTask} at ${demoTime}`,
+    showSystemNotification("Shadow Watcher Alert", {
+      body: "Scheduled Reminder: Team Review Meeting due now!",
       icon: "/shadow-logo.png?v=3"
     });
-  }, []);
+  }, [isMuted, startJailerFluteAlarm]);
 
   const handleManualResetToday = useCallback(() => {
     triggeredKeysRef.current.clear();
@@ -6287,136 +6323,181 @@ export default function App() {
         </div>
       )}
 
-      {/* Real-Time Socket Broadcast Full-Screen Animated Reminder (NO Voice, Pure Motion Animation) */}
+      {/* Top Sticky Watcher Alert Banner */}
       {activeAlertTask && (
-        <div 
-          className="reminder-anim-overlay" 
-          onClick={() => { 
-            setActiveAlertTask(null); 
-            setActiveAlertKey(null); 
-            setCurrentAlertTaskId(null); 
-          }}
-        >
-          <div className="reminder-anim-card" onClick={(e) => e.stopPropagation()}>
-            
-            {/* Top Close Button */}
+        <div style={{
+          position: 'fixed',
+          top: '12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#dc2626',
+          color: '#ffffff',
+          padding: '10px 20px',
+          borderRadius: '12px',
+          zIndex: 999999,
+          boxShadow: '0 8px 30px rgba(220, 38, 38, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <Bell size={20} color="#ffffff" />
+          <div>
+            <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>⏰ Watcher Reminder Alert Due Now</div>
+            <div style={{ fontSize: '13px', fontWeight: '900' }}>"{activeAlertTask}"</div>
+          </div>
+          <button
+            onClick={() => {
+              stopAlarmSound();
+              setActiveAlertTask(null);
+              setActiveAlertKey(null);
+            }}
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#dc2626',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontWeight: '900',
+              cursor: 'pointer',
+              fontSize: '11px'
+            }}
+          >
+            <Check size={13} style={{ marginRight: '4px' }} /> Got It
+          </button>
+        </div>
+      )}
+
+      {/* Full-Screen Watcher Reminder Alert Modal */}
+      {activeAlertTask && (
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
+          backdropFilter: 'blur(10px)', 
+          zIndex: 99999, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: '24px', 
+          textAlign: 'center' 
+        }}>
+          <div style={{ 
+            width: '84px', 
+            height: '84px', 
+            borderRadius: '24px', 
+            backgroundColor: '#dc2626', 
+            color: '#ffffff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            marginBottom: '18px',
+            boxShadow: '0 0 35px rgba(220, 38, 38, 0.4)'
+          }}>
+            <Bell size={44} />
+          </div>
+
+          <span style={{ 
+            fontSize: '12px', 
+            fontWeight: '900', 
+            color: '#dc2626', 
+            textTransform: 'uppercase', 
+            letterSpacing: '2px', 
+            marginBottom: '8px' 
+          }}>
+            ⏰ Watcher Reminder Alert
+          </span>
+
+          <h1 style={{ 
+            fontSize: '28px', 
+            fontWeight: '900', 
+            color: '#0f172a', 
+            maxWidth: '680px', 
+            lineHeight: '1.3', 
+            margin: '0 0 10px 0', 
+            padding: '0 16px',
+            wordBreak: 'break-word'
+          }}>
+            "{activeAlertTask}"
+          </h1>
+
+          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: '#64748b', fontWeight: '800' }}>
+            Scheduled reminder time has arrived!
+          </p>
+
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
-              type="button"
               onClick={() => {
+                try {
+                  if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(`Reminder alert: ${activeAlertTask}`);
+                    utter.rate = 0.95;
+                    utter.pitch = 1.0;
+                    window.speechSynthesis.speak(utter);
+                  }
+                } catch (e) {}
+              }}
+              style={{
+                padding: '13px 22px',
+                borderRadius: '12px',
+                border: '1.5px solid #cbd5e1',
+                backgroundColor: '#f8fafc',
+                color: '#0f172a',
+                fontWeight: '900',
+                fontSize: '14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Volume2 size={18} /> Speak Again
+            </button>
+
+            <button
+              onClick={() => {
+                stopAlarmSound();
                 setActiveAlertTask(null);
                 setActiveAlertKey(null);
                 setCurrentAlertTaskId(null);
               }}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#f8fafc',
-                color: '#64748b',
+              style={{ 
+                padding: '13px 30px', 
+                borderRadius: '12px', 
+                border: 'none', 
+                backgroundColor: '#0f172a', 
+                color: '#ffffff', 
+                fontWeight: '900', 
+                fontSize: '15px', 
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(15,23,42,0.2)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                gap: '8px'
               }}
-              title="Dismiss Animation"
             >
-              <X size={16} />
+              <Check size={18} /> Got It
             </button>
 
-            {/* Pulsing Luminous Beacon Icon Animation */}
-            <div className="reminder-beacon-box">
-              <div className="reminder-beacon-ring" />
-              <div className="reminder-beacon-center">
-                <Bell size={38} />
-              </div>
-            </div>
-
-            {/* Glowing Tag & Time Indicator */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '20px', padding: '4px 14px', marginBottom: '14px' }}>
-              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', boxShadow: '0 0 8px #ef4444' }} />
-              <span style={{ fontSize: '11px', fontWeight: '900', color: '#b91c1c', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                ⚡ Real-Time Reminder Alert
-              </span>
-              {activeAlertTime && (
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#7f1d1d', marginLeft: '4px', paddingLeft: '6px', borderLeft: '1px solid #fca5a5' }}>
-                  {formatTimeTo12Hour(activeAlertTime)}
-                </span>
-              )}
-            </div>
-
-            {/* Big Impact Reminder Title */}
-            <h1 style={{ 
-              fontSize: '25px', 
-              fontWeight: '900', 
-              color: '#0f172a', 
-              maxWidth: '460px', 
-              lineHeight: '1.25', 
-              margin: '0 auto 10px auto', 
-              padding: '0 8px',
-              wordBreak: 'break-word',
-              letterSpacing: '-0.5px'
-            }}>
-              "{activeAlertTask}"
-            </h1>
-
-            <p style={{ margin: '0 auto 24px auto', fontSize: '12px', color: '#64748b', fontWeight: '800' }}>
-              Scheduled watcher routine arrived • Synchronized across your open Chrome tabs & devices
-            </p>
-
-            {/* Clean Action Buttons */}
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveAlertTask(null);
-                  setActiveAlertKey(null);
-                  setCurrentAlertTaskId(null);
-                }}
-                className="touch-btn"
-                style={{ 
-                  padding: '12px 28px', 
-                  borderRadius: '12px', 
-                  border: 'none', 
-                  backgroundColor: '#0f172a', 
-                  color: '#ffffff', 
-                  fontWeight: '900', 
-                  fontSize: '13.5px', 
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(15,23,42,0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <Check size={16} /> Got It
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSnooze}
-                className="touch-btn"
-                style={{ 
-                  padding: '12px 22px', 
-                  borderRadius: '12px', 
-                  border: '1.5px solid #cbd5e1',
-                  backgroundColor: '#f8fafc', 
-                  color: '#0f172a', 
-                  fontWeight: '900', 
-                  fontSize: '13.5px', 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '6px' 
-                }}
-              >
-                <Clock size={15} /> Snooze ({snoozeMinutes}m)
-              </button>
-            </div>
+            <button
+              onClick={handleSnooze}
+              style={{ 
+                padding: '13px 26px', 
+                borderRadius: '12px', 
+                border: '1.5px solid #cbd5e1',
+                backgroundColor: '#f1f5f9', 
+                color: '#0f172a', 
+                fontWeight: '900', 
+                fontSize: '15px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px' 
+              }}
+            >
+              <Clock size={16} /> Snooze ({snoozeMinutes}m)
+            </button>
           </div>
         </div>
       )}
