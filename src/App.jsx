@@ -9,7 +9,8 @@ import {
   Globe, Play, Pause, Radio, Landmark, Building2, Flame, CheckSquare, Pin, Mail, Send, Sparkles, Filter,
   Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
   Palette, ArrowRight, FileType, Sliders, Wand2, Eraser,
-  Wifi, Battery, Signal, LayoutGrid, SlidersHorizontal
+  Wifi, Battery, Signal, LayoutGrid, SlidersHorizontal,
+  MessageSquare, Star, HelpCircle
 } from 'lucide-react';
 import PhotoEditorModal from './components/PhotoEditorModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
@@ -4101,8 +4102,13 @@ export default function App() {
     }
   });
 
+  // Reactive Month Expense Spend Computations for Dashboard & Recommendations
+  const currentMonthExpenses = (expenseList || []).filter(item => item && item.type !== 'income' && isExpenseInMonth(item, selectedExpenseMonth));
+  const currentMonthSpent = currentMonthExpenses.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+  const currentBudgetPct = monthlyBudget > 0 ? Math.min(Math.round((currentMonthSpent / monthlyBudget) * 100), 100) : 0;
+
   return (
-    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#f8fafc', color: '#0f172a', display: 'flex', flexDirection: 'row', fontFamily: "'Montserrat', 'Inter', -apple-system, sans-serif", fontWeight: '800', overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div className="app-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#f0f9ff', color: '#0f172a', display: 'flex', flexDirection: 'row', fontFamily: "'Montserrat', 'Inter', -apple-system, sans-serif", fontWeight: '800', overflow: 'hidden', boxSizing: 'border-box' }}>
       {/* Custom Full-Screen Startup Animation (White Theme + Dynamic Rotating Shadow) */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
@@ -4332,8 +4338,8 @@ export default function App() {
           </button>
         </div>
       </aside>
-      {/* Main Content Area - Clean Crisp White Theme */}
-      <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 68px)', backgroundColor: '#f8fafc' }}>
+      {/* Main Content Area - Fluid Wave Cyan-Mint Theme */}
+      <div className="app-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: 'calc(100vw - 68px)', backgroundColor: '#f0f9ff' }}>
         
         {/* Dynamic Island & Phone Camera Notch Badge (Matches User Reference Image) */}
         <div className="mobile-dynamic-island-bar">
@@ -4360,252 +4366,351 @@ export default function App() {
           </div>
         </div>
 
-        {/* Top Header */}
-        <header className="app-header" style={{ padding: '12px 20px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-          {/* Mobile Left: Squarish LayoutGrid button (From user screenshot) */}
-          <button 
-            type="button" 
-            className="mobile-header-square-btn"
-            onClick={() => setShowToolsModal(true)}
-            title="Open Tools & Quick Features"
-          >
-            <LayoutGrid size={20} color="#0f172a" />
-          </button>
+        {/* Fluid Wave Cyan-Mint Gradient Header */}
+        <header className="app-header fluid-wave-header">
+          <div className="fluid-header-top-row">
+            {/* Mobile Left: Frosted glass squarish menu button */}
+            <button 
+              type="button" 
+              className="mobile-header-square-btn"
+              onClick={() => setShowToolsModal(true)}
+              title="Open Tools & Quick Features"
+            >
+              <LayoutGrid size={20} color="#ffffff" />
+            </button>
 
-          {/* Desktop Left / Mobile Center Logo & Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', minWidth: 0 }}>
-            <div className="header-logo-box" style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
-              <ShadowLogo size={22} color="#ffffff" innerColor="#0f172a" />
-            </div>
-            <div style={{ minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <h1 className="header-title" style={{ margin: 0, fontSize: '14px', fontWeight: '900', letterSpacing: '0.4px', color: '#0f172a', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW</h1>
-                <span className="header-pill-badge" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#0f172a', color: '#38bdf8', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.5px' }}>v3.0 PRO</span>
+            {/* Desktop Left / Mobile Center Logo & Title */}
+            <div className="fluid-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', minWidth: 0 }}>
+              <div className="header-logo-box" style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.22)', backdropFilter: 'blur(10px)', border: '1.5px solid rgba(255, 255, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <ShadowLogo size={22} color="#ffffff" innerColor="#0284c7" />
               </div>
-              <span className="header-subtitle mobile-hide-text" style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+              <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <h1 className="header-title" style={{ margin: 0, fontSize: '16px', fontWeight: '900', letterSpacing: '0.4px', color: '#ffffff', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>SHADOW</h1>
+                  <span className="header-pill-badge" style={{ fontSize: '9px', fontWeight: '900', backgroundColor: 'rgba(255, 255, 255, 0.25)', color: '#ffffff', padding: '2px 7px', borderRadius: '6px', letterSpacing: '0.5px', border: '1px solid rgba(255, 255, 255, 0.35)' }}>v3.0 PRO</span>
+                </div>
+                <span className="header-subtitle mobile-hide-text" style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.85)', fontWeight: '800', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentDateTimeStr || 'Loading Date & Time...'}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Mobile Right: Round User Profile Avatar (From user screenshot) */}
-          <button 
-            type="button"
-            className="mobile-header-avatar-btn"
-            onClick={() => {
-              setMobileActiveNav('profile');
-              if (userProfile) {
-                setShowProfileModal(true);
-              } else {
-                setAuthMode('login');
-                setShowAuthModal(true);
-              }
-            }}
-            title={userProfile ? userProfile.name : "Google Log In"}
-          >
-            {userProfile && userProfile.photo ? (
-              <img src={userProfile.photo} alt={userProfile.name} className="avatar-img" onError={(e) => { e.target.style.display = 'none'; }} />
-            ) : (
-              <span className="avatar-initial">{(userProfile?.name || 'H').charAt(0).toUpperCase()}</span>
-            )}
-            <span className="avatar-online-dot" />
-          </button>
-
-          {/* Desktop Right Header Controls */}
-          <div className="desktop-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            {/* Force Refresh & Sync button for Instant Mobile Update */}
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  if ('caches' in window) {
-                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-                      window.location.reload();
-                    });
-                  } else {
-                    window.location.reload();
-                  }
-                } catch (e) {
-                  window.location.reload();
-                }
-              }}
-              title="Force Update / Hard Refresh"
-              className="touch-btn"
-              style={{
-                border: '1.5px solid #0f172a',
-                background: '#0f172a',
-                color: '#ffffff',
-                padding: '6px 9px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontWeight: '900',
-                fontSize: '10px'
-              }}
-            >
-              <RotateCw size={13} color="#38bdf8" />
-              <span>SYNC UI</span>
-            </button>
-            {/* Direct PWA Push Test Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setShowPermissionsModal(true);
-                triggerTestPushNotification();
-              }}
-              disabled={isSendingTestPush}
-              title="Test PWA Push Notification: Sends live alert to this device"
-              className="header-btn touch-btn"
-              style={{
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#0f172a',
-                padding: '7px 11px',
-                borderRadius: '10px',
-                cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontWeight: '900',
-                fontSize: '11px',
-                letterSpacing: '0.3px',
-                transition: 'all 0.15s ease',
-                touchAction: 'manipulation'
-              }}
-            >
-              <Bell size={14} color="#0f172a" />
-              <span className="mobile-hide-text">{isSendingTestPush ? "SENDING..." : "TEST PUSH"}</span>
-            </button>
-
-            {/* Real Mobile & Desktop Permissions Setup Button */}
-            <button
-              onClick={() => setShowPermissionsModal(true)}
-              title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
-              className="header-btn"
-              style={{
-                border: '1px solid #e2e8f0',
-                background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#f0fdf4' : '#f8fafc',
-                color: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? '#166534' : '#0f172a',
-                padding: '7px 11px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontWeight: '900',
-                fontSize: '11px',
-                letterSpacing: '0.3px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Shield size={14} />
-              <span className="mobile-hide-text">{(mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? "PERMISSIONS OK" : "SETUP PERMISSIONS"}</span>
-            </button>
-
-            <button 
-              onClick={() => setIsMuted(!isMuted)} 
-              title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
-              className="header-btn"
-              style={{
-                border: isMuted ? '2px solid #ef4444' : '1px solid #e2e8f0',
-                background: isMuted ? '#fef2f2' : '#f8fafc',
-                color: isMuted ? '#991b1b' : '#0f172a',
-                padding: '7px 11px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontWeight: '900',
-                fontSize: '11px',
-                letterSpacing: '0.3px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-              <span className="mobile-hide-text">{isMuted ? "MUTED" : "SOUND ON"}</span>
-            </button>
-
-            {/* Quick Profile / Login Header Button */}
+            {/* Mobile Right: Round User Profile Avatar */}
             <button 
               type="button"
+              className="mobile-header-avatar-btn"
               onClick={() => {
+                setMobileActiveNav('profile');
                 if (userProfile) {
                   setShowProfileModal(true);
                 } else {
                   setAuthMode('login');
                   setShowAuthModal(true);
                 }
-              }} 
-              title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
-              className="header-btn touch-btn"
-              style={{
-                border: '1px solid #e2e8f0',
-                background: userProfile ? '#f0fdf4' : '#f8fafc',
-                color: userProfile ? '#166534' : '#0f172a',
-                padding: '7px 11px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontWeight: '900',
-                fontSize: '11px',
-                letterSpacing: '0.3px',
-                transition: 'all 0.15s ease',
-                touchAction: 'manipulation'
               }}
+              title={userProfile ? userProfile.name : "Google Log In"}
             >
-              <UserCircle size={15} />
-              <span className="mobile-hide-text">{userProfile ? (userProfile.name?.split(' ')[0] || 'PROFILE') : 'LOG IN'}</span>
+              {userProfile && userProfile.photo ? (
+                <img src={userProfile.photo} alt={userProfile.name} className="avatar-img" onError={(e) => { e.target.style.display = 'none'; }} />
+              ) : (
+                <span className="avatar-initial">{(userProfile?.name || 'H').charAt(0).toUpperCase()}</span>
+              )}
+              <span className="avatar-online-dot" />
             </button>
-          </div>
-        </header>
 
-        {/* Main Dashboard Stage - Crisp White Theme */}
-        <main className="dashboard-main smooth-scroll" style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          padding: '20px 24px', 
-          position: 'relative', 
-          overflowY: 'auto', 
-          backgroundColor: '#f8fafc',
-          color: '#0f172a'
-        }}>
-          
-          <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Desktop Right Header Controls */}
+            <div className="desktop-header-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              {/* Force Refresh & Sync button */}
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    if ('caches' in window) {
+                      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+                        window.location.reload();
+                      });
+                    } else {
+                      window.location.reload();
+                    }
+                  } catch (e) {
+                    window.location.reload();
+                  }
+                }}
+                title="Force Update / Hard Refresh"
+                className="touch-btn fluid-control-pill"
+                style={{
+                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontWeight: '900',
+                  fontSize: '11px',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                <RotateCw size={13} color="#ffffff" />
+                <span>SYNC UI</span>
+              </button>
 
-            {/* Mobile Hero Heading (Exact match to screenshot "Find unique furniture for your home") */}
-            <div className="mobile-hero-heading">
-              <h2>Find unique routines & focus for your day</h2>
+              {/* Direct PWA Push Test Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPermissionsModal(true);
+                  triggerTestPushNotification();
+                }}
+                disabled={isSendingTestPush}
+                title="Test PWA Push Notification: Sends live alert to this device"
+                className="header-btn touch-btn fluid-control-pill"
+                style={{
+                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontWeight: '900',
+                  fontSize: '11px',
+                  letterSpacing: '0.3px',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                <Bell size={14} color="#ffffff" />
+                <span className="mobile-hide-text">{isSendingTestPush ? "SENDING..." : "TEST PUSH"}</span>
+              </button>
+
+              {/* Real Mobile & Desktop Permissions Setup Button */}
+              <button
+                onClick={() => setShowPermissionsModal(true)}
+                title="Mobile Permissions: Microphone, GPS Location & System Alerts Setup"
+                className="header-btn fluid-control-pill"
+                style={{
+                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                  background: (mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontWeight: '900',
+                  fontSize: '11px',
+                  letterSpacing: '0.3px',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                <Shield size={14} color="#ffffff" />
+                <span className="mobile-hide-text">{(mobilePermissions.notifications === 'granted' && mobilePermissions.mic === 'granted') ? "PERMISSIONS OK" : "SETUP PERMISSIONS"}</span>
+              </button>
+
+              <button 
+                onClick={() => setIsMuted(!isMuted)} 
+                title={isMuted ? "Unmute Application Sound & Voice" : "Mute Entire Application"} 
+                className="header-btn fluid-control-pill"
+                style={{
+                  border: isMuted ? '1.5px solid #ef4444' : '1.5px solid rgba(255, 255, 255, 0.35)',
+                  background: isMuted ? 'rgba(239, 68, 68, 0.35)' : 'rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontWeight: '900',
+                  fontSize: '11px',
+                  letterSpacing: '0.3px',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                {isMuted ? <VolumeX size={15} color="#ffffff" /> : <Volume2 size={15} color="#ffffff" />}
+                <span className="mobile-hide-text">{isMuted ? "MUTED" : "SOUND ON"}</span>
+              </button>
+
+              {/* Quick Profile / Login Header Button */}
+              <button 
+                type="button"
+                onClick={() => {
+                  if (userProfile) {
+                    setShowProfileModal(true);
+                  } else {
+                    setAuthMode('login');
+                    setShowAuthModal(true);
+                  }
+                }} 
+                title={userProfile ? `Connected: ${userProfile.name || userProfile.email}` : "Google Log In / Sign Up"} 
+                className="header-btn touch-btn fluid-control-pill"
+                style={{
+                  border: '1.5px solid rgba(255, 255, 255, 0.4)',
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  color: '#ffffff',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontWeight: '900',
+                  fontSize: '11px',
+                  letterSpacing: '0.3px',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                <UserCircle size={15} color="#ffffff" />
+                <span className="mobile-hide-text">{userProfile ? (userProfile.name?.split(' ')[0] || 'PROFILE') : 'LOG IN'}</span>
+              </button>
             </div>
+          </div>
 
-            {/* Mobile Search & Action Bar (Exact match to search + filter button in screenshot) */}
-            <div className="mobile-search-row">
-              <div className="mobile-search-input-wrap">
-                <Search size={18} color="#94a3b8" />
-                <input 
-                  type="text" 
-                  placeholder="Search routines, notes, expenses..." 
-                  value={mobileSearchQuery}
-                  onChange={(e) => setMobileSearchQuery(e.target.value)}
-                  className="mobile-search-input"
-                />
-              </div>
+          {/* Floating White Rounded Search Pill (Exact match to reference image) */}
+          <div className="fluid-search-pill-container">
+            <div className="fluid-search-pill">
+              <Search size={18} className="fluid-search-icon" color="#0284c7" />
+              <input 
+                type="text" 
+                placeholder="Search routines, notes, radar..." 
+                value={mobileSearchQuery}
+                onChange={(e) => setMobileSearchQuery(e.target.value)}
+                className="fluid-search-input"
+              />
               <button 
                 type="button" 
-                className="mobile-filter-btn"
+                className="fluid-filter-pill-btn"
                 onClick={() => {
                   try { window.location.reload(); } catch(e) {}
                 }}
                 title="Sync UI & Refresh Data"
               >
-                <SlidersHorizontal size={18} color="#ffffff" />
+                <SlidersHorizontal size={15} color="#ffffff" />
               </button>
             </div>
+          </div>
 
-            {/* Mobile Category Filter Chips (Exact match to All, Chair, Table... in screenshot) */}
+          {/* Smooth Organic Wave Contour Transition into Pastel Sky Blue Content */}
+          <div className="fluid-wave-bottom-curve">
+            <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none">
+              <path d="M0,20 C320,60 480,-5 720,25 C960,60 1200,5 1440,30 L1440,60 L0,60 Z" fill="#f0f9ff" />
+            </svg>
+          </div>
+        </header>
+
+        {/* Main Dashboard Stage - Fluid Wave Glassmorphism Theme */}
+        <main className="dashboard-main smooth-scroll" style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          padding: '16px 20px', 
+          position: 'relative', 
+          overflowY: 'auto', 
+          backgroundColor: '#f0f9ff',
+          color: '#0f172a'
+        }}>
+          
+          <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+            {/* 6 Frosted Glass Action Tiles Grid (Exact 1:1 match to user screenshot Screen 3) */}
+            <div className="frosted-tiles-section">
+              <div className="frosted-tiles-grid">
+                {/* 1: Notes & Routines */}
+                <button 
+                  type="button" 
+                  className="frosted-tile touch-btn"
+                  onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
+                  title="Google Keep Notes & Reminders"
+                >
+                  <div className="frosted-icon-bubble cyan">
+                    <MessageSquare size={22} color="#0284c7" />
+                    {notesList.length > 0 && <span className="frosted-tile-badge">{notesList.length}</span>}
+                  </div>
+                  <span className="frosted-tile-label">Notes</span>
+                </button>
+
+                {/* 2: Watcher */}
+                <button 
+                  type="button" 
+                  className="frosted-tile touch-btn"
+                  onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
+                  title={`Watcher: ${nextRemTitle || 'Routine'} at ${nextRemTimeStr || '14:28'}`}
+                >
+                  <div className="frosted-icon-bubble amber">
+                    <Star size={22} color="#f59e0b" fill="#f59e0b" />
+                    <span className="frosted-tile-subtext">{nextRemTimeStr || '14:28'}</span>
+                  </div>
+                  <span className="frosted-tile-label">Watcher</span>
+                </button>
+
+                {/* 3: Alerts / Push */}
+                <button 
+                  type="button" 
+                  className="frosted-tile touch-btn"
+                  onClick={() => setShowPermissionsModal(true)}
+                  title="System Alerts & PWA Push Setup"
+                >
+                  <div className="frosted-icon-bubble emerald">
+                    <Bell size={22} color="#10b981" />
+                    <span className="frosted-status-dot" style={{ backgroundColor: (mobilePermissions.notifications === 'granted' || isPushSubscribed) ? '#10b981' : '#f59e0b' }} />
+                  </div>
+                  <span className="frosted-tile-label">Alerts</span>
+                </button>
+
+                {/* 4: Profile */}
+                <button 
+                  type="button" 
+                  className="frosted-tile touch-btn"
+                  onClick={() => {
+                    setMobileActiveNav('profile');
+                    if (userProfile) setShowProfileModal(true);
+                    else { setAuthMode('login'); setShowAuthModal(true); }
+                  }}
+                  title={userProfile ? userProfile.name : "Log In"}
+                >
+                  <div className="frosted-icon-bubble sky">
+                    {userProfile && userProfile.photo ? (
+                      <img src={userProfile.photo} alt={userProfile.name} className="frosted-tile-avatar" onError={(e) => { e.target.style.display = 'none'; }} />
+                    ) : (
+                      <UserCircle size={22} color="#06b6d4" />
+                    )}
+                  </div>
+                  <span className="frosted-tile-label">{userProfile ? (userProfile.name?.split(' ')[0] || 'Profile') : 'Profile'}</span>
+                </button>
+
+                {/* 5: Tools */}
+                <button 
+                  type="button" 
+                  className="frosted-tile touch-btn"
+                  onClick={() => setShowToolsModal(true)}
+                  title="Tools & Converters"
+                >
+                  <div className="frosted-icon-bubble indigo">
+                    <HelpCircle size={22} color="#6366f1" />
+                  </div>
+                  <span className="frosted-tile-label">Tools</span>
+                </button>
+
+                {/* 6: Radar */}
+                <button 
+                  type="button" 
+                  className="frosted-tile touch-btn"
+                  onClick={() => setShowRoutePanel(true)}
+                  title="Gujarat Route Radar & Telemetry"
+                >
+                  <div className="frosted-icon-bubble teal">
+                    <Navigation size={22} color="#0d9488" />
+                    {isMonitoringActive && <span className="radar-live-dot" />}
+                  </div>
+                  <span className="frosted-tile-label">Radar</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Chips */}
             <div className="mobile-category-chips">
               {['All', 'Watcher', 'Expenses', 'Notes', 'Radar'].map((cat) => (
                 <button
@@ -4625,24 +4730,90 @@ export default function App() {
               ))}
             </div>
 
-            {/* Mobile Featured Hero Banner Card ("Up to 40% Discount" style from screenshot) */}
-            <div 
-              className="mobile-featured-banner-card"
-              onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
-            >
-              <div className="banner-left">
-                <span className="banner-tag">NEXT UP ROUTINE</span>
-                <h3 className="banner-title">"{nextRemTitle || 'Routine Focus'}"</h3>
-                <p className="banner-time">
-                  Due at {formatTimeTo12Hour(nextRemTimeStr || '11:58')} ({nextCountdownStr})
-                </p>
-                <button type="button" className="banner-pill-btn">
-                  Open Watcher →
+            {/* Recommendation Section (Exact 1:1 match to user screenshot Screen 3) */}
+            <div className="recommendations-container">
+              <div className="recommendations-header-row">
+                <h3 className="section-title-cyan">Recommendation</h3>
+                <button type="button" className="section-link-cyan" onClick={() => setShowBriefingModal(true)}>
+                  View all ›
                 </button>
               </div>
-              <div className="banner-right">
-                <div className="banner-clock-circle">
-                  <Clock size={36} color="#ffffff" />
+
+              <div className="recommendations-grid">
+                {/* Card 1: Watcher Routine */}
+                <div 
+                  className="recommendation-card" 
+                  onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
+                >
+                  <div className="rec-card-thumbnail cyan-grad">
+                    <Clock size={34} color="#0284c7" />
+                    <span className="rec-badge">★ 4.9</span>
+                  </div>
+                  <div className="rec-card-body">
+                    <h4 className="rec-title">{nextRemTitle || 'Routine Focus'}</h4>
+                    <p className="rec-subtitle">Due at {formatTimeTo12Hour(nextRemTimeStr || '14:28')}</p>
+                    <div className="rec-footer-row">
+                      <span className="rec-countdown-tag">{nextCountdownStr}</span>
+                      <button type="button" className="rec-pill-btn">+ View</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: Monthly Expenses */}
+                <div 
+                  className="recommendation-card" 
+                  onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
+                >
+                  <div className="rec-card-thumbnail emerald-grad">
+                    <DollarSign size={34} color="#10b981" />
+                    <span className="rec-badge">★ 4.8</span>
+                  </div>
+                  <div className="rec-card-body">
+                    <h4 className="rec-title">Monthly Expenses</h4>
+                    <p className="rec-subtitle">Budget: ₹{monthlyBudget.toLocaleString('en-IN')}</p>
+                    <div className="rec-footer-row">
+                      <span className="rec-price-tag">₹{currentMonthSpent.toLocaleString('en-IN')}</span>
+                      <button type="button" className="rec-pill-btn">+ Spend</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 3: Notes */}
+                <div 
+                  className="recommendation-card" 
+                  onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
+                >
+                  <div className="rec-card-thumbnail sky-grad">
+                    <CheckSquare size={34} color="#06b6d4" />
+                    <span className="rec-badge">★ 4.9</span>
+                  </div>
+                  <div className="rec-card-body">
+                    <h4 className="rec-title">Google Keep Notes</h4>
+                    <p className="rec-subtitle">{notesList.length} Notes • Cloud Synced</p>
+                    <div className="rec-footer-row">
+                      <span className="rec-price-tag">{notesList.filter(n => n.pinned).length} Pinned</span>
+                      <button type="button" className="rec-pill-btn">+ Notes</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 4: Radar */}
+                <div 
+                  className="recommendation-card" 
+                  onClick={() => setShowRoutePanel(true)}
+                >
+                  <div className="rec-card-thumbnail teal-grad">
+                    <Navigation size={34} color="#0d9488" />
+                    <span className="rec-badge">★ 5.0</span>
+                  </div>
+                  <div className="rec-card-body">
+                    <h4 className="rec-title">Gujarat Radar</h4>
+                    <p className="rec-subtitle">{isMonitoringActive ? 'Active 1s Polling' : 'Ahmedabad Telemetry'}</p>
+                    <div className="rec-footer-row">
+                      <span className="rec-price-tag">Live GPS</span>
+                      <button type="button" className="rec-pill-btn">+ Radar</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

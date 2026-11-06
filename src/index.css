@@ -191,6 +191,324 @@ html, body {
 }
 
 /* -------------------------------------------------------------
+   CYAN-MINT FLUID WAVE GLASSMORPHISM THEME (DESKTOP & LAPTOP)
+   ------------------------------------------------------------- */
+.fluid-wave-header {
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 45%, #10b981 100%) !important;
+  padding: 16px 24px 0 24px !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  box-shadow: 0 8px 30px rgba(2, 132, 199, 0.15) !important;
+  border-bottom: none !important;
+  z-index: 50 !important;
+  box-sizing: border-box !important;
+}
+.fluid-header-top-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+.fluid-search-pill-container {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 2px 0 6px 0 !important;
+}
+.fluid-search-pill {
+  display: flex !important;
+  align-items: center !important;
+  background: #ffffff !important;
+  border-radius: 9999px !important;
+  padding: 6px 8px 6px 18px !important;
+  width: 100% !important;
+  max-width: 580px !important;
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.18) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+}
+.fluid-search-input {
+  flex: 1 !important;
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  width: 100% !important;
+}
+.fluid-search-input::placeholder {
+  color: #94a3b8 !important;
+}
+.fluid-filter-pill-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #0284c7 0%, #10b981 100%) !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3) !important;
+  transition: transform 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+.fluid-filter-pill-btn:active {
+  transform: scale(0.92) !important;
+}
+.fluid-wave-bottom-curve {
+  width: 100% !important;
+  overflow: hidden !important;
+  line-height: 0 !important;
+  margin-top: -2px !important;
+}
+.fluid-wave-bottom-curve svg {
+  display: block !important;
+  width: 100% !important;
+  height: 30px !important;
+}
+
+/* Frosted Action Tiles (6-Tile grid from reference image Screen 3) */
+.frosted-tiles-section {
+  width: 100% !important;
+  margin-top: 4px !important;
+}
+.frosted-tiles-grid {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+.frosted-tile {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border-radius: 22px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.95) !important;
+  padding: 16px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.07) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.frosted-tile:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 28px rgba(2, 132, 199, 0.15) !important;
+  border-color: #38bdf8 !important;
+}
+.frosted-icon-bubble {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+.frosted-icon-bubble.cyan { background: #e0f2fe !important; }
+.frosted-icon-bubble.amber { background: #fef3c7 !important; }
+.frosted-icon-bubble.emerald { background: #d1fae5 !important; }
+.frosted-icon-bubble.sky { background: #e0f7fa !important; }
+.frosted-icon-bubble.indigo { background: #ede9fe !important; }
+.frosted-icon-bubble.teal { background: #ccfbf1 !important; }
+
+.frosted-tile-label {
+  font-size: 11.5px !important;
+  font-weight: 900 !important;
+  color: #1e293b !important;
+  letter-spacing: -0.2px !important;
+}
+.frosted-tile-badge {
+  position: absolute !important;
+  top: -4px !important;
+  right: -4px !important;
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  border-radius: 10px !important;
+  padding: 1px 6px !important;
+  border: 1.5px solid #ffffff !important;
+}
+.frosted-status-dot {
+  position: absolute !important;
+  top: -2px !important;
+  right: -2px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  border: 2px solid #ffffff !important;
+}
+.frosted-tile-subtext {
+  position: absolute !important;
+  bottom: -6px !important;
+  background: #fbbf24 !important;
+  color: #78350f !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  border-radius: 6px !important;
+  padding: 1px 4px !important;
+  border: 1px solid #ffffff !important;
+  white-space: nowrap !important;
+}
+.frosted-tile-avatar {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1.5px solid #06b6d4 !important;
+}
+.radar-live-dot {
+  position: absolute !important;
+  top: -2px !important;
+  right: -2px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background-color: #0d9488 !important;
+  border: 2px solid #ffffff !important;
+  animation: islandPulse 1.5s infinite !important;
+}
+
+/* Recommendation Section (Exact 1:1 match to reference image Screen 3) */
+.recommendations-container {
+  width: 100% !important;
+  margin-top: 4px !important;
+}
+.recommendations-header-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 12px !important;
+}
+.section-title-cyan {
+  font-size: 19px !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.4px !important;
+  margin: 0 !important;
+}
+.section-link-cyan {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  color: #0284c7 !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+.recommendations-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+.recommendation-card {
+  background: #ffffff !important;
+  border-radius: 22px !important;
+  padding: 14px !important;
+  border: 1.5px solid rgba(224, 242, 254, 0.9) !important;
+  box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.recommendation-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 16px 36px rgba(2, 132, 199, 0.16) !important;
+  border-color: #38bdf8 !important;
+}
+.rec-card-thumbnail {
+  width: 100% !important;
+  height: 110px !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+.rec-card-thumbnail.cyan-grad { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important; }
+.rec-card-thumbnail.emerald-grad { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important; }
+.rec-card-thumbnail.sky-grad { background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%) !important; }
+.rec-card-thumbnail.teal-grad { background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%) !important; }
+
+.rec-badge {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  color: #0284c7 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+.rec-card-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+.rec-title {
+  margin: 0 !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  letter-spacing: -0.3px !important;
+}
+.rec-subtitle {
+  margin: 0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #64748b !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.rec-footer-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-top: 6px !important;
+}
+.rec-countdown-tag,
+.rec-price-tag {
+  font-size: 13.5px !important;
+  font-weight: 900 !important;
+  color: #0284c7 !important;
+  font-family: 'Montserrat', 'Inter', monospace, sans-serif !important;
+  letter-spacing: -0.3px !important;
+}
+.rec-pill-btn {
+  padding: 6px 14px !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, #0284c7 0%, #06b6d4 50%, #10b981 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3) !important;
+  transition: transform 0.15s ease !important;
+}
+.rec-pill-btn:active {
+  transform: scale(0.93) !important;
+}
+
+/* -------------------------------------------------------------
    MOBILE PHONES (<= 640px): USER FRIENDLY, BRAND NEW & TOUCH-POLISHED
    ------------------------------------------------------------- */
 /* Default desktop hide for mobile-only elements */
@@ -315,57 +633,43 @@ html, body {
     border-radius: 1px !important;
   }
 
-  /* 2. Header Layout on Mobile (Squarish Menu Icon Left + Round Avatar Right) */
+  /* 2. Fluid Wave Header on Mobile (Squarish Menu Icon Left + Round Avatar Right) */
   .desktop-header-controls,
   .pwa-push-card,
   .executive-header {
     display: none !important;
   }
-  .app-header {
-    padding: 8px 18px !important;
-    background-color: #ffffff !important;
-    border-bottom: none !important;
-    box-shadow: none !important;
+  .app-header.fluid-wave-header {
+    padding: 8px 14px 0 14px !important;
+    gap: 8px !important;
+    box-shadow: 0 4px 20px rgba(2, 132, 199, 0.12) !important;
   }
   .mobile-header-square-btn {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 42px !important;
-    height: 42px !important;
-    border-radius: 14px !important;
-    background-color: #f1f5f9 !important;
-    border: 1.5px solid #e2e8f0 !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 12px !important;
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
     cursor: pointer !important;
-    color: #0f172a !important;
+    color: #ffffff !important;
     transition: transform 0.1s ease !important;
   }
   .mobile-header-square-btn:active {
     transform: scale(0.92) !important;
   }
-  .mobile-header-center {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-  }
-  .header-pill-badge {
-    font-size: 9px !important;
-    font-weight: 900 !important;
-    background-color: #0f172a !important;
-    color: #38bdf8 !important;
-    padding: 2px 6px !important;
-    border-radius: 6px !important;
-    letter-spacing: 0.5px !important;
-  }
   .mobile-header-avatar-btn {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 42px !important;
-    height: 42px !important;
+    width: 38px !important;
+    height: 38px !important;
     border-radius: 50% !important;
-    background-color: #f8fafc !important;
-    border: 1.5px solid #e2e8f0 !important;
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    border: 2px solid #ffffff !important;
     cursor: pointer !important;
     position: relative !important;
     padding: 0 !important;
@@ -378,9 +682,9 @@ html, body {
     border-radius: 50% !important;
   }
   .avatar-initial {
-    font-size: 15px !important;
+    font-size: 14px !important;
     font-weight: 900 !important;
-    color: #0f172a !important;
+    color: #ffffff !important;
   }
   .avatar-online-dot {
     position: absolute !important;
@@ -389,72 +693,51 @@ html, body {
     width: 8px !important;
     height: 8px !important;
     border-radius: 50% !important;
-    background-color: #16a34a !important;
+    background-color: #22c55e !important;
     border: 1.5px solid #ffffff !important;
   }
 
-  /* 3. Headline & Search Row (Exact match to user screenshot) */
-  .mobile-hero-heading {
-    display: block !important;
-    margin-top: 2px !important;
-    margin-bottom: 4px !important;
-  }
-  .mobile-hero-heading h2 {
-    font-size: 23px !important;
-    font-weight: 900 !important;
-    color: #0f172a !important;
-    line-height: 1.25 !important;
-    letter-spacing: -0.6px !important;
-    margin: 0 !important;
-  }
-  .mobile-search-row {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    width: 100% !important;
-    margin: 2px 0 6px 0 !important;
-  }
-  .mobile-search-input-wrap {
-    flex: 1 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    background-color: #f1f5f9 !important;
-    border: 1.5px solid #e2e8f0 !important;
-    border-radius: 16px !important;
-    padding: 10px 14px !important;
-  }
-  .mobile-search-input {
-    border: none !important;
-    background: transparent !important;
-    outline: none !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    color: #0f172a !important;
+  /* 3. Fluid Search Pill & Curves on Mobile */
+  .fluid-search-pill-container {
+    margin: 4px 0 6px 0 !important;
     width: 100% !important;
   }
-  .mobile-search-input::placeholder {
-    color: #94a3b8 !important;
+  .fluid-search-pill {
+    padding: 5px 6px 5px 14px !important;
+    border-radius: 9999px !important;
+    max-width: 100% !important;
   }
-  .mobile-filter-btn {
-    width: 44px !important;
-    height: 44px !important;
-    border-radius: 14px !important;
-    background-color: #8c5a41 !important; /* Elegant terracotta from user screenshot */
-    border: none !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    box-shadow: 0 4px 12px rgba(140, 90, 65, 0.25) !important;
-    transition: transform 0.1s ease !important;
-    flex-shrink: 0 !important;
+  .fluid-search-input {
+    font-size: 12.5px !important;
   }
-  .mobile-filter-btn:active {
-    transform: scale(0.92) !important;
+  .fluid-filter-pill-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .fluid-wave-bottom-curve svg {
+    height: 24px !important;
   }
 
-  /* 4. Category Pills Slider (Exact match to screenshot) */
+  /* 4. Frosted Action Tiles (3x2 Grid on Mobile) */
+  .frosted-tiles-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+  .frosted-tile {
+    padding: 12px 6px !important;
+    border-radius: 18px !important;
+    gap: 6px !important;
+  }
+  .frosted-icon-bubble {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+  }
+  .frosted-tile-label {
+    font-size: 10.5px !important;
+  }
+
+  /* 5. Category Chips on Mobile */
   .mobile-category-chips {
     display: flex !important;
     align-items: center !important;
@@ -467,99 +750,54 @@ html, body {
     display: none !important;
   }
   .category-chip {
-    padding: 8px 18px !important;
-    border-radius: 14px !important;
+    padding: 7px 16px !important;
+    border-radius: 12px !important;
     border: 1.5px solid #e2e8f0 !important;
     background-color: #ffffff !important;
     color: #475569 !important;
-    font-size: 12.5px !important;
+    font-size: 11.5px !important;
     font-weight: 800 !important;
     cursor: pointer !important;
     white-space: nowrap !important;
     transition: all 0.15s ease !important;
   }
   .category-chip.active {
-    background-color: #8c5a41 !important; /* Terracotta active chip from screenshot */
+    background: linear-gradient(135deg, #0284c7 0%, #10b981 100%) !important;
     color: #ffffff !important;
-    border-color: #8c5a41 !important;
-    box-shadow: 0 3px 10px rgba(140, 90, 65, 0.28) !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.28) !important;
   }
 
-  /* 5. Featured Hero Banner Card ("Up to 40% Discount" style) */
-  .mobile-featured-banner-card {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    background: linear-gradient(135deg, #1c1917 0%, #0f172a 100%) !important;
-    border-radius: 26px !important;
-    padding: 20px 22px !important;
-    color: #ffffff !important;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2) !important;
-    cursor: pointer !important;
-    position: relative !important;
-    overflow: hidden !important;
-    margin-bottom: 6px !important;
+  /* 6. Recommendations Grid (2 Columns on Mobile) */
+  .recommendations-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
   }
-  .banner-left {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
-    z-index: 2 !important;
-    min-width: 0 !important;
+  .recommendation-card {
+    padding: 10px !important;
+    border-radius: 18px !important;
+    gap: 8px !important;
   }
-  .banner-tag {
-    font-size: 9.5px !important;
-    font-weight: 900 !important;
-    color: #fb923c !important;
-    letter-spacing: 1px !important;
-    text-transform: uppercase !important;
+  .rec-card-thumbnail {
+    height: 90px !important;
+    border-radius: 14px !important;
   }
-  .banner-title {
-    margin: 0 !important;
-    font-size: 19px !important;
-    font-weight: 900 !important;
-    color: #ffffff !important;
-    letter-spacing: -0.4px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+  .rec-title {
+    font-size: 12.5px !important;
   }
-  .banner-time {
-    margin: 2px 0 12px 0 !important;
-    font-size: 11px !important;
-    color: #cbd5e1 !important;
-    font-weight: 700 !important;
+  .rec-subtitle {
+    font-size: 10px !important;
   }
-  .banner-pill-btn {
-    padding: 8px 18px !important;
-    border-radius: 9999px !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border: none !important;
-    font-size: 11px !important;
-    font-weight: 900 !important;
-    width: fit-content !important;
-    cursor: pointer !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  .rec-countdown-tag,
+  .rec-price-tag {
+    font-size: 12px !important;
   }
-  .banner-right {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-left: 12px !important;
-  }
-  .banner-clock-circle {
-    width: 68px !important;
-    height: 68px !important;
-    border-radius: 50% !important;
-    background: radial-gradient(circle, rgba(251, 146, 60, 0.3) 0%, rgba(28, 25, 23, 0) 70%) !important;
-    border: 1.5px solid rgba(251, 146, 60, 0.3) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+  .rec-pill-btn {
+    padding: 5px 11px !important;
+    font-size: 10px !important;
   }
 
-  /* 6. Floating Glass Island Dock (Exact 1:1 match to user screenshot) */
+  /* 7. Floating Glass Island Dock with Cyan-Mint Active Tab */
   .app-sidebar {
     position: fixed !important;
     bottom: 18px !important;
@@ -606,9 +844,9 @@ html, body {
     transform: scale(0.92) !important;
   }
   .app-sidebar button.bottom-nav-tab.active {
-    background-color: #0f172a !important;
+    background: linear-gradient(135deg, #0284c7 0%, #10b981 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.3) !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
     transform: scale(1.05) !important;
   }
   .app-sidebar button.bottom-nav-tab.active svg {
