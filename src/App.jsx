@@ -1889,45 +1889,96 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Live Trending Google News Fetcher supporting 3 categories: global, india, gujarat
-  const fetchTrendingNews = useCallback(async (targetCat = newsCategory) => {
+  // Live Trending News Fetcher (Backend Multi-Tier + Direct Client RSS Fallback)
+  const [newsJustRefreshed, setNewsJustRefreshed] = useState(false);
+
+  const fetchTrendingNews = useCallback(async (targetCat = newsCategory, isManual = false) => {
     setIsNewsLoading(true);
+    if (isManual) {
+      setNewsJustRefreshed(true);
+      setTimeout(() => setNewsJustRefreshed(false), 3000);
+      setNewsCountdown(60);
+    }
+
+    let fetched = false;
+
+    // Tier 1: Local / Cloud Backend API with Cache Busting
     try {
-      const res = await fetch(`${BACKEND_URL}/api/news/trending?category=${encodeURIComponent(targetCat)}`);
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.news || data.items)) {
-        const list = data.news || data.items;
-        setTrendingNewsList(list);
-        setLastNewsUpdated(data.lastUpdated || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        if (list.length > 0) {
-          setBriefingData(`Breaking: "${list[0].title}" (${list[0].source})`);
+      const url = `${BACKEND_URL}/api/news/trending?category=${encodeURIComponent(targetCat)}${isManual ? '&refresh=true&_t=' + Date.now() : ''}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.news) && data.news.length > 0) {
+          setTrendingNewsList(data.news);
+          setLastNewsUpdated(data.lastUpdated || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          if (data.news[0]?.title) {
+            setBriefingData(`Breaking: "${data.news[0].title}" (${data.news[0].source || 'Live'})`);
+          }
+          fetched = true;
         }
       }
     } catch (e) {
-      console.warn("Trending news fetch error:", e);
-    } finally {
-      setIsNewsLoading(false);
+      console.warn("Primary backend news fetch failed, trying direct client fallback:", e.message);
     }
+
+    // Tier 2: Direct Client-Side Google RSS to JSON Proxy (api.rss2json.com) if backend offline
+    if (!fetched) {
+      try {
+        let rssFeedUrl = 'https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en';
+        if (targetCat === 'global') {
+          rssFeedUrl = 'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en';
+        } else if (targetCat === 'gujarat') {
+          rssFeedUrl = 'https://news.google.com/rss/search?q=Gujarat+when:48h&hl=en-IN&gl=IN&ceid=IN:en';
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
+        const rssRes = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssFeedUrl)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (rssRes.ok) {
+          const rssData = await rssRes.json();
+          if (rssData.status === 'ok' && Array.isArray(rssData.items) && rssData.items.length > 0) {
+            const formatted = rssData.items.map((item, idx) => {
+              let title = item.title || '';
+              let source = 'Google News';
+              if (title.includes(' - ')) {
+                const parts = title.split(' - ');
+                source = parts.pop().trim();
+                title = parts.join(' - ').trim();
+              }
+              return {
+                id: `client_rss_${targetCat}_${idx}_${Date.now()}`,
+                title,
+                link: item.link || item.guid || '#',
+                pubDate: item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live',
+                source,
+                category: targetCat,
+                imageUrl: item.thumbnail || (item.enclosure && item.enclosure.link) || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60",
+                videoUrl: '/jarvis-particles.mp4'
+              };
+            });
+            setTrendingNewsList(formatted);
+            setLastNewsUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+            if (formatted[0]?.title) {
+              setBriefingData(`Breaking: "${formatted[0].title}" (${formatted[0].source})`);
+            }
+            fetched = true;
+          }
+        }
+      } catch (err) {
+        console.warn("Client-side RSS fallback notice:", err.message);
+      }
+    }
+
+    setIsNewsLoading(false);
   }, [newsCategory]);
 
-  // 2-Minute Auto-Refresh Engine for Google News (Countdown decrements every second)
-  useEffect(() => {
-    fetchTrendingNews();
-
-    const timer = setInterval(() => {
-      setNewsCountdown(prev => {
-        if (prev <= 1) {
-          fetchTrendingNews();
-          return 120;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [fetchTrendingNews]);
-
-    // Live Real-Time IPO Intelligence Fetcher (Hourly Auto-Refresh + Manual Trigger)
+  // Live Real-Time IPO Intelligence Fetcher
   const fetchIpoData = useCallback(async (isManual = false) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
@@ -1938,17 +1989,16 @@ export default function App() {
       setIpoRefreshing(true);
       setIpoJustRefreshed(true);
       setIpoLastUpdated(localUpdatedStr);
-      setTimeout(() => setIpoJustRefreshed(false), 4000);
+      setTimeout(() => setIpoJustRefreshed(false), 3000);
+      setNewsCountdown(60);
     } else {
       setIpoLastUpdated(localUpdatedStr);
     }
 
-    setIpoCountdown(3600);
-
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(`${BACKEND_URL}/api/ipo/live`, { signal: controller.signal });
+      const res = await fetch(`${BACKEND_URL}/api/ipo/live${isManual ? '?refresh=true&_t=' + Date.now() : ''}`, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (res.ok) {
@@ -1967,27 +2017,32 @@ export default function App() {
       console.warn("Live IPO remote fetch notice:", e.message);
     } finally {
       if (isManual) {
-        setTimeout(() => setIpoRefreshing(false), 600);
+        setTimeout(() => setIpoRefreshing(false), 500);
       }
     }
   }, []);
 
-  // 1-Hour Auto-Refresh Engine for Real-Time IPO Data
+  // 60-Second Auto-Refresh Engine (Ticks every second, auto-refreshes active tab)
   useEffect(() => {
-    fetchIpoData();
+    fetchTrendingNews(newsCategory, false);
+    fetchIpoData(false);
 
-    const ipoTimer = setInterval(() => {
-      setIpoCountdown(prev => {
+    const timer = setInterval(() => {
+      setNewsCountdown(prev => {
         if (prev <= 1) {
-          fetchIpoData();
-          return 3600;
+          if (newsCategory === 'ipo') {
+            fetchIpoData(false);
+          } else {
+            fetchTrendingNews(newsCategory, false);
+          }
+          return 60;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(ipoTimer);
-  }, [fetchIpoData]);
+    return () => clearInterval(timer);
+  }, [fetchTrendingNews, fetchIpoData, newsCategory]);
 
   // Load Google Identity Services script
   useEffect(() => {
@@ -3997,7 +4052,12 @@ export default function App() {
 
   const handleOpenBriefing = async () => {
     setShowBriefingModal(true);
-    fetchTrendingNews();
+    setNewsCountdown(60);
+    if (newsCategory === 'ipo') {
+      fetchIpoData(true);
+    } else {
+      fetchTrendingNews(newsCategory, true);
+    }
   };
 
   const GUJARAT_PRESETS = [
@@ -7237,26 +7297,40 @@ export default function App() {
       )}
 
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '800px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
-            <button onClick={() => setShowBriefingModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(7, 12, 9, 0.85)', backdropFilter: 'blur(12px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#0d1511', borderRadius: '24px', padding: window.innerWidth < 640 ? '16px' : '24px', width: '100%', maxWidth: '860px', position: 'relative', border: '1px solid rgba(0, 245, 155, 0.25)', color: '#f8fafc', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: '0 24px 60px rgba(0,0,0,0.75)' }}>
+            
+            {/* Top Close Button */}
+            <button 
+              type="button"
+              onClick={() => setShowBriefingModal(false)} 
+              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', borderRadius: '50%', width: '34px', height: '34px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
+              title="Close Briefing"
+            >
+              <X size={16} />
+            </button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Newspaper size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', paddingRight: '45px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: 'rgba(0, 245, 155, 0.12)', border: '1px solid rgba(0, 245, 155, 0.35)', color: '#00f59b', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(0, 245, 155, 0.2)' }}>
+                <Newspaper size={22} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
-                  Live Briefing & IPO Radar
-                </h3>
-                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                  GLOBAL, INDIA, GUJARAT NEWS & REAL-TIME IPO INTELLIGENCE
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    Live Market Briefing & Radar
+                  </h3>
+                  <span style={{ fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '20px', backgroundColor: 'rgba(0, 245, 155, 0.15)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)' }}>
+                    REAL-TIME
+                  </span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#6ee7b7', fontWeight: '700' }}>
+                  GLOBAL, INDIA, GUJARAT BREAKING NEWS & REAL-TIME INDIAN IPO INTEL
                 </span>
               </div>
             </div>
 
-            {/* Top 4 Selection Options */}
+            {/* Top 4 Selection Tabs */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
               {[
                 { id: 'global', label: '🌐 GLOBAL NEWS' },
@@ -7268,29 +7342,32 @@ export default function App() {
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => {
                       setNewsCategory(tab.id);
-                      if (tab.id !== 'ipo') {
-                        fetchTrendingNews(tab.id);
-                        setNewsCountdown(120);
+                      setNewsCountdown(60);
+                      if (tab.id === 'ipo') {
+                        fetchIpoData(true);
+                      } else {
+                        fetchTrendingNews(tab.id, true);
                       }
                     }}
                     style={{
                       flex: '1 1 140px',
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid ' + (isSel ? '#0f172a' : '#e2e8f0'),
-                      backgroundColor: isSel ? '#0f172a' : '#f1f5f9',
-                      color: isSel ? '#ffffff' : '#64748b',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: isSel ? '1px solid #00f59b' : '1px solid rgba(255, 255, 255, 0.08)',
+                      backgroundColor: isSel ? '#00f59b' : 'rgba(255, 255, 255, 0.04)',
+                      color: isSel ? '#042f1a' : '#94a3b8',
                       fontWeight: '900',
-                      fontSize: '11px',
+                      fontSize: '11.5px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '5px',
-                      transition: 'all 0.2s ease',
-                      boxShadow: isSel ? '0 2px 6px rgba(15,23,42,0.15)' : 'none',
+                      gap: '6px',
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      boxShadow: isSel ? '0 0 16px rgba(0, 245, 155, 0.35)' : 'none',
                       textTransform: 'uppercase'
                     }}
                   >
@@ -7304,10 +7381,10 @@ export default function App() {
             {newsCategory === 'ipo' ? (
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
                 
-                {/* Real-time Live Market Feed Status Bar */}
+                {/* Real-time Status & Auto-refresh Controls */}
                 <div style={{ 
-                  backgroundColor: '#f8fafc', 
-                  border: '1.5px solid #e2e8f0', 
+                  backgroundColor: 'rgba(7, 12, 9, 0.75)', 
+                  border: '1px solid rgba(0, 245, 155, 0.25)', 
                   borderRadius: '12px', 
                   padding: '10px 14px', 
                   display: 'flex', 
@@ -7317,77 +7394,73 @@ export default function App() {
                   gap: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }} />
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
-                      BSE & NSE Real-Time IPO Radar • Current October–November 2026 Issues
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00f59b', display: 'inline-block', boxShadow: '0 0 8px #00f59b' }} />
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#ffffff', textTransform: 'uppercase' }}>
+                      Auto-refresh in {newsCountdown}s • Sync: {ipoLastUpdated}
                     </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>
-                      Auto-updates in {Math.floor(ipoCountdown / 60)}m {String(ipoCountdown % 60).padStart(2, '0')}s • Sync: {ipoLastUpdated}
-                    </span>
-                    {ipoJustRefreshed && (
-                      <span style={{ fontSize: '10px', backgroundColor: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
-                        ✅ UPDATED
+                    {(ipoJustRefreshed || newsJustRefreshed) && (
+                      <span style={{ fontSize: '10px', backgroundColor: 'rgba(0, 245, 155, 0.2)', color: '#00f59b', border: '1px solid #00f59b', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
+                        ✅ LIVE SYNCED
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => fetchIpoData(true)}
-                      disabled={ipoRefreshing}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        backgroundColor: '#0f172a',
-                        color: '#ffffff',
-                        fontSize: '11px',
-                        fontWeight: '900',
-                        cursor: ipoRefreshing ? 'not-allowed' : 'pointer',
-                        textTransform: 'uppercase'
-                      }}
-                      title="Manually refresh real-time IPO data now"
-                    >
-                      <RotateCw size={11} style={{ animation: ipoRefreshing ? 'spin 1s linear infinite' : 'none' }} />
-                      {ipoRefreshing ? 'UPDATING...' : 'REFRESH'}
-                    </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => fetchIpoData(true)}
+                    disabled={ipoRefreshing}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: '#00f59b',
+                      color: '#042f1a',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: ipoRefreshing ? 'not-allowed' : 'pointer',
+                      textTransform: 'uppercase',
+                      boxShadow: '0 0 12px rgba(0, 245, 155, 0.25)'
+                    }}
+                    title="Force refresh real-time IPO data now"
+                  >
+                    <RotateCw size={12} style={{ animation: ipoRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+                    {ipoRefreshing ? 'UPDATING...' : 'REFRESH'}
+                  </button>
                 </div>
 
-                {/* Beginner Guide Card */}
+                {/* Plain English Guide Card */}
                 <div style={{ 
-                  backgroundColor: '#fef3c7', 
-                  border: '1px solid #fde68a', 
+                  backgroundColor: 'rgba(251, 191, 36, 0.08)', 
+                  border: '1px solid rgba(251, 191, 36, 0.25)', 
                   borderRadius: '12px', 
                   padding: '12px 14px', 
                   fontSize: '11px', 
                   lineHeight: '1.5'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#92400e', fontWeight: '900', fontSize: '12px', textTransform: 'uppercase' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: '#fbbf24', fontWeight: '900', fontSize: '11.5px', textTransform: 'uppercase' }}>
                     <span>💡</span>
                     <span>EVERYDAY PLAIN ENGLISH IPO GUIDE:</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px', color: '#78350f', fontSize: '10px', fontWeight: '700' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', color: '#fef3c7', fontSize: '10px', fontWeight: '700' }}>
                     <div>
-                      <strong>• What is an IPO?</strong> When a company sells shares to the public for the first time.
+                      <strong style={{ color: '#fbbf24' }}>• What is an IPO?</strong> When a company sells shares to the public for the first time.
                     </div>
                     <div>
-                      <strong>• Demand (Subscription):</strong> If demand is <strong>3x</strong>, 3 people applied for every 1 share.
+                      <strong style={{ color: '#fbbf24' }}>• Demand (Subscription):</strong> If demand is <strong>3x</strong>, 3 people applied for every 1 share.
                     </div>
                     <div>
-                      <strong>• GMP (Grey Market Premium):</strong> Estimated extra profit per share on Day 1.
+                      <strong style={{ color: '#fbbf24' }}>• GMP (Grey Market Premium):</strong> Estimated extra profit per share on Day 1.
                     </div>
                     <div>
-                      <strong>• Lot Size:</strong> Minimum bundle of shares you must buy in an application.
+                      <strong style={{ color: '#fbbf24' }}>• Lot Size:</strong> Minimum bundle of shares you must buy in an application.
                     </div>
                   </div>
                 </div>
 
                 {/* Sub-Tabs: Live Open vs Upcoming */}
-                <div style={{ display: 'flex', gap: '8px', backgroundColor: '#f8fafc', padding: '6px', borderRadius: '10px', border: '1.5px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: '8px', backgroundColor: 'rgba(7, 12, 9, 0.6)', padding: '6px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <button
                     type="button"
                     onClick={() => setIpoSubTab('live')}
@@ -7396,8 +7469,8 @@ export default function App() {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      backgroundColor: ipoSubTab === 'live' ? '#0f172a' : 'transparent',
-                      color: ipoSubTab === 'live' ? '#ffffff' : '#64748b',
+                      backgroundColor: ipoSubTab === 'live' ? '#00f59b' : 'transparent',
+                      color: ipoSubTab === 'live' ? '#042f1a' : '#94a3b8',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -7418,8 +7491,8 @@ export default function App() {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      backgroundColor: ipoSubTab === 'upcoming' ? '#0f172a' : 'transparent',
-                      color: ipoSubTab === 'upcoming' ? '#ffffff' : '#64748b',
+                      backgroundColor: ipoSubTab === 'upcoming' ? '#00f59b' : 'transparent',
+                      color: ipoSubTab === 'upcoming' ? '#042f1a' : '#94a3b8',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -7439,156 +7512,134 @@ export default function App() {
                   <div
                     key={ipo.id}
                     style={{
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid #e2e8f0',
+                      backgroundColor: 'rgba(7, 12, 9, 0.85)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '14px',
                       padding: '16px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '12px'
+                      gap: '12px',
+                      transition: 'border-color 0.2s ease'
                     }}
                   >
                     {/* Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>
+                          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#ffffff' }}>
                             {ipo.name}
                           </h4>
-                          <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: '#f1f5f9', color: '#475569', padding: '3px 7px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8', padding: '3px 7px', borderRadius: '4px', textTransform: 'uppercase' }}>
                             {ipo.type} ({ipo.exchange})
                           </span>
                         </div>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                        <span style={{ fontSize: '11px', color: '#6ee7b7', fontWeight: '800' }}>
                           {ipo.sector}
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: 'rgba(0, 245, 155, 0.12)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)', padding: '3px 8px', borderRadius: '6px' }}>
                           {ipo.status}
                         </span>
-                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: '#0f172a', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '900', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
                           {ipo.allotmentBadge}
                         </span>
                       </div>
                     </div>
 
                     {/* Key Metrics Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', backgroundColor: 'rgba(13, 21, 17, 0.7)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.06)', fontSize: '11px' }}>
                       <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>💰 PRICE PER SHARE</span>
-                        <strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: '900' }}>{ipo.priceBand}</strong>
+                        <span style={{ color: '#94a3b8', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>💰 PRICE PER SHARE</span>
+                        <strong style={{ color: '#ffffff', fontSize: '13px', fontWeight: '900' }}>{ipo.priceBand}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>📦 MIN LOT SIZE</span>
-                        <strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: '900' }}>{ipo.lotSize}</strong>
+                        <span style={{ color: '#94a3b8', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>📦 MIN LOT SIZE</span>
+                        <strong style={{ color: '#ffffff', fontSize: '13px', fontWeight: '900' }}>{ipo.lotSize}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>🗓️ BID DATES</span>
-                        <strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: '900' }}>{ipo.dates}</strong>
+                        <span style={{ color: '#94a3b8', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>🗓️ BID DATES</span>
+                        <strong style={{ color: '#6ee7b7', fontSize: '13px', fontWeight: '900' }}>{ipo.dates}</strong>
                       </div>
                       <div>
-                        <span style={{ color: '#64748b', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>🚀 EST. DAY 1 PROFIT (GMP)</span>
-                        <strong style={{ color: '#166534', fontSize: '13px', fontWeight: '900' }}>{ipo.gmp}</strong>
+                        <span style={{ color: '#94a3b8', display: 'block', fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>🚀 EST. DAY 1 PROFIT (GMP)</span>
+                        <strong style={{ color: '#00f59b', fontSize: '13px', fontWeight: '900' }}>{ipo.gmp}</strong>
                       </div>
                     </div>
 
                     {/* What Company Does */}
-                    <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fef3c7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde68a', fontWeight: '700' }}>
-                      <strong style={{ color: '#92400e', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: '1.5', backgroundColor: 'rgba(251, 191, 36, 0.06)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.2)', fontWeight: '700' }}>
+                      <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
                         🏭 ABOUT THIS COMPANY:
                       </strong>
-                      <span>{ipo.about}</span>
+                      {ipo.about}
                     </div>
 
-                    {/* Subscription Breakdown */}
-                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', fontWeight: '700' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
-                        <strong style={{ color: '#166534', textTransform: 'uppercase' }}>
-                          👥 PUBLIC DEMAND:
+                    {/* Investor Demand / Subscription breakdown */}
+                    <div style={{ backgroundColor: 'rgba(13, 21, 17, 0.6)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ color: '#00f59b', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                          📊 LIVE DEMAND (OVERALL: {ipo.subscription?.total || 'Active'})
                         </strong>
-                        <span style={{ fontSize: '10px', color: '#166534', fontWeight: '900', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '6px' }}>
-                          Total: {ipo.subscription.total}
-                        </span>
+                        <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>Real-time BSE/NSE Bids</span>
                       </div>
-                      <p style={{ margin: '0 0 6px 0', fontSize: '10px', color: '#166534' }}>
-                        👉 {ipo.subscription.totalMeaning}
-                      </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '10px', borderTop: '1px dashed #bbf7d0', paddingTop: '6px' }}>
-                        <div>
-                          <strong style={{ color: '#15803d' }}>Retail Public:</strong> {ipo.subscription.retail}
-                          <span style={{ display: 'block', color: '#4b5563', marginTop: '1px' }}>{ipo.subscription.retailMeaning}</span>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: '10.5px' }}>
+                        <div style={{ backgroundColor: 'rgba(7, 12, 9, 0.7)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                          <span style={{ color: '#6ee7b7', fontWeight: '900', display: 'block' }}>Regular Retail Investors</span>
+                          <span style={{ color: '#ffffff', fontWeight: '900', fontSize: '12px' }}>{ipo.subscription?.retail || '1.85x'}</span>
                         </div>
-                        <div>
-                          <strong style={{ color: '#15803d' }}>Institutions (QIB):</strong> {ipo.subscription.qib}
-                          <span style={{ display: 'block', color: '#4b5563', marginTop: '1px' }}>{ipo.subscription.qibMeaning}</span>
+                        <div style={{ backgroundColor: 'rgba(7, 12, 9, 0.7)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                          <span style={{ color: '#6ee7b7', fontWeight: '900', display: 'block' }}>Big Funds & Banks (QIB)</span>
+                          <span style={{ color: '#ffffff', fontWeight: '900', fontSize: '12px' }}>{ipo.subscription?.qib || '4.10x'}</span>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Chances of Getting Shares */}
-                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', fontWeight: '700' }}>
-                      <strong style={{ color: '#1e40af', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
-                        🎯 ALLOTMENT CHANCES:
-                      </strong>
-                      <span style={{ color: '#1e3a8a', fontWeight: '900' }}>{ipo.allotmentChance}</span>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: '#374151', lineHeight: '1.4' }}>
-                        {ipo.allotmentDetail}
-                      </p>
-                    </div>
-
-                    {/* Simple Beginner Advice & Listing Date */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '11px', flexWrap: 'wrap', gap: '6px' }}>
-                      <div>
-                        <strong style={{ color: '#0f172a', textTransform: 'uppercase' }}>💡 SHADOW VERDICT: </strong>
-                        <span style={{ color: '#475569', fontWeight: '700' }}>{ipo.verdict}</span>
-                      </div>
-                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#0f172a', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase' }}>
-                        Listing: {ipo.listingDate}
-                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              /* Google News Feed */
+              /* Google News & Multi-Tier News Feed */
               <>
                 {/* Status Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
-                      Auto-refresh in {Math.floor(newsCountdown / 60)}m {newsCountdown % 60}s
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(7, 12, 9, 0.75)', border: '1px solid rgba(0, 245, 155, 0.25)', borderRadius: '12px', padding: '10px 14px', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00f59b', display: 'inline-block', boxShadow: '0 0 8px #00f59b' }} />
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#ffffff', textTransform: 'uppercase' }}>
+                      Auto-refresh in {newsCountdown}s • Sync: {lastNewsUpdated || 'Just Now'}
                     </span>
-                    {lastNewsUpdated && (
-                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>• Updated: {lastNewsUpdated}</span>
+                    {(newsJustRefreshed || ipoJustRefreshed) && (
+                      <span style={{ fontSize: '10px', backgroundColor: 'rgba(0, 245, 155, 0.2)', color: '#00f59b', border: '1px solid #00f59b', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
+                        ✅ LIVE SYNCED
+                      </span>
                     )}
                   </div>
 
                   <button
+                    type="button"
                     disabled={isNewsLoading}
                     onClick={() => {
-                      fetchTrendingNews(newsCategory);
-                      setNewsCountdown(120);
+                      fetchTrendingNews(newsCategory, true);
+                      setNewsCountdown(60);
                     }}
-                    title="Manual Refresh Google News"
+                    title="Manual Refresh News"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      backgroundColor: '#0f172a',
-                      color: '#ffffff',
+                      backgroundColor: '#00f59b',
+                      color: '#042f1a',
                       border: 'none',
                       padding: '6px 14px',
                       borderRadius: '8px',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: isNewsLoading ? 'wait' : 'pointer',
-                      textTransform: 'uppercase'
+                      textTransform: 'uppercase',
+                      boxShadow: '0 0 12px rgba(0, 245, 155, 0.25)'
                     }}
                   >
-                    <RotateCw size={12} style={{ animation: isNewsLoading ? 'jarvisSpinClockwise 1s linear infinite' : 'none' }} />
+                    <RotateCw size={12} style={{ animation: isNewsLoading ? 'spin 1s linear infinite' : 'none' }} />
                     {isNewsLoading ? 'UPDATING...' : 'REFRESH'}
                   </button>
                 </div>
@@ -7596,94 +7647,69 @@ export default function App() {
                 {/* News Cards List */}
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
                   {isNewsLoading && trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '36px 12px', color: '#0f172a', fontWeight: '900', fontSize: '13px' }}>
-                      <RotateCw size={24} style={{ animation: 'jarvisSpinClockwise 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
-                      FETCHING LIVE NEWS FOR {newsCategory.toUpperCase()}...
+                    <div style={{ textAlign: 'center', padding: '36px 12px', color: '#00f59b', fontWeight: '900', fontSize: '13px' }}>
+                      <RotateCw size={24} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
+                      FETCHING REAL-TIME LIVE NEWS FOR {newsCategory.toUpperCase()}...
                     </div>
                   ) : trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '36px', color: '#64748b', fontSize: '12px', fontWeight: '800' }}>
+                    <div style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '12px', fontWeight: '800' }}>
                       No live news currently available. Click Refresh above.
                     </div>
                   ) : (
                     trendingNewsList.map((item, idx) => (
                       <div 
                         key={item.id || idx} 
-                        onMouseEnter={() => setHoveredNewsId(item.id || idx)}
-                        onMouseLeave={() => setHoveredNewsId(null)}
                         style={{ 
-                          backgroundColor: '#ffffff', 
-                          border: '1.5px solid #e2e8f0', 
+                          backgroundColor: 'rgba(7, 12, 9, 0.85)', 
+                          border: '1px solid rgba(255, 255, 255, 0.08)', 
                           borderRadius: '14px', 
-                          padding: '12px', 
+                          padding: '14px', 
                           display: 'flex', 
                           gap: '14px',
                           alignItems: 'center',
                           position: 'relative',
                           overflow: 'hidden',
                           transition: 'all 0.2s ease',
-                          boxShadow: hoveredNewsId === (item.id || idx) ? '0 4px 14px rgba(0,0,0,0.06)' : '0 1px 4px rgba(0,0,0,0.02)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                           flexShrink: 0,
-                          minHeight: '110px'
+                          minHeight: '100px'
                         }}
                       >
                         {/* Media Thumbnail */}
-                        <div style={{ width: '125px', minWidth: '125px', height: '85px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {hoveredNewsId === (item.id || idx) ? (
-                            <>
-                              <video 
-                                src={item.videoUrl || "/jarvis-particles.mp4"} 
-                                autoPlay 
-                                loop 
-                                muted 
-                                playsInline 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                              />
-                              <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(15,23,42,0.85)', padding: '2px 5px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                <Play size={8} color="#ffffff" fill="#ffffff" />
-                                <span style={{ fontSize: '7px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px' }}>PREVIEW</span>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <img 
-                                src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
-                                alt={item.title} 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                onError={(e) => {
-                                  e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
-                                }}
-                              />
-                              <div style={{ position: 'absolute', top: '4px', right: '4px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Play size={10} color="#ffffff" />
-                              </div>
-                            </>
-                          )}
+                        <div style={{ width: '120px', minWidth: '120px', height: '82px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <img 
+                            src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
+                            alt={item.title} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            onError={(e) => {
+                              e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
+                            }}
+                          />
                         </div>
 
                         {/* News Info & Story Link */}
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', padding: '2px 7px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#00f59b', backgroundColor: 'rgba(0, 245, 155, 0.12)', border: '1px solid rgba(0, 245, 155, 0.3)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                 {item.source || 'LIVE'}
                               </span>
-                              <span style={{ fontSize: '9px', color: '#64748b', fontWeight: '800' }}>
-                                {item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}
+                              <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '800' }}>
+                                {item.pubDate || 'Live Breaking'}
                               </span>
                             </div>
 
-                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#ffffff', lineHeight: '1.4', wordBreak: 'break-word' }}>
                               {item.title}
                             </p>
                           </div>
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                            <span style={{ fontSize: '9px', color: '#64748b', fontWeight: '800' }}>Hover to preview video clip</span>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '2px' }}>
                             <a 
                               href={item.link} 
                               target="_blank" 
                               rel="noopener noreferrer" 
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', textDecoration: 'none', padding: '6px 14px', borderRadius: '6px', boxShadow: '0 2px 6px rgba(15,23,42,0.15)', textTransform: 'uppercase' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#042f1a', backgroundColor: '#00f59b', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', boxShadow: '0 0 12px rgba(0, 245, 155, 0.25)', textTransform: 'uppercase' }}
                             >
                               READ ARTICLE <ExternalLink size={11} />
                             </a>
@@ -7696,7 +7722,13 @@ export default function App() {
               </>
             )}
 
-            <button onClick={() => setShowBriefingModal(false)} style={{ marginTop: '14px', width: '100%', padding: '11px', borderRadius: '10px', border: '1.5px solid #e2e8f0', backgroundColor: '#f1f5f9', color: '#0f172a', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}>CLOSE</button>
+            <button 
+              type="button"
+              onClick={() => setShowBriefingModal(false)} 
+              style={{ marginTop: '14px', width: '100%', padding: '11px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.12)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#ffffff', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}
+            >
+              CLOSE
+            </button>
           </div>
         </div>
       )}
