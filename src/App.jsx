@@ -4168,97 +4168,98 @@ export default function App() {
   const currentBudgetPct = monthlyBudget > 0 ? Math.min(Math.round((currentMonthSpent / monthlyBudget) * 100), 100) : 0;
 
   return (
-    <div className="app-shell zebeyond-shell" style={{ height: '100vh', width: '100vw', backgroundColor: '#070c09', color: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div className="app-shell nordic-shell">
       {/* Custom Full-Screen Startup Animation */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
 
-      {/* Dynamic Island on Mobile View (Matching phone frame in reference image) */}
-      <div className="mobile-dynamic-island-bar zebeyond-island">
-        <div className="mobile-status-time">
+      {/* Dynamic Island on Mobile View (Matching Apple iOS sleek modern pill) */}
+      <div className="nordic-island">
+        <div style={{ fontSize: '12px', fontWeight: '800', color: '#1C1917', width: '45px' }}>
           {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) || '14:35'}
         </div>
         <div 
-          className="mobile-dynamic-island-notch" 
+          className="nordic-island-notch" 
           onClick={() => { setShowWatcherModal(true); setMobileActiveNav('watcher'); }}
           title="Dynamic Island: Tap to Open Watcher"
         >
-          <div className="camera-lens-dot" />
-          <div className="island-indicator">
-            <span className="island-pulse-dot" style={{ backgroundColor: '#00f59b', boxShadow: '0 0 8px #00f59b' }} />
-            <span className="island-text">{nextRemTimeStr || '14:35'}</span>
-          </div>
+          <div className="nordic-lens-dot" />
+          <span className="nordic-pulse-dot" />
+          <span className="nordic-island-text">{nextRemTimeStr || '14:35'}</span>
         </div>
-        <div className="mobile-status-icons">
-          <span style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '-0.3px', color: '#00f59b' }}>5G</span>
-          <Wifi size={13} strokeWidth={2.5} color="#00f59b" />
-          <div className="battery-badge" style={{ borderColor: '#00f59b' }}>
-            <div className="battery-level" style={{ backgroundColor: '#00f59b' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '55px', justifyContent: 'flex-end' }}>
+          <span style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '-0.3px', color: '#1C1917' }}>5G</span>
+          <Wifi size={13} strokeWidth={2.5} color="#1C1917" />
+          <div style={{ width: '18px', height: '9px', border: '1.2px solid #1C1917', borderRadius: '2.5px', padding: '1px', display: 'flex', alignItems: 'center', position: 'relative' }}>
+            <div style={{ width: '80%', height: '100%', backgroundColor: '#1C1917', borderRadius: '1px' }} />
           </div>
         </div>
       </div>
 
-      {/* ZeBeyond Sleek Obsidian Header */}
-      <header className="zebeyond-header">
-        <div className="zebeyond-header-inner">
+      {/* Nordic Minimalist Header */}
+      <header className="nordic-header">
+        <div className="nordic-header-inner">
           {/* Brand Logo & Title */}
-          <div className="zebeyond-brand">
-            <div className="zebeyond-logo-icon">
-              <ShadowLogo size={22} color="#00f59b" innerColor="#070c09" />
+          <div className="nordic-brand">
+            <div className="nordic-logo-box">
+              <ShadowLogo size={22} color="#FFFFFF" innerColor="#8C4E34" />
             </div>
-            <div className="zebeyond-brand-text">
-              <span className="zebeyond-brand-title">SHADOW</span>
-              <span className="zebeyond-badge">v3.0 PRO</span>
+            <div className="nordic-brand-text">
+              <span className="nordic-brand-title">SHADOW</span>
+              <span className="nordic-brand-sub">Daily Hub • Gujarat</span>
             </div>
           </div>
 
-          {/* Center Nav / Status Pill (Desktop only) */}
-          <div className="zebeyond-center-status desktop-only">
-            <span className="status-live-dot" />
-            <span>Telemetry Active • Gujarat (IST)</span>
-            <span className="status-clock">{currentDateTimeStr || new Date().toLocaleTimeString()}</span>
+          {/* Center Greeting & Status (Desktop only) */}
+          <div className="nordic-greeting-pill desktop-only">
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block', boxShadow: '0 0 6px #10B981' }} />
+            <span>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {userProfile ? (userProfile.name?.split(' ')[0] || 'Het') : 'Het'} 👋</span>
+            <span style={{ color: '#78716C', fontSize: '11px' }}>•</span>
+            <span style={{ color: '#8C4E34', fontWeight: '800' }}>{currentDateTimeStr || new Date().toLocaleTimeString()}</span>
           </div>
 
           {/* Right Header Actions */}
-          <div className="zebeyond-header-actions">
+          <div className="nordic-header-actions">
             {/* Search Pill */}
-            <div className="zebeyond-search-box">
-              <Search size={15} color="#6ee7b7" />
+            <div className="nordic-search-box">
+              <Search size={15} color="#78716C" />
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={mobileSearchQuery}
                 onChange={(e) => setMobileSearchQuery(e.target.value)}
-                className="zebeyond-search-input"
+                className="nordic-search-input"
               />
             </div>
 
             {/* Direct PWA Push Alert Button (ONLY PLACE TO SETUP PUSH/ALERTS) */}
             <button 
               type="button"
-              className="zebeyond-icon-btn touch-btn"
+              className="nordic-icon-btn touch-btn"
               onClick={() => setShowPermissionsModal(true)}
               title="PWA Web Push Notifications & Permissions"
             >
-              <Bell size={16} color={mobilePermissions.notifications === 'granted' || isPushSubscribed ? "#00f59b" : "#94a3b8"} />
-              {(mobilePermissions.notifications === 'granted' || isPushSubscribed) && <span className="icon-badge-dot" />}
+              <Bell size={17} color={mobilePermissions.notifications === 'granted' || isPushSubscribed ? "#8C4E34" : "#78716C"} />
+              {(mobilePermissions.notifications === 'granted' || isPushSubscribed) && (
+                <span style={{ position: 'absolute', top: '7px', right: '7px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', border: '1.5px solid #FFFFFF' }} />
+              )}
             </button>
 
             {/* Sound Toggle */}
             <button 
               type="button"
-              className="zebeyond-icon-btn touch-btn desktop-only"
+              className="nordic-icon-btn touch-btn desktop-only"
               onClick={() => setIsMuted(!isMuted)}
               title={isMuted ? "Unmute Application Sound" : "Mute Sound"}
             >
-              {isMuted ? <VolumeX size={16} color="#ef4444" /> : <Volume2 size={16} color="#00f59b" />}
+              {isMuted ? <VolumeX size={17} color="#EF4444" /> : <Volume2 size={17} color="#8C4E34" />}
             </button>
 
             {/* User Profile Avatar (ONLY PLACE TO OPEN PROFILE / LOGIN) */}
             <button 
               type="button"
-              className="zebeyond-profile-pill touch-btn"
+              className="nordic-profile-pill touch-btn"
               onClick={() => {
                 setMobileActiveNav('profile');
                 if (userProfile) setShowProfileModal(true);
@@ -4267,17 +4268,17 @@ export default function App() {
               title={userProfile ? userProfile.name : "Sign In with Google"}
             >
               {userProfile && userProfile.photo ? (
-                <img src={userProfile.photo} alt={userProfile.name} className="zebeyond-avatar-img" />
+                <img src={userProfile.photo} alt={userProfile.name} className="nordic-avatar-img" />
               ) : (
-                <UserCircle size={17} color="#00f59b" />
+                <UserCircle size={18} color="#8C4E34" />
               )}
               <span className="desktop-only">{userProfile ? (userProfile.name?.split(' ')[0] || 'Profile') : 'Login'}</span>
             </button>
 
-            {/* Neon Mint Signature CTA Button */}
+            {/* Warm Terracotta Signature Sync Button */}
             <button 
               type="button"
-              className="zebeyond-cta-btn touch-btn"
+              className="nordic-sync-btn touch-btn"
               onClick={() => {
                 try {
                   if ('caches' in window) {
@@ -4289,288 +4290,289 @@ export default function App() {
               }}
               title="Sync UI & Hard Refresh"
             >
-              <RotateCw size={13} color="#042f1a" />
-              <span>SYNC UI</span>
+              <RotateCw size={13} color="#FFFFFF" />
+              <span>SYNC</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area - Full Width Obsidian Stage */}
-      <main className="zebeyond-main smooth-scroll">
-        <div className="zebeyond-container">
+      {/* Main Content Area - Nordic Stage */}
+      <main className="nordic-main smooth-scroll">
+        <div className="nordic-container">
 
-          {/* HERO SECTION: Exact match to Image 1 (Laptop) */}
-          <section className="zebeyond-hero">
-            <div className="zebeyond-hero-left">
-              <span className="zebeyond-tag">THE FOCUS & ROUTINE PHASE</span>
-              <h1 className="zebeyond-hero-headline">
-                Size and simulate <br />
-                <span className="neon-text">daily focus fast</span>
-              </h1>
-              <p className="zebeyond-hero-desc">
-                Generate application-specific focus and demonstrate routine performance with unprecedented speed and fidelity.
-              </p>
-              
-              <div className="zebeyond-hero-ctas">
-                {/* ONE AND ONLY BUTTON TO OPEN WATCHER */}
-                <button 
-                  type="button" 
-                  className="zebeyond-hero-primary-btn touch-btn"
-                  onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-                  title="Open Watcher"
-                >
-                  <Clock size={16} />
-                  <span>Open Watcher ({nextCountdownStr})</span>
+          {/* Quick Routine Glance Banner (Subtle, clean, informative) */}
+          <section className="nordic-glance-banner">
+            <div className="nordic-glance-left">
+              <span className="nordic-glance-tag">UPCOMING FOCUS</span>
+              <span style={{ fontWeight: '800' }}>
+                "{nextRemTitle || 'Routine Focus'}" at {formatTimeTo12Hour(nextRemTimeStr || '14:28')}
+              </span>
+              <span style={{ color: '#8C4E34', fontWeight: '900' }}>({nextCountdownStr})</span>
+            </div>
+            <div className="nordic-glance-right desktop-only">
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+              <span>Cloud Telemetry Active • Gujarat Standard Time</span>
+            </div>
+          </section>
+
+          {/* Quick Category Filter Pills */}
+          <div className="nordic-filter-row">
+            <button 
+              type="button"
+              className="nordic-filter-pill active"
+              onClick={() => {}}
+            >
+              ✨ All Workspaces
+            </button>
+            <button 
+              type="button"
+              className="nordic-filter-pill"
+              onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
+            >
+              ⏰ Routines & Watcher
+            </button>
+            <button 
+              type="button"
+              className="nordic-filter-pill"
+              onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
+            >
+              💰 Expenses Vault
+            </button>
+            <button 
+              type="button"
+              className="nordic-filter-pill"
+              onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
+            >
+              📝 Keep Notes
+            </button>
+            <button 
+              type="button"
+              className="nordic-filter-pill"
+              onClick={handleOpenBriefing}
+            >
+              📈 Market & IPO
+            </button>
+            <button 
+              type="button"
+              className="nordic-filter-pill"
+              onClick={() => setShowRoutePanel(true)}
+            >
+              🗺️ Gujarat Radar
+            </button>
+            <button 
+              type="button"
+              className="nordic-filter-pill"
+              onClick={() => setShowPhotoEditModal(true)}
+            >
+              🛠️ AI Studio & Tools
+            </button>
+          </div>
+
+          {/* MINIMALIST MODERN TILE GRID: Evenly spaced large rounded cards */}
+          <section className="nordic-grid">
+            
+            {/* Tile 1: Daily Routines & Watcher (ONLY PLACE TO OPEN WATCHER) */}
+            <div 
+              className="nordic-card touch-btn"
+              onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
+              title="Open Daily Routines & Watcher"
+            >
+              <div className="nordic-card-top">
+                <div className="nordic-card-icon-wrap terracotta">
+                  <Clock size={24} />
+                </div>
+                <span className="nordic-card-badge highlight">
+                  {nextCountdownStr}
+                </span>
+              </div>
+              <div className="nordic-card-body">
+                <span className="nordic-card-title">Daily Routines & Watcher</span>
+                <span className="nordic-card-stat">
+                  {formatTimeTo12Hour(nextRemTimeStr || '14:28')}
+                </span>
+                <p className="nordic-card-desc">
+                  Upcoming target: "{nextRemTitle || 'Routine'}" with automated voice speech alerts.
+                </p>
+              </div>
+              <div className="nordic-card-footer">
+                <button type="button" className="nordic-card-btn primary">
+                  Open Watcher ➔
                 </button>
+              </div>
+            </div>
 
-                {/* ONE AND ONLY BUTTON TO OPEN GUJARAT RADAR */}
-                <button 
-                  type="button" 
-                  className="zebeyond-hero-secondary-btn touch-btn"
-                  onClick={() => setShowRoutePanel(true)}
-                  title="Open Gujarat Radar Route Monitor"
-                >
-                  <Navigation size={16} color="#00f59b" />
-                  <span>Gujarat Radar</span>
+            {/* Tile 2: Expenses Vault & Budget (ONLY PLACE TO OPEN EXPENSES) */}
+            <div 
+              className="nordic-card touch-btn"
+              onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
+              title="Open Expenses Vault & Monthly Budget"
+            >
+              <div className="nordic-card-top">
+                <div className="nordic-card-icon-wrap emerald">
+                  <DollarSign size={24} />
+                </div>
+                <span className="nordic-card-badge">
+                  {currentBudgetPct}% Spent
+                </span>
+              </div>
+              <div className="nordic-card-body">
+                <span className="nordic-card-title">Expenses Vault</span>
+                <span className="nordic-card-stat">
+                  ₹{currentMonthSpent.toLocaleString('en-IN')}
+                </span>
+                <div className="nordic-progress-bar">
+                  <div 
+                    className="nordic-progress-fill" 
+                    style={{ 
+                      width: `${currentBudgetPct}%`,
+                      backgroundColor: currentBudgetPct > 90 ? '#EF4444' : '#8C4E34' 
+                    }} 
+                  />
+                </div>
+                <p className="nordic-card-desc">
+                  ₹{Math.max(0, monthlyBudget - currentMonthSpent).toLocaleString('en-IN')} remaining of ₹{monthlyBudget.toLocaleString('en-IN')} monthly budget.
+                </p>
+              </div>
+              <div className="nordic-card-footer">
+                <button type="button" className="nordic-card-btn">
+                  Open Ledger ➔
                 </button>
               </div>
+            </div>
 
-              {/* Sub-note for nearest upcoming routine */}
-              <div className="zebeyond-hero-status-note">
-                <span className="pulse-neon-dot" />
-                <span>Next Routine: <strong>"{nextRemTitle || 'Routine Focus'}"</strong> due at {formatTimeTo12Hour(nextRemTimeStr || '14:28')}</span>
+            {/* Tile 3: Google Keep Notes (ONLY PLACE TO OPEN NOTES) */}
+            <div 
+              className="nordic-card touch-btn"
+              onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
+              title="Open Google Keep Notes"
+            >
+              <div className="nordic-card-top">
+                <div className="nordic-card-icon-wrap amber">
+                  <CheckSquare size={24} />
+                </div>
+                <span className="nordic-card-badge">
+                  {notesList.filter(n => n.pinned).length} Pinned
+                </span>
+              </div>
+              <div className="nordic-card-body">
+                <span className="nordic-card-title">Google Keep Notes</span>
+                <span className="nordic-card-stat">
+                  {notesList.length} Notes Saved
+                </span>
+                <p className="nordic-card-desc">
+                  Cloud synced with 3x daily automated email & Telegram briefings.
+                </p>
+              </div>
+              <div className="nordic-card-footer">
+                <button type="button" className="nordic-card-btn">
+                  Open Notes ➔
+                </button>
               </div>
             </div>
 
-            {/* Right: Technical Flowchart Vector Diagram (Exact match to screenshot!) */}
-            <div className="zebeyond-hero-right">
-              <div className="zebeyond-diagram-card">
-                <div className="diagram-top-badge">
-                  <Activity size={14} color="#00f59b" />
-                  <span>LIVE ARCHITECTURE STREAM</span>
+            {/* Tile 4: Market Intel & Live IPO Radar (ONLY PLACE TO OPEN BRIEFING) */}
+            <div 
+              className="nordic-card touch-btn"
+              onClick={handleOpenBriefing}
+              title="Open Market Intel & Live IPO Radar"
+            >
+              <div className="nordic-card-top">
+                <div className="nordic-card-icon-wrap blue">
+                  <TrendingUp size={24} />
                 </div>
-                
-                {/* Wireframe Flowchart with Concept Exploration Node */}
-                <div className="diagram-flowchart">
-                  <div className="diagram-row">
-                    <div className="diagram-node node-dim">
-                      <span>Routine Benchmark</span>
-                    </div>
-                    <div className="diagram-arrow">➔</div>
-                    <div className="diagram-node node-active-neon">
-                      <span className="node-pulse" />
-                      <span>Focus Exploration</span>
-                      <small>{nextRemTitle || 'task 3'} ({nextCountdownStr})</small>
-                    </div>
-                  </div>
-
-                  <div className="diagram-connector-line" />
-
-                  <div className="diagram-row">
-                    <div className="diagram-node node-dim">
-                      <span>Cloud Keep Telemetry</span>
-                    </div>
-                    <div className="diagram-arrow">➔</div>
-                    <div className="diagram-node node-dim">
-                      <span>Financial Ledger</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="diagram-info-box">
-                  <Sparkles size={14} color="#00f59b" />
-                  <p>
-                    SHADOW telemetry continuously validates routines, Keep notes, and monthly financial ledger with sub-second background push sync.
-                  </p>
-                </div>
+                <span className="nordic-card-badge">
+                  {(ipoData?.live || []).length} Live IPOs
+                </span>
+              </div>
+              <div className="nordic-card-body">
+                <span className="nordic-card-title">Market & IPO Intel</span>
+                <span className="nordic-card-stat">
+                  60s Auto-Sync
+                </span>
+                <p className="nordic-card-desc">
+                  Global, India, Gujarat breaking news & real-time BSE/NSE IPO bidding tracker.
+                </p>
+              </div>
+              <div className="nordic-card-footer">
+                <button type="button" className="nordic-card-btn">
+                  Open Intel ➔
+                </button>
               </div>
             </div>
+
+            {/* Tile 5: Gujarat Route Radar (ONLY PLACE TO OPEN GUJARAT RADAR) */}
+            <div 
+              className="nordic-card touch-btn"
+              onClick={() => setShowRoutePanel(true)}
+              title="Open Gujarat Route Radar"
+            >
+              <div className="nordic-card-top">
+                <div className="nordic-card-icon-wrap terracotta">
+                  <Navigation size={24} />
+                </div>
+                <span className="nordic-card-badge highlight">
+                  {isMonitoringActive ? '● GPS Active' : 'Standby'}
+                </span>
+              </div>
+              <div className="nordic-card-body">
+                <span className="nordic-card-title">Gujarat Route Radar</span>
+                <span className="nordic-card-stat">
+                  {isMonitoringActive ? 'Active Route' : 'Ahmedabad ➔ Surat'}
+                </span>
+                <p className="nordic-card-desc">
+                  Live SG Highway & expressway telemetry, audio traffic announcements & maps.
+                </p>
+              </div>
+              <div className="nordic-card-footer">
+                <button type="button" className="nordic-card-btn">
+                  Open Radar ➔
+                </button>
+              </div>
+            </div>
+
+            {/* Tile 6: AI Studio & Fast Converters (ONLY PLACE TO OPEN TOOLS) */}
+            <div 
+              className="nordic-card touch-btn"
+              onClick={() => setShowPhotoEditModal(true)}
+              title="Open AI Photo Studio & Utilities"
+            >
+              <div className="nordic-card-top">
+                <div className="nordic-card-icon-wrap rose">
+                  <Wand2 size={24} />
+                </div>
+                <span className="nordic-card-badge">
+                  AI Eraser
+                </span>
+              </div>
+              <div className="nordic-card-body">
+                <span className="nordic-card-title">AI Studio & Utilities</span>
+                <span className="nordic-card-stat">
+                  6 Fast Tools
+                </span>
+                <p className="nordic-card-desc">
+                  AI object removal canvas, unit converters, format changers & file utilities.
+                </p>
+              </div>
+              <div className="nordic-card-footer">
+                <button type="button" className="nordic-card-btn">
+                  Open Studio ➔
+                </button>
+              </div>
+            </div>
+
           </section>
 
-          {/* 6 DEDICATED MODULES ROW (Horizontal cards matching the 6 vehicle icons in reference screenshot) */}
-          <section className="zebeyond-modules-section">
-            <div className="zebeyond-section-header">
-              <span className="zebeyond-section-title">SYSTEM MODULES</span>
-              <span className="zebeyond-section-subtitle">Dedicated workspaces • Zero duplicate triggers</span>
-            </div>
-
-            <div className="zebeyond-modules-grid">
-              {/* Module 1: Expenses Vault (ONLY PLACE TO OPEN EXPENSES) */}
-              <div 
-                className="zebeyond-module-card touch-btn"
-                onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
-                title="Open Expense Tracker"
-              >
-                <div className="module-icon-wrap emerald">
-                  <DollarSign size={24} color="#00f59b" />
-                </div>
-                <div className="module-content">
-                  <span className="module-title">Expenses Vault</span>
-                  <span className="module-stat">₹{currentMonthSpent.toLocaleString('en-IN')} Spent</span>
-                  <span className="module-sub">Budget: ₹{monthlyBudget.toLocaleString('en-IN')}</span>
-                </div>
-                <span className="module-action-link">Open Ledger ➔</span>
-              </div>
-
-              {/* Module 2: Google Keep Notes (ONLY PLACE TO OPEN NOTES) */}
-              <div 
-                className="zebeyond-module-card touch-btn"
-                onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
-                title="Open Google Keep Notes"
-              >
-                <div className="module-icon-wrap cyan">
-                  <CheckSquare size={24} color="#38bdf8" />
-                </div>
-                <div className="module-content">
-                  <span className="module-title">Keep Notes</span>
-                  <span className="module-stat">{notesList.length} Notes</span>
-                  <span className="module-sub">{notesList.filter(n => n.pinned).length} Pinned • Cloud Sync</span>
-                </div>
-                <span className="module-action-link">Open Notes ➔</span>
-              </div>
-
-              {/* Module 3: AI Photo Studio (ONLY PLACE TO OPEN PHOTO STUDIO) */}
-              <div 
-                className="zebeyond-module-card touch-btn"
-                onClick={() => setShowPhotoEditModal(true)}
-                title="Open AI Photo Studio & Generative Object Eraser"
-              >
-                <div className="module-icon-wrap magenta">
-                  <Wand2 size={24} color="#f472b6" />
-                </div>
-                <div className="module-content">
-                  <span className="module-title">AI Studio</span>
-                  <span className="module-stat">Object Eraser</span>
-                  <span className="module-sub">Windows Photos Magic</span>
-                </div>
-                <span className="module-action-link">Open Studio ➔</span>
-              </div>
-
-              {/* Module 4: Tools & Converters (ONLY PLACE TO OPEN TOOLS) */}
-              <div 
-                className="zebeyond-module-card touch-btn"
-                onClick={() => setShowToolsModal(true)}
-                title="Open Unit Converters & Extension Tools"
-              >
-                <div className="module-icon-wrap indigo">
-                  <Wrench size={24} color="#818cf8" />
-                </div>
-                <div className="module-content">
-                  <span className="module-title">Tools & Converters</span>
-                  <span className="module-stat">6 Fast Utilities</span>
-                  <span className="module-sub">Unit & Format Converters</span>
-                </div>
-                <span className="module-action-link">Open Tools ➔</span>
-              </div>
-
-              {/* Module 5: Market Intelligence (ONLY PLACE TO OPEN DAILY BRIEFING) */}
-              <div 
-                className="zebeyond-module-card touch-btn"
-                onClick={handleOpenBriefing}
-                title="Open Daily Market Briefing & IPO Intelligence"
-              >
-                <div className="module-icon-wrap amber">
-                  <TrendingUp size={24} color="#fbbf24" />
-                </div>
-                <div className="module-content">
-                  <span className="module-title">Market Intel</span>
-                  <span className="module-stat">{(ipoData?.live || []).length} Live IPOs</span>
-                  <span className="module-sub">Google Trending Radar</span>
-                </div>
-                <span className="module-action-link">Open Briefing ➔</span>
-              </div>
-
-              {/* Module 6: Emergency Standby (ONLY PLACE TO TRIGGER STANDBY) */}
-              <div 
-                className="zebeyond-module-card touch-btn standby-card"
-                onClick={handleStopAll}
-                title="Shadow Standby / Emergency Audio & Route Stop"
-              >
-                <div className="module-icon-wrap red">
-                  <Power size={24} color="#f87171" />
-                </div>
-                <div className="module-content">
-                  <span className="module-title" style={{ color: '#f87171' }}>Emergency Standby</span>
-                  <span className="module-stat">Silence & Stop</span>
-                  <span className="module-sub">Instant Kill Switch</span>
-                </div>
-                <span className="module-action-link" style={{ color: '#f87171' }}>Trigger Stop ➔</span>
-              </div>
-            </div>
-          </section>
-
-          {/* PERFORMANCE TELEMETRY STATS GRID: Matching Image 2 (media_1793955781413_cbfebef7.jpg) */}
-          <section className="zebeyond-telemetry-section">
-            <div className="zebeyond-section-header">
-              <span className="zebeyond-section-title">COMMAND PERFORMANCE</span>
-              <span className="zebeyond-section-subtitle">Real-time telemetry indicators</span>
-            </div>
-
-            <div className="zebeyond-stats-grid">
-              {/* Stat 1: <30 minutes (Routine countdown) */}
-              <div className="zebeyond-stat-card">
-                <span className="stat-big-number">&lt; 30 min</span>
-                <span className="stat-title">Upcoming Routine Interval</span>
-                <p className="stat-desc">
-                  Next target: "{nextRemTitle || 'Routine'}" at {formatTimeTo12Hour(nextRemTimeStr || '14:28')} ({nextCountdownStr})
-                </p>
-                <div className="stat-progress-bar">
-                  <div className="stat-bar-fill" style={{ width: '70%' }} />
-                </div>
-              </div>
-
-              {/* Stat 2: >90% (Budget Adherence) */}
-              <div className="zebeyond-stat-card">
-                <span className="stat-big-number">&gt; {currentBudgetPct}%</span>
-                <span className="stat-title">Monthly Budget Consumption</span>
-                <p className="stat-desc">
-                  ₹{currentMonthSpent.toLocaleString('en-IN')} of ₹{monthlyBudget.toLocaleString('en-IN')} ledger utilized this month.
-                </p>
-                <div className="stat-progress-bar">
-                  <div className="stat-bar-fill" style={{ width: `${currentBudgetPct}%`, backgroundColor: currentBudgetPct > 90 ? '#ef4444' : '#00f59b' }} />
-                </div>
-              </div>
-
-              {/* Stat 3: 3x Daily (Notes dispatch) */}
-              <div className="zebeyond-stat-card">
-                <span className="stat-big-number">3x Daily</span>
-                <span className="stat-title">Notes Telegram & Push Dispatch</span>
-                <p className="stat-desc">
-                  Auto-dispatches at 8:00 AM, 1:00 PM, and 8:30 PM with active pin priority.
-                </p>
-                <div className="stat-tag-row">
-                  <span className="stat-pill-tag">Telegram Bot OK</span>
-                  <span className="stat-pill-tag">WebPush Synced</span>
-                </div>
-              </div>
-
-              {/* Stat 4: 1s Stream (Gujarat Radar Polling) */}
-              <div className="zebeyond-stat-card">
-                <span className="stat-big-number">1s Stream</span>
-                <span className="stat-title">Live Gujarat Route Radar</span>
-                <p className="stat-desc">
-                  {isMonitoringActive ? `Active Telemetry: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}` : 'Ahmedabad ➔ Surat Telemetry Standby'}
-                </p>
-                <div className="stat-tag-row">
-                  <span className="stat-pill-tag" style={{ color: isMonitoringActive ? '#00f59b' : '#94a3b8' }}>
-                    {isMonitoringActive ? '● GPS Polling' : 'Standby'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Traffic Alert Banner (If Triggered or Monitoring) */}
+          {/* Traffic Alert Banner (If Triggered or Active Monitoring) */}
           {(trafficAlertBanner || isMonitoringActive) && (
-            <div className="zebeyond-traffic-banner">
+            <div className="nordic-glance-banner" style={{ borderLeft: '4px solid #8C4E34' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <AlertTriangle size={20} color={trafficAlertBanner ? "#ef4444" : "#00f59b"} />
+                <AlertTriangle size={20} color={trafficAlertBanner ? "#EF4444" : "#8C4E34"} />
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: trafficAlertBanner ? '#f87171' : '#f8fafc' }}>
+                  <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '900', color: '#1C1917' }}>
                     {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Live Gujarat Route Monitoring Active'}
                   </h4>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  <span style={{ fontSize: '12px', color: '#78716C' }}>
                     {trafficAlertBanner ? trafficAlertBanner.message : `Radar polling every 1s: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}`}
                   </span>
                 </div>
@@ -4580,7 +4582,7 @@ export default function App() {
                   type="button"
                   onClick={handleStopRouteNavigation}
                   className="touch-btn"
-                  style={{ backgroundColor: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
+                  style={{ backgroundColor: '#EF4444', color: '#FFFFFF', border: 'none', padding: '7px 16px', borderRadius: '10px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
                 >
                   STOP RADAR
                 </button>

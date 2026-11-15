@@ -1859,3 +1859,605 @@ html, body {
     font-size: 24px !important;
   }
 }
+
+
+/* ==========================================================================
+   MINIMALIST LIGHT APPLE iOS / NORDIC DESIGN SYSTEM
+   Warm Terracotta, Clean Sand, Crisp White Surfaces & Ultra-Clear Typography
+   ========================================================================== */
+
+:root {
+  --nordic-bg: #FAF8F5;
+  --nordic-card-bg: #FFFFFF;
+  --nordic-terracotta: #8C4E34;
+  --nordic-terracotta-hover: #733E28;
+  --nordic-terracotta-soft: rgba(140, 78, 52, 0.1);
+  --nordic-terracotta-light: #F4EBE6;
+  --nordic-sand: #EDE7DE;
+  --nordic-text-main: #1C1917;
+  --nordic-text-muted: #78716C;
+  --nordic-border: rgba(0, 0, 0, 0.06);
+  --nordic-shadow: 0 4px 20px rgba(140, 78, 52, 0.04);
+  --nordic-shadow-hover: 0 12px 32px rgba(140, 78, 52, 0.09);
+}
+
+.nordic-shell {
+  background-color: var(--nordic-bg) !important;
+  color: var(--nordic-text-main) !important;
+  height: 100vh !important;
+  width: 100vw !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Mobile Dynamic Island (Nordic Minimalist) */
+.nordic-island {
+  display: none;
+  background-color: #FAF8F5;
+  padding: 8px 16px 4px 16px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nordic-island-notch {
+  background-color: #1C1917;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 4px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.nordic-lens-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #44403C, #1C1917);
+  border: 1px solid #292524;
+}
+
+.nordic-island-text {
+  font-size: 11px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+}
+
+.nordic-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #F97316;
+  box-shadow: 0 0 8px #F97316;
+  display: inline-block;
+  animation: pulseNordic 2s infinite ease-in-out;
+}
+
+@keyframes pulseNordic {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Header */
+.nordic-header {
+  background-color: rgba(250, 248, 245, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  width: 100%;
+  z-index: 90;
+  box-sizing: border-box;
+}
+
+.nordic-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.nordic-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+}
+
+.nordic-logo-box {
+  width: 40px;
+  height: 40px;
+  background-color: var(--nordic-terracotta);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 78, 52, 0.25);
+}
+
+.nordic-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.nordic-brand-title {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: var(--nordic-text-main);
+  line-height: 1.2;
+}
+
+.nordic-brand-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nordic-text-muted);
+}
+
+.nordic-greeting-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--nordic-border);
+  padding: 6px 16px;
+  border-radius: 30px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--nordic-text-main);
+  box-shadow: var(--nordic-shadow);
+}
+
+.nordic-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nordic-search-box {
+  background-color: #FFFFFF;
+  border: 1px solid var(--nordic-border);
+  border-radius: 12px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: var(--nordic-shadow);
+}
+
+.nordic-search-box:focus-within {
+  border-color: var(--nordic-terracotta);
+  box-shadow: 0 0 0 3px rgba(140, 78, 52, 0.12);
+}
+
+.nordic-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--nordic-text-main);
+  font-size: 13px;
+  font-weight: 500;
+  width: 140px;
+}
+
+.nordic-search-input::placeholder {
+  color: var(--nordic-text-muted);
+}
+
+.nordic-icon-btn {
+  width: 38px;
+  height: 38px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--nordic-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  color: var(--nordic-text-main);
+  box-shadow: var(--nordic-shadow);
+}
+
+.nordic-icon-btn:hover {
+  background-color: var(--nordic-terracotta-light);
+  color: var(--nordic-terracotta);
+  border-color: rgba(140, 78, 52, 0.2);
+}
+
+.nordic-profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--nordic-border);
+  padding: 5px 14px 5px 6px;
+  border-radius: 30px;
+  color: var(--nordic-text-main);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  height: 38px;
+  transition: all 0.2s ease;
+  box-shadow: var(--nordic-shadow);
+}
+
+.nordic-profile-pill:hover {
+  border-color: rgba(140, 78, 52, 0.25);
+  background-color: var(--nordic-terracotta-light);
+}
+
+.nordic-avatar-img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--nordic-terracotta);
+}
+
+.nordic-sync-btn {
+  background-color: var(--nordic-terracotta);
+  color: #FFFFFF;
+  border: none;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  height: 38px;
+  box-shadow: 0 4px 14px rgba(140, 78, 52, 0.25);
+  transition: all 0.2s ease;
+}
+
+.nordic-sync-btn:hover {
+  background-color: var(--nordic-terracotta-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(140, 78, 52, 0.35);
+}
+
+/* Main Container */
+.nordic-main {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 24px 60px 24px;
+  box-sizing: border-box;
+}
+
+.nordic-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* Quick Glance Banner */
+.nordic-glance-banner {
+  background-color: #FFFFFF;
+  border: 1px solid var(--nordic-border);
+  border-radius: 16px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--nordic-shadow);
+}
+
+.nordic-glance-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--nordic-text-main);
+}
+
+.nordic-glance-tag {
+  background-color: var(--nordic-terracotta-soft);
+  color: var(--nordic-terracotta);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.nordic-glance-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--nordic-text-muted);
+  font-weight: 600;
+}
+
+/* Quick Category Filter Pills */
+.nordic-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nordic-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.nordic-filter-pill {
+  padding: 8px 18px;
+  border-radius: 24px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid var(--nordic-border);
+  background-color: #FFFFFF;
+  color: var(--nordic-text-muted);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  box-shadow: var(--nordic-shadow);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nordic-filter-pill.active {
+  background-color: var(--nordic-terracotta);
+  color: #FFFFFF;
+  border-color: var(--nordic-terracotta);
+  box-shadow: 0 4px 14px rgba(140, 78, 52, 0.25);
+}
+
+.nordic-filter-pill:hover:not(.active) {
+  background-color: var(--nordic-terracotta-light);
+  color: var(--nordic-terracotta);
+}
+
+/* Minimalist Modern Tile Grid */
+.nordic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.nordic-card {
+  background-color: var(--nordic-card-bg);
+  border: 1px solid var(--nordic-border);
+  border-radius: 22px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 220px;
+  box-shadow: var(--nordic-shadow);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.nordic-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--nordic-shadow-hover);
+  border-color: rgba(140, 78, 52, 0.2);
+}
+
+.nordic-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.nordic-card-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nordic-card-icon-wrap.terracotta {
+  background-color: var(--nordic-terracotta-light);
+  color: var(--nordic-terracotta);
+}
+
+.nordic-card-icon-wrap.emerald {
+  background-color: #ECFDF5;
+  color: #059669;
+}
+
+.nordic-card-icon-wrap.amber {
+  background-color: #FEF3C7;
+  color: #D97706;
+}
+
+.nordic-card-icon-wrap.blue {
+  background-color: #EFF6FF;
+  color: #2563EB;
+}
+
+.nordic-card-icon-wrap.rose {
+  background-color: #FDF2F8;
+  color: #DB2777;
+}
+
+.nordic-card-icon-wrap.charcoal {
+  background-color: #F5F5F4;
+  color: #44403C;
+}
+
+.nordic-card-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: var(--nordic-sand);
+  color: var(--nordic-text-main);
+  letter-spacing: 0.3px;
+}
+
+.nordic-card-badge.highlight {
+  background-color: var(--nordic-terracotta-soft);
+  color: var(--nordic-terracotta);
+}
+
+.nordic-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.nordic-card-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--nordic-text-main);
+  letter-spacing: -0.2px;
+}
+
+.nordic-card-stat {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--nordic-text-main);
+  letter-spacing: -0.5px;
+  margin: 2px 0;
+}
+
+.nordic-card-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--nordic-text-muted);
+  margin: 0;
+}
+
+.nordic-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--nordic-sand);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 8px 0 4px 0;
+}
+
+.nordic-progress-fill {
+  height: 100%;
+  background-color: var(--nordic-terracotta);
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.nordic-card-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nordic-card-btn {
+  background-color: var(--nordic-terracotta-light);
+  color: var(--nordic-terracotta);
+  border: 1px solid rgba(140, 78, 52, 0.15);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.nordic-card-btn:hover {
+  background-color: var(--nordic-terracotta);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(140, 78, 52, 0.25);
+}
+
+.nordic-card-btn.primary {
+  background-color: var(--nordic-terracotta);
+  color: #FFFFFF;
+}
+
+.nordic-card-btn.primary:hover {
+  background-color: var(--nordic-terracotta-hover);
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS (Apple iOS / Nordic)
+   ========================================================================== */
+@media (max-width: 900px) {
+  .nordic-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .nordic-island {
+    display: flex !important;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .nordic-header-inner {
+    padding: 10px 14px !important;
+  }
+
+  .nordic-main {
+    padding: 14px 12px 40px 12px !important;
+  }
+
+  .nordic-container {
+    gap: 16px !important;
+  }
+
+  .nordic-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .nordic-card {
+    min-height: 180px !important;
+    padding: 16px 16px !important;
+  }
+
+  .nordic-card-stat {
+    font-size: 18px !important;
+  }
+}
