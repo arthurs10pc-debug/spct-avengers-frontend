@@ -762,10 +762,12 @@ export default function App() {
       clean === 'sataparahetkumar786@gmail.com' ||
       clean === 'hetsatapara@gmail.com' ||
       clean === 'arthurs10pc@gmail.com' ||
+      clean === 'iron123man0@gmail.com' ||
       clean === 'anonymous' ||
       clean === 'guest' ||
       clean.includes('satapara') ||
-      clean.includes('arthur')
+      clean.includes('arthur') ||
+      clean.includes('iron')
     ) {
       return 'sataparahetkumar@gmail.com';
     }
@@ -1513,7 +1515,8 @@ export default function App() {
         'jarvis_expenses_sataparahetkumar@gmail.com',
         'jarvis_expenses_sataparahetkumar786@gmail.com',
         'jarvis_expenses_hetsatapara@gmail.com',
-        'jarvis_expenses_arthurs10pc@gmail.com'
+        'jarvis_expenses_arthurs10pc@gmail.com',
+        'jarvis_expenses_iron123man0@gmail.com'
       ];
       aliasKeys.forEach(k => {
         try {
@@ -1659,6 +1662,7 @@ export default function App() {
 
   // Cloud Real-Time Sync State Refs
   const isRemoteSyncRef = useRef(false);
+  const hasInitialSyncedRef = useRef(false);
   const userProfileRef = useRef(userProfile);
   const syncTimerRef = useRef(null);
 
@@ -1760,15 +1764,27 @@ export default function App() {
 
   // Real-Time Push to Cloud & Other Logged-in Devices whenever Reminders, Expenses, or Notes change
   useEffect(() => {
-    if (isRemoteSyncRef.current || !userProfile?.email) return;
+    // Crucial safeguard: never push initial local state until authoritative cloud sync has completed
+    if (isRemoteSyncRef.current || !userProfile?.email || !hasInitialSyncedRef.current) return;
 
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
+      const email = userProfile.email;
+      const cleanEmail = canonicalUserEmail(email);
+
+      // Collect local deleted IDs to accompany update
+      let localDeleted = [];
+      try {
+        const raw = localStorage.getItem('jarvis_deleted_expense_ids');
+        localDeleted = raw ? JSON.parse(raw) : [];
+      } catch (e) {}
+
       const payload = {
-        email: userProfile.email,
+        email: cleanEmail,
         reminders: remindersList,
         snoozeMinutes: snoozeMinutes,
         expenses: expenseList,
+        deletedExpenseIds: localDeleted,
         monthlyBudget: monthlyBudget,
         notes: notesList
       };
@@ -1791,8 +1807,8 @@ export default function App() {
 
   // Continuous Multi-Device Real-Time Cloud Sync (Mobile <-> Laptop)
   useEffect(() => {
-    const email = userProfile?.email || 'sataparahetkumar@gmail.com';
-    const cleanEmail = email.trim().toLowerCase();
+    const rawEmail = userProfile?.email || 'sataparahetkumar@gmail.com';
+    const cleanEmail = canonicalUserEmail(rawEmail);
 
     // Ensure socket joins user room for instant push broadcasts
     if (socketRef.current?.connected) {
@@ -1806,7 +1822,20 @@ export default function App() {
         const data = await res.json();
         if (data && data.success) {
           isRemoteSyncRef.current = true;
-          // 1. Sync reminders
+          hasInitialSyncedRef.current = true;
+
+          // 1. Sync deleted IDs (tombstones) from server across devices
+          let currentDeleted = [];
+          try {
+            const raw = localStorage.getItem('jarvis_deleted_expense_ids');
+            currentDeleted = raw ? JSON.parse(raw) : [];
+          } catch (e) {}
+          if (Array.isArray(data.deletedExpenseIds) && data.deletedExpenseIds.length > 0) {
+            currentDeleted = Array.from(new Set([...currentDeleted, ...data.deletedExpenseIds]));
+            try { localStorage.setItem('jarvis_deleted_expense_ids', JSON.stringify(currentDeleted)); } catch (e) {}
+          }
+
+          // 2. Sync reminders
           if (Array.isArray(data.reminders) && data.reminders.length > 0) {
             setRemindersList(prev => {
               if (JSON.stringify(prev) !== JSON.stringify(data.reminders)) {
@@ -1816,23 +1845,23 @@ export default function App() {
               return prev;
             });
           }
-          // 2. Sync notes
+          // 3. Sync notes
           if (Array.isArray(data.notes)) {
             setNotesList(prev => {
               if (JSON.stringify(prev) !== JSON.stringify(data.notes)) {
-                try { localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(data.notes)); } catch (e) {}
+                try { 
+                  localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(data.notes)); 
+                  localStorage.setItem(`jarvis_notes_sataparahetkumar@gmail.com`, JSON.stringify(data.notes));
+                } catch (e) {}
                 return data.notes;
               }
               return prev;
             });
           }
-          // 3. Sync expenses intelligently
+          // 4. Sync expenses authoritatively
           if (Array.isArray(data.expenses)) {
-            const rawDeleted = (() => {
-              try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
-            })();
             setExpenseList(prev => {
-              const merged = mergeExpenses(prev, data.expenses, rawDeleted);
+              const merged = mergeExpenses(prev, data.expenses, currentDeleted);
               if (JSON.stringify(merged) !== JSON.stringify(prev)) {
                 try {
                   localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
@@ -1844,7 +1873,7 @@ export default function App() {
               return prev;
             });
           }
-          // 4. Sync monthly budget
+          // 5. Sync monthly budget
           if (typeof data.monthlyBudget === 'number') {
             setMonthlyBudget(prev => {
               if (prev !== data.monthlyBudget) {
@@ -2123,20 +2152,30 @@ export default function App() {
           connectedDate: new Date(resData.user.createdAt || Date.now()).toLocaleDateString()
         };
         isRemoteSyncRef.current = true;
+        hasInitialSyncedRef.current = true;
         if (Array.isArray(resData.user.reminders)) {
           setRemindersList(resData.user.reminders);
+          try { localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(resData.user.reminders)); } catch (e) {}
         }
         if (typeof resData.user.snoozeMinutes === 'number') {
           setSnoozeMinutes(resData.user.snoozeMinutes);
+          try { localStorage.setItem('jarvis_snooze_duration', resData.user.snoozeMinutes.toString()); } catch (e) {}
         }
         if (Array.isArray(resData.user.expenses)) {
-          const rawDeleted = (() => {
-            try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
-          })();
+          let currentDeleted = [];
+          try {
+            const raw = localStorage.getItem('jarvis_deleted_expense_ids');
+            currentDeleted = raw ? JSON.parse(raw) : [];
+          } catch (e) {}
+          if (Array.isArray(resData.user.deletedExpenseIds) && resData.user.deletedExpenseIds.length > 0) {
+            currentDeleted = Array.from(new Set([...currentDeleted, ...resData.user.deletedExpenseIds]));
+            try { localStorage.setItem('jarvis_deleted_expense_ids', JSON.stringify(currentDeleted)); } catch (e) {}
+          }
           setExpenseList(prev => {
-            const merged = mergeExpenses(prev, resData.user.expenses, rawDeleted);
+            const merged = mergeExpenses(prev, resData.user.expenses, currentDeleted);
             try {
               localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+              localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(merged));
               localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
             } catch (e) {}
             return merged;
@@ -2144,9 +2183,14 @@ export default function App() {
         }
         if (typeof resData.user.monthlyBudget === 'number') {
           setMonthlyBudget(resData.user.monthlyBudget);
+          try { localStorage.setItem('jarvis_monthly_budget', resData.user.monthlyBudget.toString()); } catch (e) {}
         }
         if (Array.isArray(resData.user.notes)) {
           setNotesList(resData.user.notes);
+          try { 
+            localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(resData.user.notes));
+            localStorage.setItem(`jarvis_notes_sataparahetkumar@gmail.com`, JSON.stringify(resData.user.notes));
+          } catch (e) {}
         }
         setTimeout(() => { isRemoteSyncRef.current = false; }, 400);
 
@@ -3243,11 +3287,28 @@ export default function App() {
     });
 
     socket.on('user_data_synced', (data) => {
-      if (!data || !userProfileRef.current?.email) return;
-      if (data.email && data.email.toLowerCase() !== userProfileRef.current.email.toLowerCase()) return;
+      if (!data) return;
+      const currentEmail = userProfileRef.current?.email || 'sataparahetkumar@gmail.com';
+      const eventEmail = data.email || '';
+
+      const isMatch = eventEmail.toLowerCase() === currentEmail.toLowerCase() ||
+                      canonicalUserEmail(eventEmail) === canonicalUserEmail(currentEmail);
+      if (!isMatch) return;
 
       isRemoteSyncRef.current = true;
-      const cleanEmail = userProfileRef.current.email.trim().toLowerCase();
+      hasInitialSyncedRef.current = true;
+      const cleanEmail = canonicalUserEmail(currentEmail);
+
+      // Sync server tombstones (deleted IDs)
+      let currentDeleted = [];
+      try {
+        const raw = localStorage.getItem('jarvis_deleted_expense_ids');
+        currentDeleted = raw ? JSON.parse(raw) : [];
+      } catch (e) {}
+      if (Array.isArray(data.deletedExpenseIds) && data.deletedExpenseIds.length > 0) {
+        currentDeleted = Array.from(new Set([...currentDeleted, ...data.deletedExpenseIds]));
+        try { localStorage.setItem('jarvis_deleted_expense_ids', JSON.stringify(currentDeleted)); } catch (e) {}
+      }
 
       if (Array.isArray(data.reminders) && data.reminders.length > 0) {
         setRemindersList(data.reminders);
@@ -3258,13 +3319,11 @@ export default function App() {
         try { localStorage.setItem('jarvis_snooze_duration', data.snoozeMinutes.toString()); } catch (e) {}
       }
       if (Array.isArray(data.expenses)) {
-        const rawDeleted = (() => {
-          try { return JSON.parse(localStorage.getItem('jarvis_deleted_expense_ids') || '[]'); } catch { return []; }
-        })();
         setExpenseList(prev => {
-          const merged = mergeExpenses(prev, data.expenses, rawDeleted);
+          const merged = mergeExpenses(prev, data.expenses, currentDeleted);
           try {
             localStorage.setItem('jarvis_expenses', JSON.stringify(merged));
+            localStorage.setItem('jarvis_expenses_sataparahetkumar@gmail.com', JSON.stringify(merged));
             localStorage.setItem(`jarvis_expenses_${cleanEmail}`, JSON.stringify(merged));
           } catch (e) {}
           return merged;
@@ -3276,7 +3335,10 @@ export default function App() {
       }
       if (Array.isArray(data.notes)) {
         setNotesList(data.notes);
-        try { localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(data.notes)); } catch (e) {}
+        try { 
+          localStorage.setItem(`jarvis_notes_${cleanEmail}`, JSON.stringify(data.notes)); 
+          localStorage.setItem(`jarvis_notes_sataparahetkumar@gmail.com`, JSON.stringify(data.notes)); 
+        } catch (e) {}
       }
 
       setTimeout(() => {
