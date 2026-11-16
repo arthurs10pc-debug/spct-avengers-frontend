@@ -4487,22 +4487,37 @@ export default function App() {
 
       {/* Tools / Extension Changer & Universal Converter Modal */}
       {showToolsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowToolsModal(false);
+              setConverterStatus(null);
+              setConvertedDownloadInfo(null);
+            }
+          }}
+          className="modal-overlay"
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', cursor: 'pointer' }}
+        >
           <div 
-            className="tools-modal-scroll"
+            onClick={(e) => e.stopPropagation()}
+            className="modal-card tools-modal-scroll"
             style={{ 
-              backgroundColor: '#ffffff', 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
               borderRadius: '24px', 
               padding: window.innerWidth < 640 ? '16px' : '24px', 
               width: '100%', 
               maxWidth: '740px', 
               position: 'relative', 
-              border: '1.5px solid #e2e8f0', 
-              color: '#0f172a', 
+              border: '1px solid rgba(255, 255, 255, 0.20)', 
+              color: '#FFFFFF', 
               maxHeight: '94vh', 
               overflowY: 'auto', 
-              boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
-              touchAction: 'pan-y'
+              WebkitOverflowScrolling: 'touch',
+              boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0,0,0,0.75)',
+              touchAction: 'pan-y',
+              cursor: 'default'
             }}
           >
             
@@ -4515,9 +4530,9 @@ export default function App() {
                 position: 'absolute', 
                 top: '16px', 
                 right: '16px', 
-                border: '1px solid #e2e8f0', 
-                background: '#f1f5f9', 
-                color: '#475569', 
+                border: '1px solid rgba(255, 255, 255, 0.22)', 
+                background: 'rgba(255, 255, 255, 0.12)', 
+                color: '#FFFFFF', 
                 borderRadius: '50%', 
                 width: '38px', 
                 height: '38px', 
@@ -4534,21 +4549,21 @@ export default function App() {
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', paddingRight: '44px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Wrench size={22} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px', lineHeight: '1.2' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#FFFFFF', letterSpacing: '-0.3px', lineHeight: '1.2' }}>
                   Shadow Studio: Extension Changer & Converter
                 </h3>
-                <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: '800', display: 'block', marginTop: '2px' }}>
+                <span style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800', display: 'block', marginTop: '2px' }}>
                   Change any file extension or convert WEBP, PNG, JPG, PDF with 1-tap download
                 </span>
               </div>
             </div>
 
             {/* Smooth Touch Navigation Tabs */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px', backgroundColor: 'rgba(255, 255, 255, 0.08)', padding: '4px', borderRadius: '14px' }}>
               <button
                 type="button"
                 onClick={() => setToolActiveTab('extension')}
@@ -4556,9 +4571,9 @@ export default function App() {
                 style={{
                   minHeight: '44px',
                   borderRadius: '10px',
-                  border: 'none',
-                  backgroundColor: toolActiveTab === 'extension' ? '#0f172a' : 'transparent',
-                  color: toolActiveTab === 'extension' ? '#ffffff' : '#475569',
+                  border: toolActiveTab === 'extension' ? '1px solid rgba(255, 255, 255, 0.5)' : 'none',
+                  background: toolActiveTab === 'extension' ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)' : 'transparent',
+                  color: toolActiveTab === 'extension' ? '#0b0f19' : 'rgba(255, 255, 255, 0.7)',
                   fontSize: '12px',
                   fontWeight: '900',
                   cursor: 'pointer',
@@ -4577,9 +4592,9 @@ export default function App() {
                 style={{
                   minHeight: '44px',
                   borderRadius: '10px',
-                  border: 'none',
-                  backgroundColor: toolActiveTab === 'convert' ? '#0f172a' : 'transparent',
-                  color: toolActiveTab === 'convert' ? '#ffffff' : '#475569',
+                  border: toolActiveTab === 'convert' ? '1px solid rgba(255, 255, 255, 0.5)' : 'none',
+                  background: toolActiveTab === 'convert' ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)' : 'transparent',
+                  color: toolActiveTab === 'convert' ? '#0b0f19' : 'rgba(255, 255, 255, 0.7)',
                   fontSize: '12px',
                   fontWeight: '900',
                   cursor: 'pointer',
@@ -4620,9 +4635,9 @@ export default function App() {
               className="touch-card"
               style={{ 
                 minHeight: uploadedFile ? '140px' : '150px', 
-                border: '2px dashed #cbd5e1', 
+                border: '2px dashed rgba(255, 255, 255, 0.25)', 
                 borderRadius: '16px', 
-                backgroundColor: uploadedFile ? '#ffffff' : '#f8fafc', 
+                backgroundColor: uploadedFile ? 'rgba(255, 255, 255, 0.09)' : 'rgba(255, 255, 255, 0.05)', 
                 display: 'flex', 
                 flexDirection: 'column', 
                 alignItems: 'center', 
@@ -4638,7 +4653,7 @@ export default function App() {
               {uploadedFile ? (
                 <div style={{ display: 'flex', flexDirection: window.innerWidth < 640 ? 'column' : 'row', alignItems: 'center', gap: '14px', width: '100%', justifyContent: 'center' }}>
                   {uploadedFilePreview ? (
-                    <div style={{ width: '74px', height: '74px', borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #e2e8f0', backgroundColor: '#ffffff', flexShrink: 0 }}>
+                    <div style={{ width: '74px', height: '74px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: '#000000', flexShrink: 0 }}>
                       <img 
                         src={uploadedFilePreview} 
                         alt="Preview" 
@@ -4647,20 +4662,20 @@ export default function App() {
                       />
                     </div>
                   ) : (
-                    <div style={{ width: '64px', height: '64px', borderRadius: '12px', backgroundColor: '#f1f5f9', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FileText size={34} color="#0f172a" />
+                    <div style={{ width: '64px', height: '64px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={34} color="#FFFFFF" />
                     </div>
                   )}
                   
                   <div style={{ textAlign: window.innerWidth < 640 ? 'center' : 'left', flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#0f172a', wordBreak: 'break-all' }}>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '900', color: '#FFFFFF', wordBreak: 'break-all' }}>
                       {uploadedFile?.name || 'Selected File'}
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: window.innerWidth < 640 ? 'center' : 'flex-start', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', backgroundColor: '#0f172a', color: '#ffffff', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' }}>
+                      <span style={{ fontSize: '11px', backgroundColor: '#FFFFFF', color: '#0b0f19', padding: '2px 8px', borderRadius: '6px', fontWeight: '900' }}>
                         FORMAT: .{uploadedFileMeta?.ext || (uploadedFile?.name.split('.').pop() || 'FILE').toUpperCase()}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                      <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '800' }}>
                         {uploadedFileMeta?.sizeKb || (uploadedFile?.size ? (uploadedFile.size / 1024).toFixed(1) : '0')} KB 
                         {uploadedFileMeta?.width ? ` • ${uploadedFileMeta.width} × ${uploadedFileMeta.height} px` : ''}
                       </span>
@@ -4673,9 +4688,9 @@ export default function App() {
                       padding: '8px 16px',
                       minHeight: '40px',
                       borderRadius: '10px',
-                      background: '#f1f5f9',
-                      color: '#0f172a',
-                      border: '1px solid #cbd5e1',
+                      background: 'rgba(255, 255, 255, 0.12)',
+                      color: '#FFFFFF',
+                      border: '1px solid rgba(255, 255, 255, 0.22)',
                       fontSize: '11.5px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -4690,14 +4705,14 @@ export default function App() {
                 </div>
               ) : (
                 <div style={{ pointerEvents: 'none' }}>
-                  <Upload size={36} color="#0f172a" style={{ marginBottom: '6px' }} />
-                  <p style={{ margin: '0 0 4px 0', fontSize: '14.5px', fontWeight: '900', color: '#0f172a' }}>
+                  <Upload size={36} color="#FFFFFF" style={{ marginBottom: '6px' }} />
+                  <p style={{ margin: '0 0 4px 0', fontSize: '14.5px', fontWeight: '900', color: '#FFFFFF' }}>
                     Tap to Select Any File or Drop Here
                   </p>
-                  <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '800' }}>
                     Supports ALL files: WEBP, PNG, JPG, PDF, TXT, CSV, MP3, MP4, ZIP, etc.
                   </p>
-                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '900', textDecoration: 'underline' }}>
+                  <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: '900', textDecoration: 'underline' }}>
                     100% Touch-Friendly Native File Picker
                   </span>
                 </div>
@@ -5037,12 +5052,38 @@ export default function App() {
       />
 
       {showNotesModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="modal-card notes-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '780px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowNotesModal(false);
+          }}
+          className="modal-overlay" 
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'pointer' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="modal-card notes-modal-card" 
+            style={{ 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              borderRadius: '24px', 
+              padding: window.innerWidth < 640 ? '16px' : '24px', 
+              width: '100%', 
+              maxWidth: '780px', 
+              position: 'relative', 
+              border: '1px solid rgba(255, 255, 255, 0.20)', 
+              color: '#FFFFFF', 
+              maxHeight: '90vh', 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch',
+              boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0,0,0,0.75)',
+              cursor: 'default'
+            }}
+          >
             
             <button 
               onClick={() => setShowNotesModal(false)} 
-              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} />
             </button>
@@ -5050,10 +5091,10 @@ export default function App() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a', letterSpacing: '-0.3px' }}>
-                  <CheckSquare size={20} color="#0f172a" /> Google Keep Style Notes
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF', letterSpacing: '-0.3px' }}>
+                  <CheckSquare size={20} color="#38bdf8" /> Google Keep Style Notes
                 </h3>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>
                   All notes and pinned notes synced across devices ({userProfile?.email || 'sataparahetkumar@gmail.com'})
                 </span>
               </div>
@@ -5068,11 +5109,11 @@ export default function App() {
                   style={{
                     padding: '7px 12px',
                     borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1px solid rgba(255, 255, 255, 0.20)',
                     fontSize: '11px',
                     width: '180px',
-                    backgroundColor: '#f8fafc',
-                    color: '#0f172a',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    color: '#FFFFFF',
                     fontWeight: '800',
                     outline: 'none'
                   }}
@@ -5081,9 +5122,9 @@ export default function App() {
                   onClick={() => handleSendNotesEmailNow(notesTargetEmail || userProfile?.email || 'sataparahetkumar@gmail.com')}
                   disabled={isSendingNotesEmail}
                   style={{
-                    backgroundColor: '#0f172a',
-                    color: '#ffffff',
-                    border: 'none',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)',
+                    color: '#0b0f19',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
                     padding: '8px 14px',
                     borderRadius: '8px',
                     fontSize: '11px',
@@ -5092,7 +5133,7 @@ export default function App() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)',
+                    boxShadow: 'inset 0 1px 1px #fff, 0 2px 6px rgba(0,0,0,0.3)',
                     transition: 'all 0.15s ease'
                   }}
                   title="Deliver current notes directly to this Gmail ID now"
@@ -5104,24 +5145,24 @@ export default function App() {
             </div>
 
             {/* Daily Email & Telegram Schedule Banner & Feedback */}
-            <div style={{ padding: '9px 14px', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', fontSize: '11px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ padding: '9px 14px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.07)', border: '1px solid rgba(255, 255, 255, 0.16)', color: 'rgba(255, 255, 255, 0.9)', fontSize: '11px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
               <span>⚡ 3x Daily Automated Delivery: <strong>08:00 AM</strong>, <strong>01:00 PM</strong>, <strong>08:30 PM IST</strong> auto-sent to your <strong>Telegram Bot (@shadow_assistant05_bot)</strong> &amp; <strong>Mobile Phone Push</strong> (⭐ Pinned notes on top).</span>
               {notesEmailFeedback && (
-                <span style={{ color: '#0f172a', fontWeight: '900' }}>{notesEmailFeedback}</span>
+                <span style={{ color: '#38bdf8', fontWeight: '900' }}>{notesEmailFeedback}</span>
               )}
             </div>
 
             {/* Clean Note Creator */}
-            <div style={{ backgroundColor: '#f8fafc', borderRadius: '14px', padding: '16px', border: '1.5px solid #e2e8f0', marginBottom: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.16)', marginBottom: '18px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>
+                <span style={{ fontSize: '13px', fontWeight: '900', color: '#FFFFFF' }}>
                   ✍️ Create a Note
                 </span>
 
                 {/* Color Palette & Pin Toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b' }}>Color:</span>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255, 255, 255, 0.7)' }}>Color:</span>
                   {['#38bdf8', '#f59e0b', '#10b981', '#f43f5e', '#a855f7', '#0284c7'].map(c => (
                     <button
                       key={c}
@@ -5132,7 +5173,7 @@ export default function App() {
                         height: '18px',
                         borderRadius: '50%',
                         backgroundColor: c,
-                        border: newNoteColor === c ? '2px solid #0f172a' : '1px solid #cbd5e1',
+                        border: newNoteColor === c ? '2px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.3)',
                         cursor: 'pointer'
                       }}
                     />
@@ -5142,20 +5183,20 @@ export default function App() {
                     onClick={() => setNewNotePinned(!newNotePinned)}
                     title={newNotePinned ? "Pinned to Top" : "Pin Note"}
                     style={{
-                      border: '1px solid #e2e8f0',
-                      background: newNotePinned ? '#fef2f2' : '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.22)',
+                      background: newNotePinned ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.1)',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       padding: '4px 8px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      color: newNotePinned ? '#dc2626' : '#64748b',
+                      color: newNotePinned ? '#fca5a5' : '#FFFFFF',
                       fontSize: '11px',
                       fontWeight: '900'
                     }}
                   >
-                    <Pin size={13} fill={newNotePinned ? '#dc2626' : 'none'} />
+                    <Pin size={13} fill={newNotePinned ? '#fca5a5' : 'none'} />
                     <span>{newNotePinned ? 'Pinned' : 'Pin'}</span>
                   </button>
                 </div>
@@ -5171,11 +5212,11 @@ export default function App() {
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '8px',
-                  border: '1.5px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.20)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   fontSize: '12px',
                   fontWeight: '800',
-                  color: '#0f172a',
+                  color: '#FFFFFF',
                   marginBottom: '8px',
                   boxSizing: 'border-box',
                   outline: 'none'
@@ -5192,11 +5233,11 @@ export default function App() {
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '8px',
-                  border: '1.5px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.20)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   fontSize: '12px',
                   fontWeight: '700',
-                  color: '#0f172a',
+                  color: '#FFFFFF',
                   marginBottom: '10px',
                   resize: 'vertical',
                   boxSizing: 'border-box',
@@ -5208,7 +5249,7 @@ export default function App() {
               {/* Multimedia Attachment Buttons Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.7)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <Paperclip size={13} /> Attach:
                   </span>
 
@@ -5230,7 +5271,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Photos / Images (.jpg, .png, .webp)"
                   >
                     <Image size={13} /> Photo
@@ -5245,7 +5286,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Videos (.mp4, .webm, .mov)"
                   >
                     <Video size={13} /> Video
@@ -5260,7 +5301,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach Audio files (.mp3, .wav, .m4a)"
                   >
                     <Music size={13} /> Audio
@@ -5275,7 +5316,7 @@ export default function App() {
                         notesFileInputRef.current.click();
                       }
                     }}
-                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     title="Attach PDF Documents (.pdf)"
                   >
                     <FileText size={13} /> PDF
@@ -5288,9 +5329,9 @@ export default function App() {
                     style={{
                       padding: '5px 10px',
                       borderRadius: '6px',
-                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : '#cbd5e1'),
-                      backgroundColor: isRecordingAudio ? '#fef2f2' : '#ffffff',
-                      color: isRecordingAudio ? '#dc2626' : '#0f172a',
+                      border: '1px solid ' + (isRecordingAudio ? '#ef4444' : 'rgba(255, 255, 255, 0.20)'),
+                      backgroundColor: isRecordingAudio ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                      color: isRecordingAudio ? '#fca5a5' : '#FFFFFF',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: 'pointer',
@@ -5300,7 +5341,7 @@ export default function App() {
                     }}
                     title={isRecordingAudio ? "Click to stop and attach voice recording" : "Record Voice Note directly from microphone"}
                   >
-                    <Mic size={13} color={isRecordingAudio ? '#dc2626' : '#0f172a'} />
+                    <Mic size={13} color={isRecordingAudio ? '#fca5a5' : '#FFFFFF'} />
                     {isRecordingAudio ? `Stop (${recordingDuration}s)` : 'Voice Record'}
                   </button>
                 </div>
@@ -5310,15 +5351,15 @@ export default function App() {
                   type="button"
                   onClick={handleSaveNote}
                   style={{
-                    backgroundColor: '#0f172a',
-                    color: '#ffffff',
-                    border: 'none',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)',
+                    color: '#0b0f19',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
                     padding: '8px 22px',
                     borderRadius: '8px',
                     fontSize: '12px',
                     fontWeight: '900',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)'
+                    boxShadow: 'inset 0 1px 1px #fff, 0 2px 6px rgba(0,0,0,0.3)'
                   }}
                 >
                   Save Note
@@ -5327,8 +5368,8 @@ export default function App() {
 
               {/* Staged Attachments Preview Strip */}
               {stagedAttachments.length > 0 && (
-                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#ffffff', borderRadius: '8px', border: '1.5px dashed #cbd5e1' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', marginBottom: '6px' }}>
+                <div style={{ marginTop: '8px', padding: '10px', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderRadius: '8px', border: '1px dashed rgba(255, 255, 255, 0.25)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '900', color: '#FFFFFF', marginBottom: '6px' }}>
                     📎 Ready to Save ({stagedAttachments.length} Attachment{stagedAttachments.length > 1 ? 's' : ''}):
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -5341,23 +5382,23 @@ export default function App() {
                           gap: '6px',
                           padding: '4px 8px',
                           borderRadius: '6px',
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.18)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                           maxWidth: '220px'
                         }}
                       >
                         {att.type === 'photo' && <img src={att.dataUrl} alt={att.name} style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />}
-                        {att.type === 'video' && <Video size={16} color="#2563eb" />}
-                        {att.type === 'audio' && <Music size={16} color="#16a34a" />}
-                        {att.type === 'pdf' && <FileText size={16} color="#dc2626" />}
-                        <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {att.type === 'video' && <Video size={16} color="#60a5fa" />}
+                        {att.type === 'audio' && <Music size={16} color="#4ade80" />}
+                        {att.type === 'pdf' && <FileText size={16} color="#f87171" />}
+                        <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                           {att.name}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveStagedAttachment(att.id)}
-                          style={{ border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', padding: 0 }}
+                          style={{ border: 'none', background: 'transparent', color: '#f87171', cursor: 'pointer', padding: 0 }}
                           title="Remove attachment"
                         >
                           <X size={13} />
@@ -5377,9 +5418,9 @@ export default function App() {
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    backgroundColor: noteFilterTab === 'all' ? '#0f172a' : '#f1f5f9',
-                    color: noteFilterTab === 'all' ? '#ffffff' : '#0f172a',
+                    border: '1px solid rgba(255, 255, 255, 0.20)',
+                    backgroundColor: noteFilterTab === 'all' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.1)',
+                    color: noteFilterTab === 'all' ? '#0b0f19' : '#FFFFFF',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -5393,9 +5434,9 @@ export default function App() {
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    backgroundColor: noteFilterTab === 'pinned' ? '#0f172a' : '#f1f5f9',
-                    color: noteFilterTab === 'pinned' ? '#ffffff' : '#0f172a',
+                    border: '1px solid rgba(255, 255, 255, 0.20)',
+                    backgroundColor: noteFilterTab === 'pinned' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.1)',
+                    color: noteFilterTab === 'pinned' ? '#0b0f19' : '#FFFFFF',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -5405,7 +5446,7 @@ export default function App() {
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <Pin size={12} fill={noteFilterTab === 'pinned' ? '#ffffff' : 'none'} />
+                  <Pin size={12} fill={noteFilterTab === 'pinned' ? '#0b0f19' : 'none'} />
                   Pinned ({notesList.filter(n => n.pinned).length})
                 </button>
               </div>
@@ -5418,9 +5459,9 @@ export default function App() {
                 style={{
                   padding: '7px 12px',
                   borderRadius: '8px',
-                  border: '1.5px solid #cbd5e1',
-                  backgroundColor: '#f8fafc',
-                  color: '#0f172a',
+                  border: '1px solid rgba(255, 255, 255, 0.20)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  color: '#FFFFFF',
                   fontSize: '11px',
                   width: '180px',
                   outline: 'none',
@@ -5448,12 +5489,14 @@ export default function App() {
                   <div
                     key={note.id}
                     style={{
-                      backgroundColor: '#ffffff',
-                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+                      backdropFilter: 'blur(16px)',
+                      WebkitBackdropFilter: 'blur(16px)',
+                      borderRadius: '14px',
                       padding: '14px',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid rgba(255, 255, 255, 0.16)',
                       borderLeft: `5px solid ${note.color || '#38bdf8'}`,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(0,0,0,0.3)',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
@@ -5462,22 +5505,22 @@ export default function App() {
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#111827', wordBreak: 'break-word', paddingRight: '8px' }}>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#FFFFFF', wordBreak: 'break-word', paddingRight: '8px' }}>
                           {note.title}
                         </h4>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <button
                             type="button"
                             onClick={() => handleTogglePinNote(note.id)}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: note.pinned ? '#e11d48' : '#bbb' }}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: note.pinned ? '#f43f5e' : 'rgba(255, 255, 255, 0.4)' }}
                             title={note.pinned ? "Unpin" : "Pin Note"}
                           >
-                            <Pin size={14} fill={note.pinned ? '#e11d48' : 'none'} />
+                            <Pin size={14} fill={note.pinned ? '#f43f5e' : 'none'} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteNote(note.id)}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: '#ef4444' }}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '3px', color: '#f87171' }}
                             title="Delete Note"
                           >
                             <Trash2 size={14} />
@@ -5487,7 +5530,7 @@ export default function App() {
 
                       {/* Content: Clean readable text */}
                       {note.content && (
-                        <p style={{ margin: '6px 0 10px 0', fontSize: '11px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                        <p style={{ margin: '6px 0 10px 0', fontSize: '11px', color: 'rgba(255, 255, 255, 0.85)', whiteSpace: 'pre-wrap', lineHeight: '1.5', wordBreak: 'break-word' }}>
                           {note.content}
                         </p>
                       )}
@@ -5631,21 +5674,51 @@ export default function App() {
 
       {/* Route Setup Modal - Strictly Gujarat, India with POI Direct Search & Real-Time Traffic Feed */}
       {showRoutePanel && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(4px)', zIndex: 150, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '520px', height: '100%', padding: '20px', borderLeft: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', color: '#0f172a', overflowY: 'auto', boxShadow: '-8px 0 25px rgba(0,0,0,0.06)' }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowRoutePanel(false);
+          }}
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 150, display: 'flex', justifyContent: 'flex-end', cursor: 'pointer' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="gujarat-drawer-content"
+            style={{ 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.96) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              width: '100%', 
+              maxWidth: '520px', 
+              height: '100%', 
+              padding: '20px', 
+              borderLeft: '1px solid rgba(255, 255, 255, 0.20)', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              color: '#FFFFFF', 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch',
+              boxShadow: '-10px 0 45px rgba(0,0,0,0.7)',
+              cursor: 'default'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>Gujarat Live Route & Real-Time Radar</h3>
-                <span style={{ fontSize: '10px', fontWeight: '800', color: '#475569', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#FFFFFF', letterSpacing: '-0.3px' }}>Gujarat Live Route & Real-Time Radar</h3>
+                <span style={{ fontSize: '10px', fontWeight: '800', color: 'rgba(255, 255, 255, 0.75)', backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '2px 8px', borderRadius: '6px' }}>
                   Strictly Gujarat • Direct Search Circles, Mandir, Hospitals, Hostels
                 </span>
               </div>
-              <button onClick={() => setShowRoutePanel(false)} style={{ border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+              <button 
+                onClick={() => setShowRoutePanel(false)} 
+                style={{ border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={15} />
+              </button>
             </div>
 
             {/* Gujarat Landmark Category Quick Filters */}
             <div style={{ marginBottom: '10px' }}>
-              <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <span style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.6)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                 Direct Gujarat Landmark Selector:
               </span>
               <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '3px' }}>
@@ -5661,12 +5734,12 @@ export default function App() {
                     type="button"
                     onClick={() => setSelectedPoiCategory(selectedPoiCategory === cat.id ? 'all' : cat.id)}
                     style={{
-                      background: selectedPoiCategory === cat.id ? '#0f172a' : '#f1f5f9',
-                      color: selectedPoiCategory === cat.id ? '#ffffff' : '#0f172a',
-                      border: '1px solid #e2e8f0',
-                      padding: '4px 9px',
-                      borderRadius: '6px',
-                      fontSize: '10px',
+                      background: selectedPoiCategory === cat.id ? '#FFFFFF' : 'rgba(255, 255, 255, 0.09)',
+                      color: selectedPoiCategory === cat.id ? '#0b0f19' : '#FFFFFF',
+                      border: '1px solid rgba(255, 255, 255, 0.20)',
+                      padding: '5px 10px',
+                      borderRadius: '8px',
+                      fontSize: '10.5px',
                       fontWeight: '800',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
@@ -5680,24 +5753,24 @@ export default function App() {
 
               {/* Scrollable POI Quick Selection Bar when category selected */}
               {selectedPoiCategory !== 'all' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px', margin: '6px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxHeight: '110px', overflowY: 'auto', backgroundColor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '10px', padding: '6px', margin: '6px 0' }}>
                   {GUJARAT_POI_DATABASE.filter(p => p.category === selectedPoiCategory).map((poi, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderBottom: '1px solid #f1f5f9' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '270px' }}>
                         {poi.name}
                       </span>
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                         <button 
                           type="button" 
                           onClick={() => { setFromInput(poi.name); setActiveRoute(prev => ({ ...prev, fromName: poi.name, fromCoords: poi.coords })); }} 
-                          style={{ background: '#0f172a', color: '#ffffff', border: 'none', padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}
+                          style={{ background: '#FFFFFF', color: '#0b0f19', border: 'none', padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}
                         >
                           From
                         </button>
                         <button 
                           type="button" 
                           onClick={() => { setToInput(poi.name); setActiveRoute(prev => ({ ...prev, toName: poi.name, toCoords: poi.coords })); }} 
-                          style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}
+                          style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#FFFFFF', border: '1px solid rgba(255, 255, 255, 0.25)', padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', cursor: 'pointer' }}
                         >
                           To
                         </button>
@@ -5717,14 +5790,14 @@ export default function App() {
                     placeholder="Search From (e.g. Iskcon, Civil, Akshardham)..."
                     value={fromInput}
                     onChange={(e) => setFromInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: '#0f172a', border: 'none', color: '#ffffff', padding: '0 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '900' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('from')} title="GPS" style={{ background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '0 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '900' }}>GPS</button>
                   {fromSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'rgba(18, 23, 35, 0.98)', border: '1px solid rgba(255, 255, 255, 0.22)', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                       {fromSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '6px', color: '#0f172a' }}>
-                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', padding: '1px 5px', borderRadius: '3px' }}>
+                        <div key={i} onClick={() => handleSelectFromSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', gap: '6px', color: '#FFFFFF' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#0b0f19', backgroundColor: '#FFFFFF', padding: '1px 5px', borderRadius: '3px' }}>
                             {item.category ? item.category.toUpperCase() : 'GUJARAT'}
                           </span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '700' }}>{item.display_name}</span>
@@ -5740,14 +5813,14 @@ export default function App() {
                     placeholder="Search To (e.g. Pakwan, Nirma, Hospital)..."
                     value={toInput}
                     onChange={(e) => setToInput(e.target.value)}
-                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                   />
-                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: '#0f172a', border: 'none', color: '#ffffff', padding: '0 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '900' }}>GPS</button>
+                  <button type="button" onClick={() => handleGetCurrentLocation('to')} title="GPS" style={{ background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '0 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: '900' }}>GPS</button>
                   {toSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'rgba(18, 23, 35, 0.98)', border: '1px solid rgba(255, 255, 255, 0.22)', borderRadius: '8px', zIndex: 300, maxHeight: '140px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                       {toSuggestions.map((item, i) => (
-                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '6px', color: '#0f172a' }}>
-                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#ffffff', backgroundColor: '#0f172a', padding: '1px 5px', borderRadius: '3px' }}>
+                        <div key={i} onClick={() => handleSelectToSuggestion(item)} style={{ padding: '8px 10px', fontSize: '11px', cursor: 'pointer', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', gap: '6px', color: '#FFFFFF' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '900', color: '#0b0f19', backgroundColor: '#FFFFFF', padding: '1px 5px', borderRadius: '3px' }}>
                             {item.category ? item.category.toUpperCase() : 'GUJARAT'}
                           </span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '700' }}>{item.display_name}</span>
@@ -5763,12 +5836,12 @@ export default function App() {
                   <button 
                     type="button" 
                     onClick={handleStopRouteNavigation}
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#dc2626', color: '#ffffff', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#dc2626', color: '#FFFFFF', fontWeight: '900', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 4px 15px rgba(220, 38, 38, 0.4)' }}
                   >
                     <StopCircle size={15} /> Stop Route Navigation
                   </button>
                 ) : (
-                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '900', fontSize: '11px', cursor: 'pointer' }}>
+                  <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.5)', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)', color: '#0b0f19', fontWeight: '900', fontSize: '11px', cursor: 'pointer', boxShadow: 'inset 0 1px 1px #fff, 0 4px 15px rgba(0,0,0,0.4)' }}>
                     Start Live Navigation & Traffic Radar
                   </button>
                 )}
@@ -5778,9 +5851,9 @@ export default function App() {
                   style={{
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    backgroundColor: isSimulatedTraffic ? '#fef2f2' : '#f1f5f9',
-                    color: isSimulatedTraffic ? '#dc2626' : '#0f172a',
+                    border: '1px solid rgba(255, 255, 255, 0.22)',
+                    backgroundColor: isSimulatedTraffic ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.12)',
+                    color: isSimulatedTraffic ? '#fca5a5' : '#FFFFFF',
                     fontWeight: '900',
                     fontSize: '11px',
                     cursor: 'pointer'
@@ -5793,30 +5866,30 @@ export default function App() {
             </form>
 
             {/* Leaflet Map */}
-            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #e2e8f0', backgroundColor: '#f8fafc', minHeight: '220px', height: '220px', marginBottom: '10px' }}>
+            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: '#090d16', minHeight: '220px', height: '220px', marginBottom: '10px' }}>
               <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
             </div>
 
             {/* Live Real-Time Traffic Telemetry Messages Stream */}
-            <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Radio size={13} color="#0f172a" /> Real-Time Traffic Dispatch Feed
+            <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.12)', paddingBottom: '6px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Radio size={13} color="#FFFFFF" /> Real-Time Traffic Dispatch Feed
                 </span>
-                <span style={{ fontSize: '10px', fontWeight: '900', color: isMonitoringActive ? '#16a34a' : '#64748b' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: isMonitoringActive ? '#4ade80' : 'rgba(255, 255, 255, 0.6)' }}>
                   {isMonitoringActive ? '● 1s Active Radar' : 'Standby'}
                 </span>
               </div>
 
               <div style={{ maxHeight: '110px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
                 {trafficLiveLogs.length === 0 ? (
-                  <p style={{ margin: '6px 0', fontSize: '11px', color: '#64748b', textAlign: 'center', fontWeight: '700' }}>
+                  <p style={{ margin: '6px 0', fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', fontWeight: '700' }}>
                     Select From and To locations in Gujarat above. System will continuously stream traffic updates every second.
                   </p>
                 ) : (
                   trafficLiveLogs.map((log) => (
-                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '10px', color: log.level === 'alert' ? '#dc2626' : '#0f172a', fontWeight: log.level === 'alert' ? '900' : '700' }}>
-                      <span style={{ color: '#64748b', flexShrink: 0 }}>[{log.time}]</span>
+                    <div key={log.id} style={{ display: 'flex', gap: '6px', fontSize: '10px', color: log.level === 'alert' ? '#fca5a5' : '#FFFFFF', fontWeight: log.level === 'alert' ? '900' : '700' }}>
+                      <span style={{ color: 'rgba(255, 255, 255, 0.5)', flexShrink: 0 }}>[{log.time}]</span>
                       <span>{log.text}</span>
                     </div>
                   ))
@@ -5830,26 +5903,52 @@ export default function App() {
 
       {/* Permanent Watcher Modal */}
       {showWatcherModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="modal-card watcher-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '22px', padding: '24px', width: '100%', maxWidth: '440px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.12)' }}>
-            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowWatcherModal(false);
+          }}
+          className="modal-overlay" 
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'pointer' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="modal-card watcher-modal-card" 
+            style={{ 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              borderRadius: '24px', 
+              padding: window.innerWidth < 640 ? '16px' : '24px', 
+              width: '100%', 
+              maxWidth: '440px', 
+              position: 'relative', 
+              border: '1px solid rgba(255, 255, 255, 0.20)', 
+              color: '#FFFFFF', 
+              maxHeight: '90vh', 
+              overflowY: 'auto', 
+              WebkitOverflowScrolling: 'touch',
+              boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.75)',
+              cursor: 'default'
+            }}
+          >
+            <button onClick={() => setShowWatcherModal(false)} style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingRight: '36px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Clock size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.3px' }}>Permanent Watcher Reminders</h3>
-                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>Rechecks every day • Stays set until deleted</span>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#FFFFFF', letterSpacing: '-0.3px' }}>Permanent Watcher Reminders</h3>
+                  <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>Rechecks every day • Stays set until deleted</span>
                 </div>
               </div>
             </div>
 
             {/* Desktop Notification Status Banner */}
             {'Notification' in window && Notification.permission !== 'granted' && (
-              <div style={{ marginBottom: '12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '10.5px', color: '#b45309', fontWeight: '800' }}>🔔 Browser alerts disabled</span>
+              <div style={{ marginBottom: '12px', backgroundColor: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '10.5px', color: '#fcd34d', fontWeight: '800' }}>🔔 Browser alerts disabled</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -5857,7 +5956,7 @@ export default function App() {
                       alert(`Notification permission is: ${p}`);
                     });
                   }}
-                  style={{ background: '#b45309', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}
+                  style={{ background: '#f59e0b', color: '#000000', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}
                 >
                   Enable Notifications
                 </button>
@@ -5871,24 +5970,24 @@ export default function App() {
                   placeholder="Enter reminder task..."
                   value={currentTaskInput}
                   onChange={(e) => setCurrentTaskInput(e.target.value)}
-                  style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '700' }}
+                  style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontSize: '11px', outline: 'none', fontWeight: '700' }}
                 />
                 <input
                   type="time"
                   value={currentTimeInput}
                   onChange={(e) => setCurrentTimeInput(e.target.value)}
-                  style={{ width: '105px', padding: '9px 8px', borderRadius: '8px', border: '1.5px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '800' }}
+                  style={{ width: '105px', padding: '9px 8px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontSize: '11px', outline: 'none', fontWeight: '800' }}
                 />
               </div>
 
-              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '8px', border: 'none', backgroundColor: '#0f172a', color: '#ffffff', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(15,23,42,0.15)' }}>
+              <button type="submit" style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.5)', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)', color: '#0b0f19', fontWeight: '900', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: 'inset 0 1px 1px #fff, 0 4px 15px rgba(0,0,0,0.35)' }}>
                 <Plus size={15} /> {editingIndex !== null ? "Update Reminder" : "Add Permanent Reminder"}
               </button>
             </form>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px', marginBottom: '14px' }}>
               {sortedReminders.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#64748b', fontSize: '11px', margin: '16px 0', fontWeight: '700' }}>No reminders set. Add your daily routine reminder above!</p>
+                <p style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.6)', fontSize: '11px', margin: '16px 0', fontWeight: '700' }}>No reminders set. Add your daily routine reminder above!</p>
               ) : (
                 sortedReminders.map((rem, idx) => {
                   const originalIndex = remindersList.findIndex(r => r.task === rem.task && r.time === rem.time);
@@ -5899,8 +5998,8 @@ export default function App() {
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
-                        backgroundColor: '#f8fafc', 
-                        border: '1px solid #e2e8f0', 
+                        backgroundColor: 'rgba(255, 255, 255, 0.07)', 
+                        border: '1px solid rgba(255, 255, 255, 0.16)', 
                         borderRadius: '10px', 
                         padding: '10px 12px',
                         opacity: rem.completed ? 0.75 : 1
@@ -5911,7 +6010,7 @@ export default function App() {
                           margin: 0, 
                           fontSize: '12px', 
                           fontWeight: '900', 
-                          color: rem.completed ? '#16a34a' : '#0f172a', 
+                          color: rem.completed ? '#4ade80' : '#FFFFFF', 
                           textDecoration: rem.completed ? 'line-through' : 'none', 
                           whiteSpace: 'nowrap', 
                           overflow: 'hidden', 
@@ -5919,7 +6018,7 @@ export default function App() {
                         }}>
                           {rem.task} {rem.completed && "✓"}
                         </p>
-                        <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800' }}>
+                        <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>
                           Time: {formatTimeTo12Hour(rem.time)}
                         </span>
                       </div>
@@ -5933,19 +6032,19 @@ export default function App() {
                               width: '24px', 
                               height: '24px', 
                               borderRadius: '6px', 
-                              backgroundColor: '#f0fdf4', 
-                              border: '1px solid #bbf7d0', 
+                              backgroundColor: 'rgba(34, 197, 94, 0.2)', 
+                              border: '1px solid rgba(34, 197, 94, 0.4)', 
                               display: 'flex', 
                               alignItems: 'center', 
                               justifyContent: 'center', 
-                              color: '#15803d' 
+                              color: '#4ade80' 
                             }}
                           >
                             <Check size={14} />
                           </div>
                         )}
-                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#0f172a', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
-                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
+                        <button onClick={() => handleEditReminder(originalIndex)} style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
+                        <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: 'rgba(239, 68, 68, 0.25)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
                       </div>
                     </div>
                   );
@@ -5954,13 +6053,13 @@ export default function App() {
             </div>
 
             {/* Watcher Modal Action Controls */}
-            <div style={{ position: 'relative', borderTop: '1px solid #e2e8f0', paddingTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', borderTop: '1px solid rgba(255, 255, 255, 0.15)', paddingTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <button 
                 type="button"
                 onClick={triggerTestWatcherAlert}
                 title="Instantly Test Watcher Alert (Sound, Modal & Notification)"
-                style={{ flex: '1 1 120px', background: '#f1f5f9',
-              border: '1px solid #e2e8f0', color: '#0f172a', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                style={{ flex: '1 1 120px', background: 'rgba(255, 255, 255, 0.12)',
+              border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
                 <Zap size={12} /> Test Alert Now
               </button>
@@ -5968,8 +6067,8 @@ export default function App() {
               <button 
                 onClick={() => setShowSnoozeDropdown(!showSnoozeDropdown)}
                 title="Snooze Settings"
-                style={{ background: '#f1f5f9',
-              border: '1px solid #e2e8f0', color: '#0f172a', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                style={{ background: 'rgba(255, 255, 255, 0.12)',
+              border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <Moon size={12} /> ZZZ ({snoozeMinutes}m)
               </button>
@@ -6043,8 +6142,9 @@ export default function App() {
         <div style={{ 
           position: 'fixed', 
           inset: 0, 
-          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-          backdropFilter: 'blur(10px)', 
+          backgroundColor: 'rgba(5, 7, 12, 0.88)', 
+          backdropFilter: 'blur(32px) saturate(190%)', 
+          WebkitBackdropFilter: 'blur(32px) saturate(190%)', 
           zIndex: 99999, 
           display: 'flex', 
           flexDirection: 'column', 
@@ -6057,13 +6157,13 @@ export default function App() {
             width: '84px', 
             height: '84px', 
             borderRadius: '24px', 
-            backgroundColor: '#dc2626', 
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
             color: '#ffffff', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
             marginBottom: '18px',
-            boxShadow: '0 0 35px rgba(220, 38, 38, 0.4)'
+            boxShadow: '0 0 35px rgba(220, 38, 38, 0.6), inset 0 1px 1px #fff'
           }}>
             <Bell size={44} />
           </div>
@@ -6071,7 +6171,7 @@ export default function App() {
           <span style={{ 
             fontSize: '12px', 
             fontWeight: '900', 
-            color: '#dc2626', 
+            color: '#f87171', 
             textTransform: 'uppercase', 
             letterSpacing: '2px', 
             marginBottom: '8px' 
@@ -6082,7 +6182,7 @@ export default function App() {
           <h1 style={{ 
             fontSize: '28px', 
             fontWeight: '900', 
-            color: '#0f172a', 
+            color: '#FFFFFF', 
             maxWidth: '680px', 
             lineHeight: '1.3', 
             margin: '0 0 10px 0', 
@@ -6092,7 +6192,7 @@ export default function App() {
             "{activeAlertTask}"
           </h1>
 
-          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: '#64748b', fontWeight: '800' }}>
+          <p style={{ margin: '0 0 28px 0', fontSize: '13px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '800' }}>
             Scheduled reminder time has arrived!
           </p>
 
@@ -6112,9 +6212,9 @@ export default function App() {
               style={{
                 padding: '13px 22px',
                 borderRadius: '12px',
-                border: '1.5px solid #cbd5e1',
-                backgroundColor: '#f8fafc',
-                color: '#0f172a',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
+                background: 'rgba(255, 255, 255, 0.12)',
+                color: '#FFFFFF',
                 fontWeight: '900',
                 fontSize: '14px',
                 cursor: 'pointer',
@@ -6136,13 +6236,13 @@ export default function App() {
               style={{ 
                 padding: '13px 30px', 
                 borderRadius: '12px', 
-                border: 'none', 
-                backgroundColor: '#0f172a', 
-                color: '#ffffff', 
+                border: '1px solid rgba(255, 255, 255, 0.5)', 
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)', 
+                color: '#0b0f19', 
                 fontWeight: '900', 
                 fontSize: '15px', 
                 cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(15,23,42,0.2)',
+                boxShadow: 'inset 0 1px 1px #fff, 0 4px 15px rgba(0,0,0,0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -6156,9 +6256,9 @@ export default function App() {
               style={{ 
                 padding: '13px 26px', 
                 borderRadius: '12px', 
-                border: '1.5px solid #cbd5e1',
-                backgroundColor: '#f1f5f9', 
-                color: '#0f172a', 
+                border: '1px solid rgba(255, 255, 255, 0.22)',
+                background: 'rgba(255, 255, 255, 0.12)', 
+                color: '#FFFFFF', 
                 fontWeight: '900', 
                 fontSize: '15px', 
                 cursor: 'pointer', 
@@ -6175,45 +6275,68 @@ export default function App() {
 
       {/* Mobile Permissions & System Setup Modal */}
       {showPermissionsModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '440px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowPermissionsModal(false);
+          }}
+          className="modal-overlay"
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'pointer' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="modal-card permissions-modal-card"
+            style={{ 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              borderRadius: '24px', 
+              padding: '24px 20px', 
+              width: '100%', 
+              maxWidth: '440px', 
+              position: 'relative', 
+              border: '1px solid rgba(255, 255, 255, 0.20)', 
+              color: '#FFFFFF', 
+              boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0,0,0,0.75)',
+              cursor: 'default'
+            }}
+          >
             <button 
               onClick={() => setShowPermissionsModal(false)} 
-              style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} />
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShadowLogo size={22} color="#ffffff" innerColor="#0f172a" />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Permissions</h3>
-                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>MOBILE & DESKTOP HARDWARE AUTHORIZATION</span>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>System Permissions</h3>
+                <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>MOBILE & DESKTOP HARDWARE AUTHORIZATION</span>
               </div>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.5', margin: '0 0 16px 0', fontWeight: '700' }}>
+            <p style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.75)', lineHeight: '1.5', margin: '0 0 16px 0', fontWeight: '700' }}>
               Shadow Dashboard requires hardware access to deliver voice commands, GPS route traffic alerts, and background reminder notifications on mobile.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
               
               {/* Notifications Permission */}
-              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Bell size={20} color="#0f172a" />
+                    <Bell size={20} color="#FFFFFF" />
                     <div>
-                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>System Notifications</div>
-                      <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Watcher alerts & PWA push notifications</div>
+                      <div style={{ fontSize: '12px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>System Notifications</div>
+                      <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>Watcher alerts & PWA push notifications</div>
                     </div>
                   </div>
                   {(() => {
                     const isNotifGranted = mobilePermissions.notifications === 'granted' || (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') || (typeof localStorage !== 'undefined' && localStorage.getItem('jarvis_perm_notif') === 'granted');
                     return (
-                      <span style={{ fontSize: '11px', fontWeight: '900', color: isNotifGranted ? '#16a34a' : '#d97706' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '900', color: isNotifGranted ? '#4ade80' : '#fbbf24' }}>
                         {isNotifGranted ? (isPushSubscribed ? '✓ PWA PUSH ACTIVE' : '✓ GRANTED') : 'PENDING'}
                       </span>
                     );
@@ -6249,9 +6372,9 @@ export default function App() {
                       flex: 1,
                       padding: '9px 12px',
                       borderRadius: '8px',
-                      border: '1.5px solid #0f172a',
-                      backgroundColor: '#0f172a',
-                      color: '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.22)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                      color: '#FFFFFF',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
@@ -6260,44 +6383,44 @@ export default function App() {
                       justifyContent: 'center',
                       gap: '6px',
                       textTransform: 'uppercase',
-                      boxShadow: '0 2px 6px rgba(15,23,42,0.15)'
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
                     }}
                   >
-                    <Bell size={13} color="#ffffff" />
+                    <Bell size={13} color="#FFFFFF" />
                     {isSendingTestPush ? 'SENDING PUSH...' : '🔔 TEST PWA PUSH NOW'}
                   </button>
                 </div>
                 {pushFeedbackMessage && (
-                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#0f172a', backgroundColor: '#e2e8f0', padding: '6px 10px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#FFFFFF', backgroundColor: 'rgba(255, 255, 255, 0.1)', padding: '6px 10px', borderRadius: '6px' }}>
                     {pushFeedbackMessage}
                   </div>
                 )}
               </div>
 
               {/* Microphone Permission */}
-              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Mic size={20} color="#0f172a" />
+                  <Mic size={20} color="#FFFFFF" />
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>Microphone Access</div>
-                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Shadow Voice AI & Audio Notes</div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>Microphone Access</div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>Shadow Voice AI & Audio Notes</div>
                   </div>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.mic === 'granted' ? '#16a34a' : '#d97706' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.mic === 'granted' ? '#4ade80' : '#fbbf24' }}>
                   {mobilePermissions.mic === 'granted' ? '✓ GRANTED' : 'PENDING'}
                 </span>
               </div>
 
               {/* Geolocation Permission */}
-              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Navigation size={20} color="#0f172a" />
+                  <Navigation size={20} color="#FFFFFF" />
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>GPS Location</div>
-                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Real-time traffic & live navigation</div>
+                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>GPS Location</div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>Real-time traffic & live navigation</div>
                   </div>
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.location === 'granted' ? '#16a34a' : '#d97706' }}>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: mobilePermissions.location === 'granted' ? '#4ade80' : '#fbbf24' }}>
                   {mobilePermissions.location === 'granted' ? '✓ GRANTED' : 'PENDING'}
                 </span>
               </div>
@@ -6311,9 +6434,9 @@ export default function App() {
                 width: '100%',
                 padding: '13px',
                 borderRadius: '12px',
-                border: 'none',
-                backgroundColor: '#0f172a',
-                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.5)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)',
+                color: '#0b0f19',
                 fontWeight: '900',
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -6321,7 +6444,7 @@ export default function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 15px rgba(15, 23, 42, 0.15)',
+                boxShadow: 'inset 0 1px 1px #fff, 0 4px 15px rgba(0, 0, 0, 0.35)',
                 textTransform: 'uppercase'
               }}
             >
@@ -6334,60 +6457,84 @@ export default function App() {
 
       {/* Google Profile Modal */}
       {showProfileModal && userProfile && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="modal-card profile-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px 20px', width: '100%', maxWidth: '340px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}>
-            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowProfileModal(false);
+          }}
+          className="modal-overlay" 
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'pointer' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="modal-card profile-modal-card" 
+            style={{ 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              borderRadius: '24px', 
+              padding: '24px 20px', 
+              width: '100%', 
+              maxWidth: '340px', 
+              position: 'relative', 
+              border: '1px solid rgba(255, 255, 255, 0.20)', 
+              color: '#FFFFFF', 
+              textAlign: 'center', 
+              boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0,0,0,0.75)',
+              cursor: 'default'
+            }}
+          >
+            <button onClick={() => setShowProfileModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
             {userProfile.photo ? (
               <img 
                 src={userProfile.photo} 
                 alt={userProfile.name} 
-                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid #e2e8f0', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
+                style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid rgba(255, 255, 255, 0.3)', margin: '0 auto 12px auto', display: 'block', objectFit: 'cover' }} 
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             ) : (
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.25)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px', fontWeight: '900' }}>
                 {(userProfile.name || 'U').charAt(0).toUpperCase()}
               </div>
             )}
 
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{userProfile.name}</h3>
-            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{userProfile.email}</p>
-            <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '14px', fontWeight: '800' }}>CONNECTED: {userProfile.connectedDate || 'ACTIVE'}</span>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>{userProfile.name}</h3>
+            <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '700' }}>{userProfile.email}</p>
+            <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.55)', display: 'block', marginBottom: '14px', fontWeight: '800' }}>CONNECTED: {userProfile.connectedDate || 'ACTIVE'}</span>
 
             {/* Quick Access Tools for Mobile */}
-            <div style={{ marginBottom: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-              <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', letterSpacing: '0.5px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+            <div style={{ marginBottom: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.15)', paddingTop: '12px' }}>
+              <span style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.5px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
                 Tools & Features
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
                 <button 
                   type="button"
                   onClick={() => { setShowProfileModal(false); setShowRoutePanel(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.18)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
                 >
-                  <Navigation size={14} color="#0f172a" /> Route & GPS
+                  <Navigation size={14} color="#38bdf8" /> Route & GPS
                 </button>
                 <button 
                   type="button"
                   onClick={() => { setShowProfileModal(false); handleOpenBriefing(); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.18)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
                 >
-                  <Newspaper size={14} color="#0f172a" /> Briefing
+                  <Newspaper size={14} color="#4ade80" /> Briefing
                 </button>
                 <button 
                   type="button"
                   onClick={() => { setShowProfileModal(false); setShowToolsModal(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.18)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
                 >
-                  <Wrench size={14} color="#0f172a" /> Tools / Calc
+                  <Wrench size={14} color="#f59e0b" /> Tools / Calc
                 </button>
                 <button 
                   type="button"
                   onClick={() => { setShowProfileModal(false); setShowPhotoEditModal(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.18)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
                 >
-                  <Image size={14} color="#0f172a" /> AI Eraser
+                  <Image size={14} color="#ec4899" /> AI Eraser
                 </button>
               </div>
             </div>
@@ -6406,7 +6553,7 @@ export default function App() {
                     setShowProfileModal(false);
                   }
                 }}
-                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontWeight: '900', fontSize: '12px', cursor: 'pointer', textTransform: 'uppercase' }}
               >
                 DISCONNECT / LOG OUT
               </button>
@@ -6417,7 +6564,7 @@ export default function App() {
                   setAuthMode('login');
                   setShowAuthModal(true);
                 }}
-                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f1f5f9', color: '#0f172a', fontWeight: '900', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}
+                style={{ width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.22)', backgroundColor: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', fontWeight: '900', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase' }}
               >
                 SWITCH ACCOUNT
               </button>
@@ -6699,57 +6846,85 @@ export default function App() {
         const avgDailySpend = Math.round(monthlySpent / currentDay);
 
         return (
-          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(6px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div className="modal-card expense-modal-card" style={{ backgroundColor: '#ffffff', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '750px', position: 'relative', border: '1.5px solid #e2e8f0', color: '#0f172a', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}>
-              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#0f172a', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowExpenseModal(false);
+            }}
+            className="modal-overlay" 
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', cursor: 'pointer' }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="modal-card expense-modal-card" 
+              style={{ 
+                background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+                backdropFilter: 'blur(32px) saturate(190%)',
+                WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+                borderRadius: '24px', 
+                padding: window.innerWidth < 640 ? '14px' : '24px', 
+                width: '100%', 
+                maxWidth: '750px', 
+                position: 'relative', 
+                border: '1px solid rgba(255, 255, 255, 0.20)', 
+                color: '#FFFFFF', 
+                maxHeight: '92vh', 
+                overflowY: 'auto', 
+                WebkitOverflowScrolling: 'touch',
+                boxSizing: 'border-box', 
+                boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0,0,0,0.75)',
+                cursor: 'default'
+              }}
+            >
+              <button onClick={() => setShowExpenseModal(false)} style={{ position: 'absolute', top: '14px', right: '14px', border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingRight: '36px', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <DollarSign size={22} />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>Shadow Expense Manager</h3>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>DAILY SPENDS & FINANCIAL ANALYTICS</span>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>Shadow Expense Manager</h3>
+                    <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>DAILY SPENDS & FINANCIAL ANALYTICS</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#0f172a', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase' }}>
+                  <button onClick={handleExportExpensesCSV} title="Download CSV / Excel" style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '7px 14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '900', textTransform: 'uppercase' }}>
                     <FileSpreadsheet size={14} /> EXPORT CSV
                   </button>
-                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#dc2626', padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '900' }}>
+                  <button onClick={handleClearAllExpenses} title="Clear All Records" style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: '900' }}>
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
 
-              {/* Month Selector Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '10px 14px', marginBottom: '16px', color: '#0f172a' }}>
-                <button onClick={handlePrevExpenseMonth} style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase' }}>
+              {/* Month Selector Bar - Responsive & Overflow Protected */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '8px 12px', marginBottom: '16px', color: '#FFFFFF', flexWrap: 'wrap', gap: '8px' }}>
+                <button onClick={handlePrevExpenseMonth} style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '6px 11px', borderRadius: '8px', fontSize: '10.5px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase', flex: '0 0 auto' }}>
                   ◀ PREV MONTH
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '14px', letterSpacing: '0.5px' }}>
-                  <Calendar size={16} color="#0f172a" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', fontSize: '13px', letterSpacing: '0.5px', color: '#FFFFFF', flex: '1 1 auto', justifyContent: 'center' }}>
+                  <Calendar size={15} color="#38bdf8" />
                   <span>{formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                   {isFutureMonthBlocked && (
-                    <span style={{ fontSize: '9px', backgroundColor: '#0f172a', color: '#ffffff', padding: '3px 7px', borderRadius: '4px', fontWeight: '900', textTransform: 'uppercase' }}>CURRENT</span>
+                    <span style={{ fontSize: '9px', backgroundColor: '#38bdf8', color: '#0b0f19', padding: '2px 6px', borderRadius: '4px', fontWeight: '900', textTransform: 'uppercase' }}>CURRENT</span>
                   )}
                 </div>
                 <button 
                   onClick={handleNextExpenseMonth} 
                   disabled={isFutureMonthBlocked}
                   style={{ 
-                    background: isFutureMonthBlocked ? '#f1f5f9' : '#ffffff', 
-                    border: `1px solid ${isFutureMonthBlocked ? '#e2e8f0' : '#cbd5e1'}`,
-                    color: isFutureMonthBlocked ? '#94a3b8' : '#0f172a', 
-                    padding: '6px 14px', 
+                    background: isFutureMonthBlocked ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.12)', 
+                    border: `1px solid ${isFutureMonthBlocked ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.22)'}`,
+                    color: isFutureMonthBlocked ? 'rgba(255, 255, 255, 0.35)' : '#FFFFFF', 
+                    padding: '6px 11px', 
                     borderRadius: '8px', 
-                    fontSize: '11px', 
+                    fontSize: '10.5px', 
                     fontWeight: '900', 
                     cursor: isFutureMonthBlocked ? 'not-allowed' : 'pointer',
                     opacity: isFutureMonthBlocked ? 0.5 : 1,
-                    textTransform: 'uppercase'
+                    textTransform: 'uppercase',
+                    flex: '0 0 auto'
                   }}
                   title={isFutureMonthBlocked ? "Current month" : "Next Month"}
                 >
@@ -6758,24 +6933,24 @@ export default function App() {
               </div>
 
               {/* 3-Card Overview */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                 {/* 1. Total Spent */}
-                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #fecaca', borderRadius: '14px', padding: '14px', boxShadow: '0 2px 8px rgba(220,38,38,0.06)' }}>
+                <div style={{ background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '14px', padding: '14px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#dc2626', textTransform: 'uppercase' }}>TOTAL SPENT</span>
-                    <TrendingDown size={16} color="#dc2626" />
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#f87171', textTransform: 'uppercase' }}>TOTAL SPENT</span>
+                    <TrendingDown size={16} color="#f87171" />
                   </div>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#dc2626' }}>₹{monthlySpent.toLocaleString()}</p>
-                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>{monthlyItems.length} expenses logged</span>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#f87171' }}>₹{monthlySpent.toLocaleString()}</p>
+                  <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>{monthlyItems.length} expenses logged</span>
                 </div>
 
                 {/* 2. Monthly Budget */}
-                <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)', border: '1px solid rgba(255, 255, 255, 0.18)', borderRadius: '14px', padding: '14px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.75)', textTransform: 'uppercase' }}>MONTHLY BUDGET</span>
                     <button 
                       onClick={() => setIsSettingBudget(prev => !prev)} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f172a', padding: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FFFFFF', padding: 0 }}
                       title="Edit monthly budget"
                     >
                       <Edit2 size={14} />
@@ -6788,7 +6963,7 @@ export default function App() {
                         value={tempBudgetInput}
                         onChange={(e) => setTempBudgetInput(e.target.value)}
                         placeholder="New ₹"
-                        style={{ width: '85px', padding: '5px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: '800' }}
+                        style={{ width: '85px', padding: '5px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.25)', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', fontWeight: '800' }}
                       />
                       <button
                         onClick={() => {
@@ -6799,50 +6974,50 @@ export default function App() {
                           }
                           setIsSettingBudget(false);
                         }}
-                        style={{ backgroundColor: '#0f172a', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '11px', padding: '5px 10px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase' }}
+                        style={{ backgroundColor: '#FFFFFF', color: '#0b0f19', border: 'none', borderRadius: '6px', fontSize: '11px', padding: '5px 10px', fontWeight: '900', cursor: 'pointer', textTransform: 'uppercase' }}
                       >
                         SAVE
                       </button>
                     </div>
                   ) : (
-                    <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#0f172a' }}>₹{monthlyBudget.toLocaleString()}</p>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: '#FFFFFF' }}>₹{monthlyBudget.toLocaleString()}</p>
                   )}
-                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '800' }}>Target spending limit</span>
+                  <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>Target spending limit</span>
                 </div>
 
                 {/* 3. Budget Remaining */}
-                <div style={{ backgroundColor: '#ffffff', border: `1.5px solid ${monthlyRemainingBudget >= 0 ? '#bbf7d0' : '#fecaca'}`, borderRadius: '14px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ background: monthlyRemainingBudget >= 0 ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%)' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%)', border: `1px solid ${monthlyRemainingBudget >= 0 ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`, borderRadius: '14px', padding: '14px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626', textTransform: 'uppercase' }}>BUDGET REMAINING</span>
-                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626' }}>{budgetPct}% used</span>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#4ade80' : '#f87171', textTransform: 'uppercase' }}>BUDGET REMAINING</span>
+                    <span style={{ fontSize: '10px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#4ade80' : '#f87171' }}>{budgetPct}% used</span>
                   </div>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626' }}>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: '900', color: monthlyRemainingBudget >= 0 ? '#4ade80' : '#f87171' }}>
                     {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()}` : `-₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
                   </p>
-                  <span style={{ fontSize: '10px', color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626', fontWeight: '800' }}>
+                  <span style={{ fontSize: '10px', color: monthlyRemainingBudget >= 0 ? '#4ade80' : '#f87171', fontWeight: '800' }}>
                     {monthlyRemainingBudget >= 0 ? 'Within budget limit' : 'Over budget!'}
                   </span>
                 </div>
               </div>
 
               {/* Monthly Budget Progress Bar */}
-              <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '900', marginBottom: '8px', color: '#0f172a' }}>
+              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontWeight: '900', marginBottom: '8px', color: '#FFFFFF', flexWrap: 'wrap', gap: '4px' }}>
                   <span>🎯 MONTHLY PROGRESS: ₹{monthlySpent.toLocaleString()} OF ₹{monthlyBudget.toLocaleString()}</span>
-                  <span style={{ color: monthlyRemainingBudget >= 0 ? '#16a34a' : '#dc2626' }}>
+                  <span style={{ color: monthlyRemainingBudget >= 0 ? '#4ade80' : '#f87171' }}>
                     {monthlyRemainingBudget >= 0 ? `₹${monthlyRemainingBudget.toLocaleString()} REMAINING (${budgetPct}% USED)` : `⚠️ OVER BUDGET BY ₹${Math.abs(monthlyRemainingBudget).toLocaleString()}`}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${budgetPct}%`, backgroundColor: budgetPct > 90 ? '#dc2626' : (budgetPct > 70 ? '#d97706' : '#16a34a'), borderRadius: '4px', transition: 'width 0.3s ease' }} />
+                <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${budgetPct}%`, backgroundColor: budgetPct > 90 ? '#ef4444' : (budgetPct > 70 ? '#f59e0b' : '#22c55e'), borderRadius: '4px', transition: 'width 0.3s ease' }} />
                 </div>
               </div>
 
               {/* Expense Creator */}
-              <div style={{ backgroundColor: '#f8fafc', borderRadius: '14px', padding: '16px', border: '1.5px solid #e2e8f0', marginBottom: '16px' }}>
+              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.16)', marginBottom: '16px' }}>
                 {/* 1-Tap Quick Presets */}
                 <div style={{ marginBottom: '12px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>
                     ⚡ 1-TAP QUICK PRESETS:
                   </span>
                   <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -6862,9 +7037,9 @@ export default function App() {
                         style={{
                           padding: '6px 11px',
                           borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
-                          backgroundColor: '#ffffff',
-                          color: '#0f172a',
+                          border: '1px solid rgba(255, 255, 255, 0.20)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          color: '#FFFFFF',
                           fontSize: '11px',
                           fontWeight: '800',
                           cursor: 'pointer',
@@ -6886,7 +7061,7 @@ export default function App() {
                       placeholder="Expense Title (e.g. Chai, Groceries, Petrol, Books)..."
                       value={expenseTitle}
                       onChange={(e) => setExpenseTitle(e.target.value)}
-                      style={{ flex: '2 1 200px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '12px', outline: 'none', fontWeight: '800' }}
+                      style={{ flex: '2 1 200px', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontSize: '12px', outline: 'none', fontWeight: '800' }}
                     />
                     <input
                       type="number"
@@ -6894,13 +7069,13 @@ export default function App() {
                       placeholder="₹ Amount"
                       value={expenseAmount}
                       onChange={(e) => setExpenseAmount(e.target.value)}
-                      style={{ flex: '1 1 100px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '12px', outline: 'none', fontWeight: '900' }}
+                      style={{ flex: '1 1 100px', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontSize: '12px', outline: 'none', fontWeight: '900' }}
                     />
                     <select
                       className="expense-form-input expense-cat-select"
                       value={expenseCategory}
                       onChange={(e) => setExpenseCategory(e.target.value)}
-                      style={{ flex: '1.5 1 140px', padding: '10px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', fontSize: '11px', outline: 'none', fontWeight: '800' }}
+                      style={{ flex: '1.5 1 140px', padding: '10px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.20)', backgroundColor: 'rgba(18, 23, 35, 0.95)', color: '#FFFFFF', fontSize: '11px', outline: 'none', fontWeight: '800' }}
                     >
                       <option value="Food & Snacks">🍔 Food & Snacks</option>
                       <option value="Travel & Commute">🚌 Travel & Commute</option>
@@ -6916,14 +7091,14 @@ export default function App() {
                       style={{ 
                         padding: '10px 22px', 
                         borderRadius: '8px', 
-                        border: 'none', 
-                        backgroundColor: '#0f172a', 
-                        color: '#ffffff', 
+                        border: '1px solid rgba(255, 255, 255, 0.5)', 
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)', 
+                        color: '#0b0f19', 
                         fontWeight: '900', 
                         fontSize: '12px', 
                         cursor: 'pointer', 
                         whiteSpace: 'nowrap',
-                        boxShadow: '0 2px 8px rgba(15,23,42,0.15)',
+                        boxShadow: 'inset 0 1px 1px #fff, 0 2px 8px rgba(0,0,0,0.35)',
                         textTransform: 'uppercase'
                       }}
                     >
@@ -6942,9 +7117,9 @@ export default function App() {
                     flex: 1,
                     padding: '9px 14px',
                     borderRadius: '8px',
-                    border: '1px solid ' + (expenseTabMode === 'tracker' ? '#0f172a' : '#e2e8f0'),
-                    backgroundColor: expenseTabMode === 'tracker' ? '#0f172a' : '#f1f5f9',
-                    color: expenseTabMode === 'tracker' ? '#ffffff' : '#64748b',
+                    border: '1px solid ' + (expenseTabMode === 'tracker' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.16)'),
+                    background: expenseTabMode === 'tracker' ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)' : 'rgba(255, 255, 255, 0.08)',
+                    color: expenseTabMode === 'tracker' ? '#0b0f19' : 'rgba(255, 255, 255, 0.8)',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -6964,9 +7139,9 @@ export default function App() {
                     flex: 1,
                     padding: '9px 14px',
                     borderRadius: '8px',
-                    border: '1px solid ' + (expenseTabMode === 'monthly_report' ? '#0f172a' : '#e2e8f0'),
-                    backgroundColor: expenseTabMode === 'monthly_report' ? '#0f172a' : '#f1f5f9',
-                    color: expenseTabMode === 'monthly_report' ? '#ffffff' : '#64748b',
+                    border: '1px solid ' + (expenseTabMode === 'monthly_report' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.16)'),
+                    background: expenseTabMode === 'monthly_report' ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)' : 'rgba(255, 255, 255, 0.08)',
+                    color: expenseTabMode === 'monthly_report' ? '#0b0f19' : 'rgba(255, 255, 255, 0.8)',
                     fontSize: '11px',
                     fontWeight: '900',
                     cursor: 'pointer',
@@ -6985,9 +7160,9 @@ export default function App() {
               {expenseTabMode === 'tracker' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {monthlyItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '36px 12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1.5px dashed #cbd5e1', color: '#64748b' }}>
-                      <DollarSign size={32} color="#0f172a" style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>
+                    <div style={{ textAlign: 'center', padding: '36px 12px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1.5px dashed rgba(255, 255, 255, 0.2)', color: 'rgba(255, 255, 255, 0.7)' }}>
+                      <DollarSign size={32} color="#38bdf8" style={{ margin: '0 auto 8px auto', opacity: 0.7 }} />
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#FFFFFF' }}>
                         No expenses recorded for {formatExpenseMonthLabel(selectedExpenseMonth)}.
                       </p>
                       <span style={{ fontSize: '11px', fontWeight: '700' }}>Log your first expense using the quick presets above!</span>
@@ -6998,25 +7173,25 @@ export default function App() {
                         <div
                           key={item.id || idx}
                           style={{
-                            backgroundColor: '#ffffff',
-                            borderRadius: '10px',
+                            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+                            borderRadius: '12px',
                             padding: '12px 14px',
-                            border: '1.5px solid #e2e8f0',
-                            borderLeft: '4px solid #dc2626',
+                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            borderLeft: '4px solid #ef4444',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <TrendingDown size={14} />
                             </div>
                             <div>
-                              <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>{item.title}</p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#64748b', marginTop: '2px', fontWeight: '700' }}>
-                                <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>{item.category}</span>
+                              <p style={{ margin: 0, fontSize: '13px', fontWeight: '900', color: '#FFFFFF' }}>{item.title}</p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px', fontWeight: '700' }}>
+                                <span style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>{item.category}</span>
                                 <span>•</span>
                                 <span>{item.date || 'Today'}</span>
                               </div>
@@ -7024,13 +7199,13 @@ export default function App() {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '15px', fontWeight: '900', color: '#dc2626' }}>
+                            <span style={{ fontSize: '15px', fontWeight: '900', color: '#f87171' }}>
                               -₹{parseFloat(item.amount).toLocaleString()}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleDeleteExpense(item)}
-                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px', color: '#94a3b8' }}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px', color: 'rgba(255, 255, 255, 0.5)' }}
                               title="Delete expense"
                             >
                               <Trash2 size={14} />
@@ -7048,44 +7223,44 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {/* Spending Velocity & Top Category Card */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                    <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>AVERAGE DAILY SPEND</span>
-                      <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#0f172a' }}>
+                    <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '14px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.7)', textTransform: 'uppercase' }}>AVERAGE DAILY SPEND</span>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '22px', fontWeight: '900', color: '#FFFFFF' }}>
                         ₹{avgDailySpend.toLocaleString()} / day
                       </p>
-                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>Based on {currentDay} days in {formatExpenseMonthLabel(selectedExpenseMonth)}</span>
+                      <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>Based on {currentDay} days in {formatExpenseMonthLabel(selectedExpenseMonth)}</span>
                     </div>
 
-                    <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>TOP SPENDING CATEGORY</span>
-                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#dc2626' }}>
+                    <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '14px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.7)', textTransform: 'uppercase' }}>TOP SPENDING CATEGORY</span>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '20px', fontWeight: '900', color: '#f87171' }}>
                         {topCat ? topCat[0] : 'None Yet'}
                       </p>
-                      <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700' }}>
+                      <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>
                         {topCat ? `₹${topCat[1].toLocaleString()} (${monthlySpent > 0 ? Math.round((topCat[1] / monthlySpent) * 100) : 0}% of month)` : 'No expenses logged'}
                       </span>
                     </div>
                   </div>
 
                   {/* Category Breakdown */}
-                  <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
+                  <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.16)', borderRadius: '12px', padding: '16px' }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase' }}>
                       🏷️ Spending by Category ({formatExpenseMonthLabel(selectedExpenseMonth)})
                     </h4>
                     {categoryStats.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontWeight: '700' }}>No expense records available for this month.</p>
+                      <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>No expense records available for this month.</p>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {categoryStats.map(([cat, amt]) => {
                           const pct = monthlySpent > 0 ? Math.round((amt / monthlySpent) * 100) : 0;
                           return (
                             <div key={cat}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '900', marginBottom: '3px', color: '#0f172a' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '900', marginBottom: '3px', color: '#FFFFFF' }}>
                                 <span>{cat}</span>
                                 <span>₹{amt.toLocaleString()} ({pct}%)</span>
                               </div>
-                              <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#0f172a', borderRadius: '4px' }} />
+                              <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#38bdf8', borderRadius: '4px' }} />
                               </div>
                             </div>
                           );
@@ -7191,14 +7366,41 @@ export default function App() {
       )}
 
       {showBriefingModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(7, 12, 9, 0.85)', backdropFilter: 'blur(12px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px', boxSizing: 'border-box' }}>
-          <div style={{ backgroundColor: '#0d1511', borderRadius: '24px', padding: window.innerWidth < 640 ? '16px' : '24px', width: '100%', maxWidth: '860px', position: 'relative', border: '1px solid rgba(0, 245, 155, 0.25)', color: '#f8fafc', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: '0 24px 60px rgba(0,0,0,0.75)' }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowBriefingModal(false);
+          }}
+          className="modal-overlay"
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.72)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px', boxSizing: 'border-box', cursor: 'pointer' }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="modal-card briefing-modal-card"
+            style={{ 
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
+              backdropFilter: 'blur(32px) saturate(190%)',
+              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              borderRadius: '24px', 
+              padding: window.innerWidth < 640 ? '16px' : '24px', 
+              width: '100%', 
+              maxWidth: '860px', 
+              position: 'relative', 
+              border: '1px solid rgba(255, 255, 255, 0.20)', 
+              color: '#FFFFFF', 
+              maxHeight: '92vh', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              boxSizing: 'border-box', 
+              boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0,0,0,0.75)',
+              cursor: 'default'
+            }}
+          >
             
             {/* Top Close Button */}
             <button 
               type="button"
               onClick={() => setShowBriefingModal(false)} 
-              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', borderRadius: '50%', width: '34px', height: '34px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
+              style={{ position: 'absolute', top: '16px', right: '16px', border: '1px solid rgba(255, 255, 255, 0.22)', background: 'rgba(255, 255, 255, 0.12)', color: '#FFFFFF', borderRadius: '50%', width: '34px', height: '34px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
               title="Close Briefing"
             >
               <X size={16} />
@@ -7206,7 +7408,7 @@ export default function App() {
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', paddingRight: '45px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: 'rgba(0, 245, 155, 0.12)', border: '1px solid rgba(0, 245, 155, 0.35)', color: '#00f59b', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(0, 245, 155, 0.2)' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(56, 189, 248, 0.2)' }}>
                 <Newspaper size={22} />
               </div>
               <div>
@@ -7214,11 +7416,11 @@ export default function App() {
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#ffffff', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                     Live Market Briefing & Radar
                   </h3>
-                  <span style={{ fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '20px', backgroundColor: 'rgba(0, 245, 155, 0.15)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '20px', backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
                     REAL-TIME
                   </span>
                 </div>
-                <span style={{ fontSize: '11px', color: '#6ee7b7', fontWeight: '700' }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>
                   GLOBAL, INDIA, GUJARAT BREAKING NEWS & REAL-TIME INDIAN IPO INTEL
                 </span>
               </div>
@@ -7250,9 +7452,9 @@ export default function App() {
                       flex: '1 1 140px',
                       padding: '10px 14px',
                       borderRadius: '10px',
-                      border: isSel ? '1px solid #00f59b' : '1px solid rgba(255, 255, 255, 0.08)',
-                      backgroundColor: isSel ? '#00f59b' : 'rgba(255, 255, 255, 0.04)',
-                      color: isSel ? '#042f1a' : '#94a3b8',
+                      border: isSel ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.16)',
+                      background: isSel ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)' : 'rgba(255, 255, 255, 0.08)',
+                      color: isSel ? '#0b0f19' : 'rgba(255, 255, 255, 0.75)',
                       fontWeight: '900',
                       fontSize: '11.5px',
                       cursor: 'pointer',
@@ -7261,7 +7463,7 @@ export default function App() {
                       justifyContent: 'center',
                       gap: '6px',
                       transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      boxShadow: isSel ? '0 0 16px rgba(0, 245, 155, 0.35)' : 'none',
+                      boxShadow: isSel ? 'inset 0 1px 1px #fff, 0 4px 15px rgba(0,0,0,0.3)' : 'none',
                       textTransform: 'uppercase'
                     }}
                   >
@@ -7277,8 +7479,8 @@ export default function App() {
                 
                 {/* Real-time Status & Auto-refresh Controls */}
                 <div style={{ 
-                  backgroundColor: 'rgba(7, 12, 9, 0.75)', 
-                  border: '1px solid rgba(0, 245, 155, 0.25)', 
+                  backgroundColor: 'rgba(255, 255, 255, 0.06)', 
+                  border: '1px solid rgba(255, 255, 255, 0.16)', 
                   borderRadius: '12px', 
                   padding: '10px 14px', 
                   display: 'flex', 
@@ -7288,12 +7490,12 @@ export default function App() {
                   gap: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00f59b', display: 'inline-block', boxShadow: '0 0 8px #00f59b' }} />
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#38bdf8', display: 'inline-block', boxShadow: '0 0 8px #38bdf8' }} />
                     <span style={{ fontSize: '11px', fontWeight: '900', color: '#ffffff', textTransform: 'uppercase' }}>
                       Auto-refresh in {newsCountdown}s • Sync: {ipoLastUpdated}
                     </span>
                     {(ipoJustRefreshed || newsJustRefreshed) && (
-                      <span style={{ fontSize: '10px', backgroundColor: 'rgba(0, 245, 155, 0.2)', color: '#00f59b', border: '1px solid #00f59b', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
+                      <span style={{ fontSize: '10px', backgroundColor: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>
                         ✅ LIVE SYNCED
                       </span>
                     )}
@@ -7308,14 +7510,14 @@ export default function App() {
                       gap: '6px',
                       padding: '6px 14px',
                       borderRadius: '8px',
-                      border: 'none',
-                      backgroundColor: '#00f59b',
-                      color: '#042f1a',
+                      border: '1px solid rgba(255, 255, 255, 0.5)',
+                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)',
+                      color: '#0b0f19',
                       fontSize: '11px',
                       fontWeight: '900',
                       cursor: ipoRefreshing ? 'not-allowed' : 'pointer',
                       textTransform: 'uppercase',
-                      boxShadow: '0 0 12px rgba(0, 245, 155, 0.25)'
+                      boxShadow: 'inset 0 1px 1px #fff, 0 2px 8px rgba(0,0,0,0.3)'
                     }}
                     title="Force refresh real-time IPO data now"
                   >

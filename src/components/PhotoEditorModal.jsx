@@ -968,11 +968,17 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
   return (
     <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) {
+          onClose();
+        }
+      }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => e.preventDefault()}
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px' }}
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.75)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px', cursor: 'pointer' }}
     >
       <div 
+        onClick={(e) => e.stopPropagation()}
         className="tools-modal-scroll"
         onDragOver={(e) => {
           e.preventDefault();
@@ -1000,7 +1006,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
           }
         }}
         style={{ 
-          backgroundColor: '#ffffff', // Clean white theme matching system
+          background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.95) 0%, rgba(9, 12, 19, 0.98) 100%)',
+          backdropFilter: 'blur(32px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(32px) saturate(190%)',
           borderRadius: '24px', 
           width: '100%', 
           maxWidth: '1120px', 
@@ -1009,9 +1017,10 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
           display: 'flex', 
           flexDirection: 'column', 
           position: 'relative', 
-          border: '1.5px solid #e2e8f0', 
-          boxShadow: '0 25px 70px rgba(0,0,0,0.22)',
-          overflow: 'hidden'
+          border: '1px solid rgba(255, 255, 255, 0.20)', 
+          boxShadow: 'inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 25px 70px rgba(0,0,0,0.75)',
+          overflow: 'hidden',
+          cursor: 'default'
         }}
       >
         
@@ -1059,18 +1068,18 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         />
 
         {/* TOP BAR: Title, Windows Photos Toolbar, Undo/Redo & Download */}
-        <div style={{ padding: '10px 16px', backgroundColor: '#ffffff', borderBottom: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', zIndex: 10 }}>
+        <div style={{ padding: '10px 16px', background: 'rgba(255, 255, 255, 0.06)', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', zIndex: 10 }}>
           
           {/* Logo & Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(15,23,42,0.15)' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
               <Wand2 size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.2px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.2px' }}>
                 Shadow Photo Studio
               </h3>
-              <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800' }}>
+              <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '800' }}>
                 Windows Photos-style AI Generative Erase & Pro Editor
               </span>
             </div>
@@ -1377,13 +1386,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                backgroundColor: '#f1f5f9',
-                color: '#475569',
-                border: '1px solid #e2e8f0',
+                background: 'rgba(255, 255, 255, 0.12)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)'
               }}
               aria-label="Close"
             >
@@ -1436,7 +1447,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
               <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#94a3b8', fontWeight: '800', maxWidth: '460px' }}>
                 Supports all formats: JPG, JPEG, PNG, WEBP, AVIF, HEIC, GIF, BMP, SVG, TIFF, RAW. Directly open in full resolution, erase objects, and download in JPG!
               </p>
-              <span className="touch-btn" style={{ padding: '12px 24px', borderRadius: '12px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '900', fontSize: '13px' }}>
+              <span className="touch-btn" style={{ padding: '12px 28px', borderRadius: '14px', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)', color: '#0b0f19', fontWeight: '900', fontSize: '13px', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: 'inset 0 1px 1px #ffffff, 0 8px 24px rgba(0,0,0,0.35)' }}>
                 Select Image From Device
               </span>
             </div>
