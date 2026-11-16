@@ -2841,3 +2841,33 @@ html, body {
   }
 }
 
+/* Watcher Reminder Alert Dedicated iOS 26 Liquid Glass Card */
+.watcher-alert-card {
+  width: 100% !important;
+  max-width: 480px !important;
+  min-height: auto !important;
+  height: auto !important;
+  max-height: 90vh !important;
+  aspect-ratio: auto !important;
+  background: linear-gradient(150deg, rgba(22, 27, 40, 0.94) 0%, rgba(10, 13, 22, 0.98) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  border-radius: 36px !important;
+  padding: 36px 28px 32px 28px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  box-shadow: inset 0 2px 2px 0 rgba(255, 255, 255, 0.7), inset 0 -1.5px 1.5px 0 rgba(255, 255, 255, 0.08), 0 32px 80px rgba(0, 0, 0, 0.85), 0 0 50px rgba(239, 68, 68, 0.25) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  margin: auto !important;
+}
+
+@media (max-width: 640px) {
+  .watcher-alert-card {
+    padding: 28px 18px 24px 18px !important;
+    border-radius: 28px !important;
+  }
+}
+
