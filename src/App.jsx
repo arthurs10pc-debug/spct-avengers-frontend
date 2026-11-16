@@ -591,6 +591,26 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+// Live Header Clock Component (Self-contained 1000ms clock so root App does not re-render every second)
+const LiveHeaderClock = React.memo(() => {
+  const [clockStr, setClockStr] = useState('');
+
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+      const dateStr = now.toLocaleDateString('en-US', options);
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setClockStr(`${dateStr} | ${timeStr}`);
+    };
+    updateDateTime();
+    const timer = setInterval(updateDateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return <span style={{ color: '#FCD34D', fontWeight: '800' }}>{clockStr || new Date().toLocaleTimeString()}</span>;
+});
+
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -900,8 +920,7 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [directEmailInput, setDirectEmailInput] = useState('');
 
-  // Live Header Date, Day & Time State
-  const [currentDateTimeStr, setCurrentDateTimeStr] = useState('');
+  // Mobile Navigation & Filter State
   const [mobileActiveNav, setMobileActiveNav] = useState('watcher'); // 'watcher' | 'expense' | 'notes' | 'profile'
   const [mobileCategoryFilter, setMobileCategoryFilter] = useState('All'); // 'All' | 'Watcher' | 'Expenses' | 'Notes' | 'Radar'
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
@@ -1843,8 +1862,8 @@ export default function App() {
     // Initial immediate sync
     performCloudSync();
 
-    // 3-second polling ensures 100% sync reliability across phones & laptops even if sockets sleep
-    const interval = setInterval(performCloudSync, 3000);
+    // 25-second background polling ensures 100% sync reliability across phones & laptops without battery drain or micro-stutters
+    const interval = setInterval(performCloudSync, 25000);
 
     const handleReSyncOnForeground = () => {
       if (document.visibilityState === 'visible') {
@@ -1873,20 +1892,6 @@ export default function App() {
     check3x();
     const inv = setInterval(check3x, 300000);
     return () => clearInterval(inv);
-  }, []);
-
-  // Live Header Clock, Date & Day Updater
-  useEffect(() => {
-    const updateDateTime = () => {
-      const now = new Date();
-      const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
-      const dateStr = now.toLocaleDateString('en-US', options);
-      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      setCurrentDateTimeStr(`${dateStr} | ${timeStr}`);
-    };
-    updateDateTime();
-    const timer = setInterval(updateDateTime, 1000);
-    return () => clearInterval(timer);
   }, []);
 
   // Live Trending News Fetcher (Backend Multi-Tier + Direct Client RSS Fallback)
@@ -2022,10 +2027,17 @@ export default function App() {
     }
   }, []);
 
-  // 60-Second Auto-Refresh Engine (Ticks every second, auto-refreshes active tab)
+  // Auto-Refresh Engine (Ticks every second ONLY when Briefing Modal is open; otherwise gentle 3-min background poll)
   useEffect(() => {
     fetchTrendingNews(newsCategory, false);
     fetchIpoData(false);
+
+    if (!showBriefingModal) {
+      const bgTimer = setInterval(() => {
+        fetchTrendingNews(newsCategory, false);
+      }, 180000);
+      return () => clearInterval(bgTimer);
+    }
 
     const timer = setInterval(() => {
       setNewsCountdown(prev => {
@@ -2042,7 +2054,7 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [fetchTrendingNews, fetchIpoData, newsCategory]);
+  }, [fetchTrendingNews, fetchIpoData, newsCategory, showBriefingModal]);
 
   // Load Google Identity Services script
   useEffect(() => {
@@ -4193,7 +4205,7 @@ export default function App() {
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
             <span>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {userProfile ? (userProfile.name?.split(' ')[0] || 'Het') : 'Het'} 👋</span>
             <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '11px' }}>•</span>
-            <span style={{ color: '#FCD34D', fontWeight: '800' }}>{currentDateTimeStr || new Date().toLocaleTimeString()}</span>
+            <LiveHeaderClock />
           </div>
 
           {/* Right Header Actions */}

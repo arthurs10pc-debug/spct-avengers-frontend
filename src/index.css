@@ -2268,6 +2268,10 @@ html, body {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
   backdrop-filter: blur(28px) saturate(190%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+  contain: layout style !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   border-radius: 26px !important;
   padding: 22px 20px !important;
@@ -2609,6 +2613,12 @@ html, body {
     justify-content: space-between !important;
     align-items: flex-start !important;
     box-sizing: border-box !important;
+    backdrop-filter: blur(14px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    backface-visibility: hidden !important;
+    contain: layout style !important;
     box-shadow: inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.65), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.38) !important;
     transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease !important;
   }
@@ -2634,6 +2644,8 @@ html, body {
     width: 36px !important;
     height: 36px !important;
     border-radius: 50% !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .nordic-card-icon-wrap svg,
@@ -2686,19 +2698,41 @@ html, body {
    UNIVERSAL LIQUID GLASS iOS MODALS & SHEETS
    ========================================================================== */
 .modal-overlay {
-  background-color: rgba(5, 7, 12, 0.72) !important;
-  backdrop-filter: blur(28px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  background-color: rgba(5, 7, 12, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  will-change: opacity !important;
+  backface-visibility: hidden !important;
 }
 
 .modal-card {
-  background: linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%) !important;
-  backdrop-filter: blur(32px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+  background: linear-gradient(150deg, rgba(18, 23, 35, 0.96) 0%, rgba(9, 12, 19, 0.98) 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+  will-change: transform !important;
+  backface-visibility: hidden !important;
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
   box-shadow: inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.75) !important;
   color: #F8FAFC !important;
   border-radius: 28px !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
+}
+
+/* Smooth Touch Scrolling For Modals */
+.tools-modal-scroll,
+.expense-modal-card,
+.notes-modal-card,
+.watcher-modal-card,
+.briefing-modal-card,
+.permissions-modal-card,
+.profile-modal-card {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
 }
 
 .modal-card h2,

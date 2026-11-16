@@ -975,7 +975,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => e.preventDefault()}
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.75)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px', cursor: 'pointer' }}
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 7, 12, 0.75)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)', willChange: 'opacity', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: window.innerWidth < 640 ? '6px' : '16px', cursor: 'pointer' }}
     >
       <div 
         onClick={(e) => e.stopPropagation()}
@@ -1006,9 +1006,10 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
           }
         }}
         style={{ 
-          background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.95) 0%, rgba(9, 12, 19, 0.98) 100%)',
-          backdropFilter: 'blur(32px) saturate(190%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+          background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.96) 0%, rgba(9, 12, 19, 0.98) 100%)',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
+          willChange: 'transform',
           borderRadius: '24px', 
           width: '100%', 
           maxWidth: '1120px', 
