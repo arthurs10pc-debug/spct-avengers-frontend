@@ -4198,18 +4198,6 @@ export default function App() {
 
           {/* Right Header Actions */}
           <div className="liquid-glass-header-actions nordic-header-actions">
-            {/* Search Pill */}
-            <div className="liquid-glass-search-box nordic-search-box">
-              <Search size={15} color="rgba(255, 255, 255, 0.7)" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                value={mobileSearchQuery}
-                onChange={(e) => setMobileSearchQuery(e.target.value)}
-                className="liquid-glass-search-input nordic-search-input"
-              />
-            </div>
-
             {/* Direct PWA Push Alert Button (ONLY PLACE TO SETUP PUSH/ALERTS) */}
             <button 
               type="button"
@@ -4251,25 +4239,6 @@ export default function App() {
               )}
               <span className="desktop-only">{userProfile ? (userProfile.name?.split(' ')[0] || 'Profile') : 'Login'}</span>
             </button>
-
-            {/* Radiant Liquid Glass Signature Hard Sync Button */}
-            <button 
-              type="button"
-              className="liquid-glass-sync-btn nordic-sync-btn touch-btn"
-              onClick={() => {
-                try {
-                  if ('caches' in window) {
-                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-                      window.location.reload();
-                    });
-                  } else { window.location.reload(); }
-                } catch(e) { window.location.reload(); }
-              }}
-              title="Hard Hard Refresh & Cache Clear"
-            >
-              <RotateCw size={13} color="#FFFFFF" />
-              <span>SYNC</span>
-            </button>
           </div>
         </div>
       </header>
@@ -4292,59 +4261,6 @@ export default function App() {
               <span>Cloud Telemetry Active • Gujarat Standard Time</span>
             </div>
           </section>
-
-          {/* Quick Category Filter Pills */}
-          <div className="liquid-glass-filter-row nordic-filter-row">
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill active"
-              onClick={() => {}}
-            >
-              ✨ All Workspaces
-            </button>
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill"
-              onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
-            >
-              ⏰ Routines & Watcher
-            </button>
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill"
-              onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
-            >
-              💰 Expenses Vault
-            </button>
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill"
-              onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
-            >
-              📝 Keep Notes
-            </button>
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill"
-              onClick={handleOpenBriefing}
-            >
-              📈 Market & IPO
-            </button>
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill"
-              onClick={() => setShowRoutePanel(true)}
-            >
-              🗺️ Gujarat Radar
-            </button>
-            <button 
-              type="button"
-              className="liquid-glass-filter-pill nordic-filter-pill"
-              onClick={() => setShowPhotoEditModal(true)}
-            >
-              🛠️ AI Studio & Tools
-            </button>
-          </div>
 
           {/* SQUARE-TYPE LIQUID GLASS TILE GRID (2-Col Square on Mobile, 3-Col on Laptop) */}
           <section className="liquid-glass-grid nordic-grid">
