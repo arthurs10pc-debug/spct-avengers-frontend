@@ -4168,79 +4168,56 @@ export default function App() {
   const currentBudgetPct = monthlyBudget > 0 ? Math.min(Math.round((currentMonthSpent / monthlyBudget) * 100), 100) : 0;
 
   return (
-    <div className="app-shell nordic-shell">
+    <div className="app-shell liquid-glass-shell nordic-shell">
       {/* Custom Full-Screen Startup Animation */}
       {showStartupSplash && (
         <ShadowStartupAnimation onComplete={() => setShowStartupSplash(false)} />
       )}
 
-      {/* Dynamic Island on Mobile View (Matching Apple iOS sleek modern pill) */}
-      <div className="nordic-island">
-        <div style={{ fontSize: '12px', fontWeight: '800', color: '#1C1917', width: '45px' }}>
-          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) || '14:35'}
-        </div>
-        <div 
-          className="nordic-island-notch" 
-          onClick={() => { setShowWatcherModal(true); setMobileActiveNav('watcher'); }}
-          title="Dynamic Island: Tap to Open Watcher"
-        >
-          <div className="nordic-lens-dot" />
-          <span className="nordic-pulse-dot" />
-          <span className="nordic-island-text">{nextRemTimeStr || '14:35'}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '55px', justifyContent: 'flex-end' }}>
-          <span style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '-0.3px', color: '#1C1917' }}>5G</span>
-          <Wifi size={13} strokeWidth={2.5} color="#1C1917" />
-          <div style={{ width: '18px', height: '9px', border: '1.2px solid #1C1917', borderRadius: '2.5px', padding: '1px', display: 'flex', alignItems: 'center', position: 'relative' }}>
-            <div style={{ width: '80%', height: '100%', backgroundColor: '#1C1917', borderRadius: '1px' }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Nordic Minimalist Header */}
-      <header className="nordic-header">
-        <div className="nordic-header-inner">
+      {/* Liquid Glass iOS 26 Header */}
+      <header className="liquid-glass-header nordic-header">
+        <div className="liquid-glass-header-inner nordic-header-inner">
           {/* Brand Logo & Title */}
-          <div className="nordic-brand">
-            <div className="nordic-logo-box">
-              <ShadowLogo size={22} color="#FFFFFF" innerColor="#8C4E34" />
+          <div className="liquid-glass-brand nordic-brand">
+            <div className="liquid-glass-logo-box nordic-logo-box">
+              <ShadowLogo size={22} color="#FFFFFF" innerColor="#F59E0B" />
             </div>
-            <div className="nordic-brand-text">
-              <span className="nordic-brand-title">SHADOW</span>
-              <span className="nordic-brand-sub">Daily Hub • Gujarat</span>
+            <div className="liquid-glass-brand-text nordic-brand-text">
+              <span className="liquid-glass-brand-title nordic-brand-title">SHADOW</span>
+              <span className="liquid-glass-brand-sub nordic-brand-sub">Daily Hub • Gujarat</span>
             </div>
           </div>
 
           {/* Center Greeting & Status (Desktop only) */}
-          <div className="nordic-greeting-pill desktop-only">
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block', boxShadow: '0 0 6px #10B981' }} />
+          <div className="liquid-glass-greeting-pill nordic-greeting-pill desktop-only">
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block', boxShadow: '0 0 8px #10B981' }} />
             <span>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, {userProfile ? (userProfile.name?.split(' ')[0] || 'Het') : 'Het'} 👋</span>
-            <span style={{ color: '#78716C', fontSize: '11px' }}>•</span>
-            <span style={{ color: '#8C4E34', fontWeight: '800' }}>{currentDateTimeStr || new Date().toLocaleTimeString()}</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '11px' }}>•</span>
+            <span style={{ color: '#FCD34D', fontWeight: '800' }}>{currentDateTimeStr || new Date().toLocaleTimeString()}</span>
           </div>
 
           {/* Right Header Actions */}
-          <div className="nordic-header-actions">
+          <div className="liquid-glass-header-actions nordic-header-actions">
             {/* Search Pill */}
-            <div className="nordic-search-box">
-              <Search size={15} color="#78716C" />
+            <div className="liquid-glass-search-box nordic-search-box">
+              <Search size={15} color="rgba(255, 255, 255, 0.7)" />
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={mobileSearchQuery}
                 onChange={(e) => setMobileSearchQuery(e.target.value)}
-                className="nordic-search-input"
+                className="liquid-glass-search-input nordic-search-input"
               />
             </div>
 
             {/* Direct PWA Push Alert Button (ONLY PLACE TO SETUP PUSH/ALERTS) */}
             <button 
               type="button"
-              className="nordic-icon-btn touch-btn"
+              className="liquid-glass-icon-btn nordic-icon-btn touch-btn"
               onClick={() => setShowPermissionsModal(true)}
               title="PWA Web Push Notifications & Permissions"
             >
-              <Bell size={17} color={mobilePermissions.notifications === 'granted' || isPushSubscribed ? "#8C4E34" : "#78716C"} />
+              <Bell size={17} color={mobilePermissions.notifications === 'granted' || isPushSubscribed ? "#FCD34D" : "rgba(255, 255, 255, 0.7)"} />
               {(mobilePermissions.notifications === 'granted' || isPushSubscribed) && (
                 <span style={{ position: 'absolute', top: '7px', right: '7px', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10B981', border: '1.5px solid #FFFFFF' }} />
               )}
@@ -4249,17 +4226,17 @@ export default function App() {
             {/* Sound Toggle */}
             <button 
               type="button"
-              className="nordic-icon-btn touch-btn desktop-only"
+              className="liquid-glass-icon-btn nordic-icon-btn touch-btn desktop-only"
               onClick={() => setIsMuted(!isMuted)}
               title={isMuted ? "Unmute Application Sound" : "Mute Sound"}
             >
-              {isMuted ? <VolumeX size={17} color="#EF4444" /> : <Volume2 size={17} color="#8C4E34" />}
+              {isMuted ? <VolumeX size={17} color="#EF4444" /> : <Volume2 size={17} color="#FCD34D" />}
             </button>
 
             {/* User Profile Avatar (ONLY PLACE TO OPEN PROFILE / LOGIN) */}
             <button 
               type="button"
-              className="nordic-profile-pill touch-btn"
+              className="liquid-glass-profile-pill nordic-profile-pill touch-btn"
               onClick={() => {
                 setMobileActiveNav('profile');
                 if (userProfile) setShowProfileModal(true);
@@ -4270,15 +4247,15 @@ export default function App() {
               {userProfile && userProfile.photo ? (
                 <img src={userProfile.photo} alt={userProfile.name} className="nordic-avatar-img" />
               ) : (
-                <UserCircle size={18} color="#8C4E34" />
+                <UserCircle size={18} color="#FCD34D" />
               )}
               <span className="desktop-only">{userProfile ? (userProfile.name?.split(' ')[0] || 'Profile') : 'Login'}</span>
             </button>
 
-            {/* Warm Terracotta Signature Sync Button */}
+            {/* Radiant Liquid Glass Signature Hard Sync Button */}
             <button 
               type="button"
-              className="nordic-sync-btn touch-btn"
+              className="liquid-glass-sync-btn nordic-sync-btn touch-btn"
               onClick={() => {
                 try {
                   if ('caches' in window) {
@@ -4288,7 +4265,7 @@ export default function App() {
                   } else { window.location.reload(); }
                 } catch(e) { window.location.reload(); }
               }}
-              title="Sync UI & Hard Refresh"
+              title="Hard Hard Refresh & Cache Clear"
             >
               <RotateCw size={13} color="#FFFFFF" />
               <span>SYNC</span>
@@ -4297,106 +4274,106 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area - Nordic Stage */}
-      <main className="nordic-main smooth-scroll">
-        <div className="nordic-container">
+      {/* Main Content Area - Liquid Glass Stage */}
+      <main className="liquid-glass-main nordic-main smooth-scroll">
+        <div className="liquid-glass-container nordic-container">
 
-          {/* Quick Routine Glance Banner (Subtle, clean, informative) */}
-          <section className="nordic-glance-banner">
-            <div className="nordic-glance-left">
-              <span className="nordic-glance-tag">UPCOMING FOCUS</span>
+          {/* Quick Routine Glance Banner (Frosted glass focus strip) */}
+          <section className="liquid-glass-glance-banner nordic-glance-banner">
+            <div className="liquid-glass-glance-left nordic-glance-left">
+              <span className="liquid-glass-glance-tag nordic-glance-tag">UPCOMING FOCUS</span>
               <span style={{ fontWeight: '800' }}>
                 "{nextRemTitle || 'Routine Focus'}" at {formatTimeTo12Hour(nextRemTimeStr || '14:28')}
               </span>
-              <span style={{ color: '#8C4E34', fontWeight: '900' }}>({nextCountdownStr})</span>
+              <span style={{ color: '#FCD34D', fontWeight: '900' }}>({nextCountdownStr})</span>
             </div>
-            <div className="nordic-glance-right desktop-only">
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+            <div className="liquid-glass-glance-right nordic-glance-right desktop-only">
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981', boxShadow: '0 0 6px #10B981' }} />
               <span>Cloud Telemetry Active • Gujarat Standard Time</span>
             </div>
           </section>
 
           {/* Quick Category Filter Pills */}
-          <div className="nordic-filter-row">
+          <div className="liquid-glass-filter-row nordic-filter-row">
             <button 
               type="button"
-              className="nordic-filter-pill active"
+              className="liquid-glass-filter-pill nordic-filter-pill active"
               onClick={() => {}}
             >
               ✨ All Workspaces
             </button>
             <button 
               type="button"
-              className="nordic-filter-pill"
+              className="liquid-glass-filter-pill nordic-filter-pill"
               onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); }}
             >
               ⏰ Routines & Watcher
             </button>
             <button 
               type="button"
-              className="nordic-filter-pill"
+              className="liquid-glass-filter-pill nordic-filter-pill"
               onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
             >
               💰 Expenses Vault
             </button>
             <button 
               type="button"
-              className="nordic-filter-pill"
+              className="liquid-glass-filter-pill nordic-filter-pill"
               onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
             >
               📝 Keep Notes
             </button>
             <button 
               type="button"
-              className="nordic-filter-pill"
+              className="liquid-glass-filter-pill nordic-filter-pill"
               onClick={handleOpenBriefing}
             >
               📈 Market & IPO
             </button>
             <button 
               type="button"
-              className="nordic-filter-pill"
+              className="liquid-glass-filter-pill nordic-filter-pill"
               onClick={() => setShowRoutePanel(true)}
             >
               🗺️ Gujarat Radar
             </button>
             <button 
               type="button"
-              className="nordic-filter-pill"
+              className="liquid-glass-filter-pill nordic-filter-pill"
               onClick={() => setShowPhotoEditModal(true)}
             >
               🛠️ AI Studio & Tools
             </button>
           </div>
 
-          {/* MINIMALIST MODERN TILE GRID: Evenly spaced large rounded cards */}
-          <section className="nordic-grid">
+          {/* SQUARE-TYPE LIQUID GLASS TILE GRID (2-Col Square on Mobile, 3-Col on Laptop) */}
+          <section className="liquid-glass-grid nordic-grid">
             
             {/* Tile 1: Daily Routines & Watcher (ONLY PLACE TO OPEN WATCHER) */}
             <div 
-              className="nordic-card touch-btn"
+              className="liquid-glass-card nordic-card touch-btn"
               onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
               title="Open Daily Routines & Watcher"
             >
-              <div className="nordic-card-top">
-                <div className="nordic-card-icon-wrap terracotta">
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap orange-glow terracotta">
                   <Clock size={24} />
                 </div>
-                <span className="nordic-card-badge highlight">
+                <span className="liquid-glass-badge nordic-card-badge highlight">
                   {nextCountdownStr}
                 </span>
               </div>
-              <div className="nordic-card-body">
-                <span className="nordic-card-title">Daily Routines & Watcher</span>
-                <span className="nordic-card-stat">
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Watcher & Routines</span>
+                <span className="liquid-glass-card-stat nordic-card-stat">
                   {formatTimeTo12Hour(nextRemTimeStr || '14:28')}
                 </span>
-                <p className="nordic-card-desc">
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
                   Upcoming target: "{nextRemTitle || 'Routine'}" with automated voice speech alerts.
                 </p>
               </div>
-              <div className="nordic-card-footer">
-                <button type="button" className="nordic-card-btn primary">
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn primary">
                   Open Watcher ➔
                 </button>
               </div>
@@ -4404,38 +4381,37 @@ export default function App() {
 
             {/* Tile 2: Expenses Vault & Budget (ONLY PLACE TO OPEN EXPENSES) */}
             <div 
-              className="nordic-card touch-btn"
+              className="liquid-glass-card nordic-card touch-btn"
               onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
               title="Open Expenses Vault & Monthly Budget"
             >
-              <div className="nordic-card-top">
-                <div className="nordic-card-icon-wrap emerald">
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap emerald-glow emerald">
                   <DollarSign size={24} />
                 </div>
-                <span className="nordic-card-badge">
+                <span className="liquid-glass-badge nordic-card-badge">
                   {currentBudgetPct}% Spent
                 </span>
               </div>
-              <div className="nordic-card-body">
-                <span className="nordic-card-title">Expenses Vault</span>
-                <span className="nordic-card-stat">
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Expenses Vault</span>
+                <span className="liquid-glass-card-stat nordic-card-stat">
                   ₹{currentMonthSpent.toLocaleString('en-IN')}
                 </span>
-                <div className="nordic-progress-bar">
+                <div className="liquid-glass-progress-bar nordic-progress-bar desktop-only">
                   <div 
-                    className="nordic-progress-fill" 
+                    className="liquid-glass-progress-fill nordic-progress-fill" 
                     style={{ 
-                      width: `${currentBudgetPct}%`,
-                      backgroundColor: currentBudgetPct > 90 ? '#EF4444' : '#8C4E34' 
+                      width: `${currentBudgetPct}%`
                     }} 
                   />
                 </div>
-                <p className="nordic-card-desc">
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
                   ₹{Math.max(0, monthlyBudget - currentMonthSpent).toLocaleString('en-IN')} remaining of ₹{monthlyBudget.toLocaleString('en-IN')} monthly budget.
                 </p>
               </div>
-              <div className="nordic-card-footer">
-                <button type="button" className="nordic-card-btn">
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn">
                   Open Ledger ➔
                 </button>
               </div>
@@ -4443,29 +4419,29 @@ export default function App() {
 
             {/* Tile 3: Google Keep Notes (ONLY PLACE TO OPEN NOTES) */}
             <div 
-              className="nordic-card touch-btn"
+              className="liquid-glass-card nordic-card touch-btn"
               onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
               title="Open Google Keep Notes"
             >
-              <div className="nordic-card-top">
-                <div className="nordic-card-icon-wrap amber">
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow amber">
                   <CheckSquare size={24} />
                 </div>
-                <span className="nordic-card-badge">
+                <span className="liquid-glass-badge nordic-card-badge">
                   {notesList.filter(n => n.pinned).length} Pinned
                 </span>
               </div>
-              <div className="nordic-card-body">
-                <span className="nordic-card-title">Google Keep Notes</span>
-                <span className="nordic-card-stat">
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Keep Notes</span>
+                <span className="liquid-glass-card-stat nordic-card-stat">
                   {notesList.length} Notes Saved
                 </span>
-                <p className="nordic-card-desc">
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
                   Cloud synced with 3x daily automated email & Telegram briefings.
                 </p>
               </div>
-              <div className="nordic-card-footer">
-                <button type="button" className="nordic-card-btn">
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn">
                   Open Notes ➔
                 </button>
               </div>
@@ -4473,29 +4449,29 @@ export default function App() {
 
             {/* Tile 4: Market Intel & Live IPO Radar (ONLY PLACE TO OPEN BRIEFING) */}
             <div 
-              className="nordic-card touch-btn"
+              className="liquid-glass-card nordic-card touch-btn"
               onClick={handleOpenBriefing}
               title="Open Market Intel & Live IPO Radar"
             >
-              <div className="nordic-card-top">
-                <div className="nordic-card-icon-wrap blue">
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap blue-glow blue">
                   <TrendingUp size={24} />
                 </div>
-                <span className="nordic-card-badge">
+                <span className="liquid-glass-badge nordic-card-badge">
                   {(ipoData?.live || []).length} Live IPOs
                 </span>
               </div>
-              <div className="nordic-card-body">
-                <span className="nordic-card-title">Market & IPO Intel</span>
-                <span className="nordic-card-stat">
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Market & IPO</span>
+                <span className="liquid-glass-card-stat nordic-card-stat">
                   60s Auto-Sync
                 </span>
-                <p className="nordic-card-desc">
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
                   Global, India, Gujarat breaking news & real-time BSE/NSE IPO bidding tracker.
                 </p>
               </div>
-              <div className="nordic-card-footer">
-                <button type="button" className="nordic-card-btn">
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn">
                   Open Intel ➔
                 </button>
               </div>
@@ -4503,29 +4479,29 @@ export default function App() {
 
             {/* Tile 5: Gujarat Route Radar (ONLY PLACE TO OPEN GUJARAT RADAR) */}
             <div 
-              className="nordic-card touch-btn"
+              className="liquid-glass-card nordic-card touch-btn"
               onClick={() => setShowRoutePanel(true)}
               title="Open Gujarat Route Radar"
             >
-              <div className="nordic-card-top">
-                <div className="nordic-card-icon-wrap terracotta">
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap orange-glow terracotta">
                   <Navigation size={24} />
                 </div>
-                <span className="nordic-card-badge highlight">
+                <span className="liquid-glass-badge nordic-card-badge highlight">
                   {isMonitoringActive ? '● GPS Active' : 'Standby'}
                 </span>
               </div>
-              <div className="nordic-card-body">
-                <span className="nordic-card-title">Gujarat Route Radar</span>
-                <span className="nordic-card-stat">
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Gujarat Radar</span>
+                <span className="liquid-glass-card-stat nordic-card-stat">
                   {isMonitoringActive ? 'Active Route' : 'Ahmedabad ➔ Surat'}
                 </span>
-                <p className="nordic-card-desc">
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
                   Live SG Highway & expressway telemetry, audio traffic announcements & maps.
                 </p>
               </div>
-              <div className="nordic-card-footer">
-                <button type="button" className="nordic-card-btn">
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn">
                   Open Radar ➔
                 </button>
               </div>
@@ -4533,29 +4509,29 @@ export default function App() {
 
             {/* Tile 6: AI Studio & Fast Converters (ONLY PLACE TO OPEN TOOLS) */}
             <div 
-              className="nordic-card touch-btn"
+              className="liquid-glass-card nordic-card touch-btn"
               onClick={() => setShowPhotoEditModal(true)}
               title="Open AI Photo Studio & Utilities"
             >
-              <div className="nordic-card-top">
-                <div className="nordic-card-icon-wrap rose">
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap purple-glow rose">
                   <Wand2 size={24} />
                 </div>
-                <span className="nordic-card-badge">
+                <span className="liquid-glass-badge nordic-card-badge">
                   AI Eraser
                 </span>
               </div>
-              <div className="nordic-card-body">
-                <span className="nordic-card-title">AI Studio & Utilities</span>
-                <span className="nordic-card-stat">
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">AI Studio</span>
+                <span className="liquid-glass-card-stat nordic-card-stat">
                   6 Fast Tools
                 </span>
-                <p className="nordic-card-desc">
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
                   AI object removal canvas, unit converters, format changers & file utilities.
                 </p>
               </div>
-              <div className="nordic-card-footer">
-                <button type="button" className="nordic-card-btn">
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn">
                   Open Studio ➔
                 </button>
               </div>
@@ -4565,9 +4541,9 @@ export default function App() {
 
           {/* Traffic Alert Banner (If Triggered or Active Monitoring) */}
           {(trafficAlertBanner || isMonitoringActive) && (
-            <div className="nordic-glance-banner" style={{ borderLeft: '4px solid #8C4E34' }}>
+            <div className="liquid-glass-glance-banner nordic-glance-banner" style={{ borderLeft: '4px solid #F59E0B' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <AlertTriangle size={20} color={trafficAlertBanner ? "#EF4444" : "#8C4E34"} />
+                <AlertTriangle size={20} color={trafficAlertBanner ? "#EF4444" : "#F59E0B"} />
                 <div>
                   <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '900', color: '#1C1917' }}>
                     {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Live Gujarat Route Monitoring Active'}
