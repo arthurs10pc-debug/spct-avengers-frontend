@@ -3,7 +3,7 @@ import {
   X, Upload, Download, RotateCcw, RotateCw, RefreshCw, 
   Crop, Sun, Paintbrush, Edit2, Eraser, SlidersHorizontal, 
   Wand2, Check, Sparkles, Image as ImageIcon, Plus, Minus,
-  Target, Circle, Copy, Flame, Moon
+  Target, Circle, Copy, Flame, Moon, Scissors
 } from 'lucide-react';
 
 /**
@@ -250,6 +250,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   const cursorRingRef = useRef(null);
   const lastPointRef = useRef(null);
 
+  // Interactive Crop & Aspect Ratio Suite
+  const [cropRect, setCropRect] = useState({ x: 0.05, y: 0.05, w: 0.9, h: 0.9 });
+  const [cropAspect, setCropAspect] = useState('free'); // 'free' | '1:1' | '16:9' | '9:16' | '4:3' | '3:2'
+  const [isCropDragging, setIsCropDragging] = useState(false);
+  const cropDragStartRef = useRef(null);
+
   // Adjustments & Filters
   const [adjustments, setAdjustments] = useState({
     brightness: 0,
@@ -334,6 +340,8 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       setCloneSource(null);
       setBatchMaskCount(0);
       batchBBoxRef.current = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+      setCropRect({ x: 0.05, y: 0.05, w: 0.9, h: 0.9 });
+      setCropAspect('free');
 
       setToastMessage('✓ Image loaded! Brush any object to erase.');
       setTimeout(() => setToastMessage(null), 3000);
@@ -836,6 +844,190 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     setToastMessage('⇆ Flipped Horizontally');
     setTimeout(() => setToastMessage(null), 1500);
   };
+
+  // Handle Aspect Ratio Presets
+  const applyAspectPreset = (aspectKey) => {
+    setCropAspect(aspectKey);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (aspectKey === 'free') return;
+
+    let ratio = 1;
+    if (aspectKey === '1:1') ratio = 1;
+    else if (aspectKey === '16:9') ratio = 16 / 9;
+    else if (aspectKey === '9:16') ratio = 9 / 16;
+    else if (aspectKey === '4:3') ratio = 4 / 3;
+    else if (aspectKey === '3:2') ratio = 3 / 2;
+
+    const imgAspect = canvas.width / canvas.height;
+    let targetW = 0.9;
+    let targetH = 0.9;
+
+    if (ratio >= imgAspect) {
+      targetW = 0.9;
+      targetH = Math.min(0.9, (targetW * imgAspect) / ratio);
+    } else {
+      targetH = 0.9;
+      targetW = Math.min(0.9, (targetH * ratio) / imgAspect);
+    }
+
+    const x = Math.max(0, (1 - targetW) / 2);
+    const y = Math.max(0, (1 - targetH) / 2);
+    setCropRect({ x, y, w: targetW, h: targetH });
+  };
+
+  // Reset crop box to full image
+  const resetCropBox = () => {
+    setCropRect({ x: 0.02, y: 0.02, w: 0.96, h: 0.96 });
+    setCropAspect('free');
+    setToastMessage('↺ Crop box reset to full image');
+    setTimeout(() => setToastMessage(null), 1500);
+  };
+
+  // Execute Crop
+  const applyCrop = () => {
+    const canvas = canvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!canvas || !maskCanvas) return;
+
+    const srcX = Math.max(0, Math.round(cropRect.x * canvas.width));
+    const srcY = Math.max(0, Math.round(cropRect.y * canvas.height));
+    const srcW = Math.max(1, Math.min(canvas.width - srcX, Math.round(cropRect.w * canvas.width)));
+    const srcH = Math.max(1, Math.min(canvas.height - srcY, Math.round(cropRect.h * canvas.height)));
+
+    if (srcW <= 10 || srcH <= 10) {
+      setToastMessage('⚠️ Crop area is too small.');
+      setTimeout(() => setToastMessage(null), 2000);
+      return;
+    }
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = srcW;
+    tempCanvas.height = srcH;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+    canvas.width = srcW;
+    canvas.height = srcH;
+    maskCanvas.width = srcW;
+    maskCanvas.height = srcH;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, srcW, srcH);
+    ctx.drawImage(tempCanvas, 0, 0);
+
+    const maskCtx = maskCanvas.getContext('2d');
+    maskCtx.clearRect(0, 0, srcW, srcH);
+
+    // Reset crop rect for next crop
+    setCropRect({ x: 0.05, y: 0.05, w: 0.9, h: 0.9 });
+    setCropAspect('free');
+
+    pushToHistory();
+    setToastMessage(`✓ Image cropped to ${srcW} × ${srcH}px!`);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  // Crop Pointer Handlers
+  const handleCropPointerDown = (e, mode) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+    cropDragStartRef.current = {
+      mode,
+      clientX,
+      clientY,
+      initialRect: { ...cropRect },
+      canvasRect: canvas.getBoundingClientRect()
+    };
+    setIsCropDragging(true);
+  };
+
+  const handleCropPointerMove = (e) => {
+    if (!cropDragStartRef.current) return;
+    e.stopPropagation();
+    e.preventDefault();
+
+    const { mode, clientX: startX, clientY: startY, initialRect, canvasRect } = cropDragStartRef.current;
+    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+    const dx = (clientX - startX) / canvasRect.width;
+    const dy = (clientY - startY) / canvasRect.height;
+
+    const minSize = 0.05;
+    let { x, y, w, h } = initialRect;
+
+    if (mode === 'move') {
+      x = Math.max(0, Math.min(1 - w, initialRect.x + dx));
+      y = Math.max(0, Math.min(1 - h, initialRect.y + dy));
+    } else {
+      if (mode.includes('e')) {
+        w = Math.max(minSize, Math.min(1 - x, initialRect.w + dx));
+      }
+      if (mode.includes('s')) {
+        h = Math.max(minSize, Math.min(1 - y, initialRect.h + dy));
+      }
+      if (mode.includes('w')) {
+        const newX = Math.max(0, Math.min(initialRect.x + initialRect.w - minSize, initialRect.x + dx));
+        w = initialRect.w + (initialRect.x - newX);
+        x = newX;
+      }
+      if (mode.includes('n')) {
+        const newY = Math.max(0, Math.min(initialRect.y + initialRect.h - minSize, initialRect.y + dy));
+        h = initialRect.h + (initialRect.y - newY);
+        y = newY;
+      }
+
+      // If aspect ratio is locked and not 'free'
+      if (cropAspect !== 'free') {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          let ratio = 1;
+          if (cropAspect === '1:1') ratio = 1;
+          else if (cropAspect === '16:9') ratio = 16 / 9;
+          else if (cropAspect === '9:16') ratio = 9 / 16;
+          else if (cropAspect === '4:3') ratio = 4 / 3;
+          else if (cropAspect === '3:2') ratio = 3 / 2;
+
+          const imgAspect = canvas.width / canvas.height;
+          const targetH = (w * imgAspect) / ratio;
+          if (y + targetH <= 1) {
+            h = targetH;
+          } else {
+            h = 1 - y;
+            w = (h * ratio) / imgAspect;
+          }
+        }
+      }
+    }
+
+    setCropRect({ x, y, w, h });
+  };
+
+  const handleCropPointerUp = () => {
+    cropDragStartRef.current = null;
+    setIsCropDragging(false);
+  };
+
+  // Window listener for smooth drag even outside bounds
+  useEffect(() => {
+    if (!isCropDragging) return;
+    const onMove = (e) => handleCropPointerMove(e);
+    const onUp = () => handleCropPointerUp();
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [isCropDragging, cropAspect]);
 
   // Apply Adjustments
   const applyAdjustmentsToCanvas = () => {
@@ -1560,6 +1752,177 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     display: activeTool === 'ai-erase' ? 'block' : 'none'
                   }}
                 />
+
+                {/* Interactive Pro Crop Box Overlay */}
+                {activeTool === 'crop' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      overflow: 'hidden',
+                      borderRadius: '12px',
+                      pointerEvents: 'auto',
+                      zIndex: 50
+                    }}
+                    onPointerMove={handleCropPointerMove}
+                    onPointerUp={handleCropPointerUp}
+                  >
+                    {/* Darkened backdrop outside crop box using box-shadow */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${cropRect.x * 100}%`,
+                        top: `${cropRect.y * 100}%`,
+                        width: `${cropRect.w * 100}%`,
+                        height: `${cropRect.h * 100}%`,
+                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.65)',
+                        border: '2px solid #ffffff',
+                        cursor: 'move',
+                        boxSizing: 'border-box'
+                      }}
+                      onPointerDown={(e) => handleCropPointerDown(e, 'move')}
+                    >
+                      {/* 3x3 Rule-of-Thirds Grid */}
+                      <div style={{ position: 'absolute', left: '33.333%', top: 0, bottom: 0, width: '1px', backgroundColor: 'rgba(255, 255, 255, 0.4)', pointerEvents: 'none' }} />
+                      <div style={{ position: 'absolute', left: '66.666%', top: 0, bottom: 0, width: '1px', backgroundColor: 'rgba(255, 255, 255, 0.4)', pointerEvents: 'none' }} />
+                      <div style={{ position: 'absolute', top: '33.333%', left: 0, right: 0, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.4)', pointerEvents: 'none' }} />
+                      <div style={{ position: 'absolute', top: '66.666%', left: 0, right: 0, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.4)', pointerEvents: 'none' }} />
+
+                      {/* Top-Left Corner Handle */}
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'nw')}
+                        style={{
+                          position: 'absolute',
+                          top: '-6px',
+                          left: '-6px',
+                          width: '22px',
+                          height: '22px',
+                          borderTop: '4px solid #ffffff',
+                          borderLeft: '4px solid #ffffff',
+                          cursor: 'nwse-resize',
+                          zIndex: 10
+                        }}
+                      />
+
+                      {/* Top-Right Corner Handle */}
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'ne')}
+                        style={{
+                          position: 'absolute',
+                          top: '-6px',
+                          right: '-6px',
+                          width: '22px',
+                          height: '22px',
+                          borderTop: '4px solid #ffffff',
+                          borderRight: '4px solid #ffffff',
+                          cursor: 'nesw-resize',
+                          zIndex: 10
+                        }}
+                      />
+
+                      {/* Bottom-Left Corner Handle */}
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'sw')}
+                        style={{
+                          position: 'absolute',
+                          bottom: '-6px',
+                          left: '-6px',
+                          width: '22px',
+                          height: '22px',
+                          borderBottom: '4px solid #ffffff',
+                          borderLeft: '4px solid #ffffff',
+                          cursor: 'nesw-resize',
+                          zIndex: 10
+                        }}
+                      />
+
+                      {/* Bottom-Right Corner Handle */}
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'se')}
+                        style={{
+                          position: 'absolute',
+                          bottom: '-6px',
+                          right: '-6px',
+                          width: '22px',
+                          height: '22px',
+                          borderBottom: '4px solid #ffffff',
+                          borderRight: '4px solid #ffffff',
+                          cursor: 'nwse-resize',
+                          zIndex: 10
+                        }}
+                      />
+
+                      {/* Edge Handles */}
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'n')}
+                        style={{
+                          position: 'absolute',
+                          top: '-5px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '28px',
+                          height: '6px',
+                          borderRadius: '3px',
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 0 4px rgba(0,0,0,0.6)',
+                          cursor: 'ns-resize',
+                          zIndex: 10
+                        }}
+                      />
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 's')}
+                        style={{
+                          position: 'absolute',
+                          bottom: '-5px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '28px',
+                          height: '6px',
+                          borderRadius: '3px',
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 0 4px rgba(0,0,0,0.6)',
+                          cursor: 'ns-resize',
+                          zIndex: 10
+                        }}
+                      />
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'w')}
+                        style={{
+                          position: 'absolute',
+                          left: '-5px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '6px',
+                          height: '28px',
+                          borderRadius: '3px',
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 0 4px rgba(0,0,0,0.6)',
+                          cursor: 'ew-resize',
+                          zIndex: 10
+                        }}
+                      />
+                      <div
+                        onPointerDown={(e) => handleCropPointerDown(e, 'e')}
+                        style={{
+                          position: 'absolute',
+                          right: '-5px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '6px',
+                          height: '28px',
+                          borderRadius: '3px',
+                          backgroundColor: '#ffffff',
+                          boxShadow: '0 0 4px rgba(0,0,0,0.6)',
+                          cursor: 'ew-resize',
+                          zIndex: 10
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Interactive Live Brush Ring Cursor Preview (Photoshop & Windows Photos Style with Solid Center Dot) */}
@@ -2081,23 +2444,133 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
             {/* SUB-TOOL: Crop & Rotate */}
             {activeTool === 'crop' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
-                <button
-                  type="button"
-                  onClick={handleRotate}
-                  className="touch-btn"
-                  style={{ padding: '8px 14px', borderRadius: '8px', backgroundColor: '#0f172a', color: '#ffffff', border: 'none', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <RotateCw size={14} /> Rotate 90°
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFlipH}
-                  className="touch-btn"
-                  style={{ padding: '8px 14px', borderRadius: '8px', backgroundColor: '#0f172a', color: '#ffffff', border: 'none', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
-                >
-                  Flip Horizontal
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                {/* Row 1: Primary Action & Transform Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                  {/* Left: Apply Crop & Reset Buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={applyCrop}
+                      className="touch-btn"
+                      style={{
+                        padding: '7px 16px',
+                        borderRadius: '8px',
+                        backgroundColor: '#10b981',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '11.5px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
+                      }}
+                    >
+                      <Scissors size={14} />
+                      <span>Apply Crop</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetCropBox}
+                      className="touch-btn"
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#f1f5f9',
+                        color: '#334155',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <RefreshCw size={13} />
+                      <span>Reset Box</span>
+                    </button>
+                  </div>
+
+                  {/* Right: Rotate & Flip */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={handleRotate}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#0f172a',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <RotateCw size={13} />
+                      <span>Rotate 90°</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleFlipH}
+                      className="touch-btn"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#0f172a',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Flip Horizontal
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2: Aspect Ratio Presets */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', backgroundColor: '#f8fafc', padding: '6px 10px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px' }}>
+                    Aspect Ratio:
+                  </span>
+                  {[
+                    { key: 'free', label: 'Free' },
+                    { key: '1:1', label: '1:1 Square' },
+                    { key: '16:9', label: '16:9 Landscape' },
+                    { key: '9:16', label: '9:16 Story/Reel' },
+                    { key: '4:3', label: '4:3 Standard' },
+                    { key: '3:2', label: '3:2 DSLR' }
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => applyAspectPreset(key)}
+                      className="touch-btn"
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: cropAspect === key ? '1.5px solid #0f172a' : '1px solid #cbd5e1',
+                        backgroundColor: cropAspect === key ? '#0f172a' : '#ffffff',
+                        color: cropAspect === key ? '#ffffff' : '#334155',
+                        fontSize: '10.5px',
+                        fontWeight: cropAspect === key ? '900' : '800',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
