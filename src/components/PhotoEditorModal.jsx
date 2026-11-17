@@ -226,7 +226,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   // Premium Brush Modes & Settings
   const [brushMode, setBrushMode] = useState('generative-erase'); // 'generative-erase' | 'spot-heal' | 'clone-stamp' | 'skin-smooth' | 'dodge-burn'
   const [brushSize, setBrushSize] = useState(32);
-  const [brushHardness, setBrushHardness] = useState('soft'); // 'soft' | 'hard'
+  const [brushHardness, setBrushHardness] = useState('hard'); // 'hard' (Solid Crisp Dot) | 'soft' (Feathered)
   const [autoEraseOnRelease, setAutoEraseOnRelease] = useState(true); // true = instant, false = batch
   const [batchMaskCount, setBatchMaskCount] = useState(0);
 
@@ -246,8 +246,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   const [downloadFormat, setDownloadFormat] = useState('jpg'); // Default JPG download as requested
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // Live Brush Cursor overlay
-  const [cursorPos, setCursorPos] = useState({ x: -200, y: -200, visible: false, screenRadius: 16 });
+  // Live Brush Cursor overlay ref (ZERO React re-renders for buttery 120 FPS performance)
+  const cursorRingRef = useRef(null);
+  const lastPointRef = useRef(null);
 
   // Adjustments & Filters
   const [adjustments, setAdjustments] = useState({
@@ -463,16 +464,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     };
   };
 
-  // Update live circular brush cursor preview
-  const handleContainerPointerMove = (e) => {
+  // Update live circular brush cursor preview directly on DOM ref (ZERO React re-renders for buttery 120 FPS)
+  const updateCursorPosition = (clientX, clientY) => {
+    const ring = cursorRingRef.current;
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    if (!canvas || !container || !imageFile) return;
+    if (!ring || !canvas || !container || !imageFile) return;
 
     const contRect = container.getBoundingClientRect();
     const canRect = canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
 
     // Check if pointer is inside canvas area
     const isInsideCanvas = (
@@ -482,16 +482,23 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       clientY <= canRect.bottom
     );
 
+    if (!isInsideCanvas || (activeTool !== 'ai-erase' && activeTool !== 'markup')) {
+      ring.style.display = 'none';
+      return;
+    }
+
     const scale = canRect.width / canvas.width;
     const currentSize = activeTool === 'markup' ? markupSize : brushSize;
     const screenRadius = Math.max(3, Math.round((currentSize / 2) * scale));
+    const diameter = screenRadius * 2;
 
-    setCursorPos({
-      x: clientX - contRect.left,
-      y: clientY - contRect.top,
-      visible: isInsideCanvas && (activeTool === 'ai-erase' || activeTool === 'markup'),
-      screenRadius
-    });
+    ring.style.display = 'block';
+    ring.style.left = `${clientX - contRect.left}px`;
+    ring.style.top = `${clientY - contRect.top}px`;
+    ring.style.width = `${diameter}px`;
+    ring.style.height = `${diameter}px`;
+    ring.style.borderColor = activeTool === 'markup' ? markupColor : '#ec4899';
+    ring.style.backgroundColor = activeTool === 'markup' ? 'rgba(255,255,255,0.08)' : 'rgba(236, 72, 153, 0.15)';
   };
 
   // Pointer Down
@@ -503,6 +510,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
     const coords = getCanvasCoords(e);
     const { x, y } = coords;
+    lastPointRef.current = { x, y };
 
     // Handle Clone Source Picking
     if (activeTool === 'ai-erase' && brushMode === 'clone-stamp' && isPickingCloneSource) {
@@ -515,37 +523,42 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       return;
     }
 
-    strokeBBoxRef.current = { minX: x, maxX: x, minY: y, maxY: y };
+    const r = Math.round(brushSize / 2);
+    strokeBBoxRef.current = { minX: x - r, maxX: x + r, minY: y - r, maxY: y + r };
 
     if (activeTool === 'ai-erase') {
       if (brushMode === 'generative-erase') {
         const maskCanvas = maskCanvasRef.current;
         if (maskCanvas) {
           const maskCtx = maskCanvas.getContext('2d');
-          maskCtx.beginPath();
-          maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-          maskCtx.fillStyle = 'rgba(236, 72, 153, 0.75)'; // Windows Photos Magenta Generative Erase
+          maskCtx.save();
           if (brushHardness === 'soft') {
-            maskCtx.shadowBlur = Math.round(brushSize * 0.35);
-            maskCtx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+            maskCtx.shadowBlur = Math.round(brushSize * 0.25);
+            maskCtx.shadowColor = 'rgba(236, 72, 153, 0.8)';
           } else {
-            maskCtx.shadowBlur = 0;
+            maskCtx.shadowBlur = 0; // Solid crisp dot, zero blurry spread
           }
+          maskCtx.fillStyle = 'rgba(236, 72, 153, 0.88)';
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, r, 0, Math.PI * 2);
           maskCtx.fill();
+          maskCtx.restore();
         }
       } else if (brushMode === 'spot-heal') {
-        // 1-Tap Spot Healer
+        // 1-Tap Spot Healer: solid single dot
         const canvas = canvasRef.current;
         const maskCanvas = maskCanvasRef.current;
         if (canvas && maskCanvas) {
           const maskCtx = maskCanvas.getContext('2d');
           maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-          maskCtx.beginPath();
-          maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+          maskCtx.save();
+          maskCtx.shadowBlur = 0;
           maskCtx.fillStyle = 'rgba(236, 72, 153, 1)';
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, r, 0, Math.PI * 2);
           maskCtx.fill();
+          maskCtx.restore();
 
-          const r = Math.round(brushSize / 2);
           const spotBBox = { minX: x - r, maxX: x + r, minY: y - r, maxY: y + r };
           perfectInpaint(canvas.getContext('2d'), maskCtx, canvas.width, canvas.height, spotBBox);
           maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
@@ -558,12 +571,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       } else if (brushMode === 'skin-smooth') {
         const canvas = canvasRef.current;
         if (canvas) {
-          applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, brushSize / 2);
+          applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, r);
         }
       } else if (brushMode === 'dodge-burn') {
         const canvas = canvasRef.current;
         if (canvas) {
-          applyLocalDodgeBurn(canvas.getContext('2d'), x, y, brushSize / 2, dodgeBurnType === 'burn');
+          applyLocalDodgeBurn(canvas.getContext('2d'), x, y, r, dodgeBurnType === 'burn');
         }
       }
     } else if (activeTool === 'markup') {
@@ -580,62 +593,97 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     }
   };
 
-  // Pointer Move
+  // Pointer Move (Zero-delay hardware accelerated drawing)
   const handlePointerMove = (e) => {
-    handleContainerPointerMove(e);
+    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    updateCursorPosition(clientX, clientY);
+
     if (!isPointerDownRef.current || !imageFile || isProcessing) return;
     e.preventDefault();
 
     const { x, y } = getCanvasCoords(e);
+    const r = brushSize / 2;
     const bbox = strokeBBoxRef.current;
-    bbox.minX = Math.min(bbox.minX, x - brushSize);
-    bbox.maxX = Math.max(bbox.maxX, x + brushSize);
-    bbox.minY = Math.min(bbox.minY, y - brushSize);
-    bbox.maxY = Math.max(bbox.maxY, y + brushSize);
+    bbox.minX = Math.min(bbox.minX, x - r);
+    bbox.maxX = Math.max(bbox.maxX, x + r);
+    bbox.minY = Math.min(bbox.minY, y - r);
+    bbox.maxY = Math.max(bbox.maxY, y + r);
 
     if (activeTool === 'ai-erase') {
       if (brushMode === 'generative-erase') {
         const maskCanvas = maskCanvasRef.current;
-        if (maskCanvas) {
+        if (maskCanvas && lastPointRef.current) {
           const maskCtx = maskCanvas.getContext('2d');
-          maskCtx.beginPath();
-          maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-          maskCtx.fillStyle = 'rgba(236, 72, 153, 0.75)';
+          maskCtx.save();
           if (brushHardness === 'soft') {
-            maskCtx.shadowBlur = Math.round(brushSize * 0.35);
-            maskCtx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+            maskCtx.shadowBlur = Math.round(brushSize * 0.25);
+            maskCtx.shadowColor = 'rgba(236, 72, 153, 0.8)';
           } else {
-            maskCtx.shadowBlur = 0;
+            maskCtx.shadowBlur = 0; // Solid crisp stroke, zero blurry spread
           }
+          maskCtx.fillStyle = 'rgba(236, 72, 153, 0.88)';
+          maskCtx.strokeStyle = 'rgba(236, 72, 153, 0.88)';
+          maskCtx.lineWidth = brushSize;
+          maskCtx.lineCap = 'round';
+          maskCtx.lineJoin = 'round';
+
+          // Continuous solid line connecting previous point and current point
+          maskCtx.beginPath();
+          maskCtx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
+          maskCtx.lineTo(x, y);
+          maskCtx.stroke();
+
+          // Round solid cap at current point
+          maskCtx.beginPath();
+          maskCtx.arc(x, y, r, 0, Math.PI * 2);
           maskCtx.fill();
+          maskCtx.restore();
         }
+        lastPointRef.current = { x, y };
       } else if (brushMode === 'clone-stamp') {
-        if (!cloneSource || !cloneDragStartRef.current) return;
+        if (!cloneSource || !cloneDragStartRef.current || !lastPointRef.current) return;
         const canvas = canvasRef.current;
         if (canvas) {
           const ctx = canvas.getContext('2d');
-          const dx = x - cloneDragStartRef.current.x;
-          const dy = y - cloneDragStartRef.current.y;
-          const srcX = cloneSource.x + dx;
-          const srcY = cloneSource.y + dy;
-          const r = brushSize / 2;
+          const step = Math.max(3, r / 3);
+          const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
+          const steps = Math.max(1, Math.ceil(dist / step));
 
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.clip();
-          ctx.drawImage(canvas, srcX - r, srcY - r, brushSize, brushSize, x - r, y - r, brushSize, brushSize);
-          ctx.restore();
+          for (let s = 1; s <= steps; s++) {
+            const px = lastPointRef.current.x + (x - lastPointRef.current.x) * (s / steps);
+            const py = lastPointRef.current.y + (y - lastPointRef.current.y) * (s / steps);
+            const dx = px - cloneDragStartRef.current.x;
+            const dy = py - cloneDragStartRef.current.y;
+            const srcX = cloneSource.x + dx;
+            const srcY = cloneSource.y + dy;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(canvas, srcX - r, srcY - r, brushSize, brushSize, px - r, py - r, brushSize, brushSize);
+            ctx.restore();
+          }
         }
+        lastPointRef.current = { x, y };
       } else if (brushMode === 'skin-smooth') {
         const canvas = canvasRef.current;
-        if (canvas) {
-          applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, brushSize / 2);
+        if (canvas && lastPointRef.current) {
+          const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
+          if (dist >= Math.max(6, brushSize / 4)) {
+            applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, r);
+            lastPointRef.current = { x, y };
+          }
         }
       } else if (brushMode === 'dodge-burn') {
         const canvas = canvasRef.current;
-        if (canvas) {
-          applyLocalDodgeBurn(canvas.getContext('2d'), x, y, brushSize / 2, dodgeBurnType === 'burn');
+        if (canvas && lastPointRef.current) {
+          const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
+          if (dist >= Math.max(6, brushSize / 4)) {
+            applyLocalDodgeBurn(canvas.getContext('2d'), x, y, r, dodgeBurnType === 'burn');
+            lastPointRef.current = { x, y };
+          }
         }
       }
     } else if (activeTool === 'markup') {
@@ -653,6 +701,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     setIsDrawing(false);
+    lastPointRef.current = null;
     cloneDragStartRef.current = null;
 
     if (activeTool === 'markup' || (activeTool === 'ai-erase' && brushMode !== 'generative-erase' && brushMode !== 'spot-heal')) {
@@ -1408,8 +1457,10 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         {/* WORKSPACE AREA */}
         <div 
           ref={containerRef}
-          onPointerMove={handleContainerPointerMove}
-          onPointerLeave={() => setCursorPos(prev => ({ ...prev, visible: false }))}
+          onPointerMove={(e) => updateCursorPosition(e.clientX, e.clientY)}
+          onPointerLeave={() => {
+            if (cursorRingRef.current) cursorRingRef.current.style.display = 'none';
+          }}
           style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', backgroundColor: '#090d16' }}
         >
           
@@ -1466,60 +1517,73 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 touchAction: 'none'
               }}
             >
-              {/* Main Image Canvas */}
-              <canvas
-                ref={canvasRef}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
+              {/* Perfectly coincident wrapper for Main Canvas and Mask Canvas */}
+              <div
                 style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
-                  cursor: isPickingCloneSource ? 'crosshair' : (activeTool === 'ai-erase' || activeTool === 'markup' ? 'none' : 'default'),
-                  touchAction: 'none'
+                  maxHeight: '100%'
                 }}
-              />
+              >
+                {/* Main Image Canvas */}
+                <canvas
+                  ref={canvasRef}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+                    cursor: isPickingCloneSource ? 'crosshair' : (activeTool === 'ai-erase' || activeTool === 'markup' ? 'none' : 'default'),
+                    touchAction: 'none'
+                  }}
+                />
 
-              {/* Overlay Mask Canvas for Live Glowing Erase Highlight */}
-              <canvas
-                ref={maskCanvasRef}
-                style={{
-                  position: 'absolute',
-                  pointerEvents: 'none',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain',
-                  borderRadius: '12px',
-                  display: activeTool === 'ai-erase' ? 'block' : 'none'
-                }}
-              />
-
-              {/* Interactive Live Brush Ring Cursor Preview (Photoshop & Windows Photos Style) */}
-              {cursorPos.visible && (
-                <div
+                {/* Overlay Mask Canvas for Live Glowing Erase Highlight */}
+                <canvas
+                  ref={maskCanvasRef}
                   style={{
                     position: 'absolute',
-                    left: `${cursorPos.x}px`,
-                    top: `${cursorPos.y}px`,
-                    transform: 'translate(-50%, -50%)',
-                    width: `${cursorPos.screenRadius * 2}px`,
-                    height: `${cursorPos.screenRadius * 2}px`,
-                    borderRadius: '50%',
-                    border: activeTool === 'markup' ? `2px solid ${markupColor}` : '2px solid #ec4899',
-                    boxShadow: '0 0 6px rgba(0,0,0,0.8), inset 0 0 6px rgba(236,72,153,0.3)',
-                    backgroundColor: activeTool === 'markup' ? 'rgba(255,255,255,0.1)' : 'rgba(236, 72, 153, 0.15)',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
                     pointerEvents: 'none',
-                    zIndex: 60,
-                    transition: 'width 0.05s ease-out, height 0.05s ease-out'
+                    borderRadius: '12px',
+                    display: activeTool === 'ai-erase' ? 'block' : 'none'
                   }}
-                >
-                  <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '3px', height: '3px', borderRadius: '50%', backgroundColor: '#ffffff' }} />
-                </div>
-              )}
+                />
+              </div>
+
+              {/* Interactive Live Brush Ring Cursor Preview (Photoshop & Windows Photos Style with Solid Center Dot) */}
+              <div
+                ref={cursorRingRef}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  transform: 'translate(-50%, -50%)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '2px solid #ec4899',
+                  boxShadow: '0 0 6px rgba(0,0,0,0.8), inset 0 0 4px rgba(236,72,153,0.3)',
+                  backgroundColor: 'rgba(236, 72, 153, 0.15)',
+                  pointerEvents: 'none',
+                  zIndex: 60,
+                  display: 'none',
+                  willChange: 'left, top, width, height'
+                }}
+              >
+                <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#ffffff', boxShadow: '0 0 2px #000000' }} />
+              </div>
 
               {/* Clone Source Target Marker */}
               {cloneSource && brushMode === 'clone-stamp' && (
@@ -1973,25 +2037,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     ))}
                   </div>
 
-                  {/* Brush Hardness / Feathering */}
+                  {/* Brush Hardness / Solid vs Soft */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', marginRight: '4px' }}>Edge:</span>
-                    <button
-                      type="button"
-                      onClick={() => setBrushHardness('soft')}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        border: brushHardness === 'soft' ? 'none' : '1px solid #cbd5e1',
-                        backgroundColor: brushHardness === 'soft' ? '#0f172a' : '#ffffff',
-                        color: brushHardness === 'soft' ? '#ffffff' : '#334155',
-                        fontSize: '10.5px',
-                        fontWeight: '900',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Feathered (Soft)
-                    </button>
                     <button
                       type="button"
                       onClick={() => setBrushHardness('hard')}
@@ -2006,7 +2054,23 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                         cursor: 'pointer'
                       }}
                     >
-                      Sharp (Hard)
+                      ● Solid (Crisp Dot)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBrushHardness('soft')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: brushHardness === 'soft' ? 'none' : '1px solid #cbd5e1',
+                        backgroundColor: brushHardness === 'soft' ? '#0f172a' : '#ffffff',
+                        color: brushHardness === 'soft' ? '#ffffff' : '#334155',
+                        fontSize: '10.5px',
+                        fontWeight: '900',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Soft (Feathered)
                     </button>
                   </div>
 
