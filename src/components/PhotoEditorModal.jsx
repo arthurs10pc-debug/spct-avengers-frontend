@@ -7,12 +7,12 @@ import {
 } from 'lucide-react';
 
 /**
- * High-Precision Boundary-Guided AI Inpainting (Windows Photos Generative Erase style)
- * Samples exclusively from the unmasked outer perimeter, guaranteeing 100% removal
- * of the target object with zero color bleeding, and synthesizes seamless background gradients.
+ * High-Precision Harmonic Laplace & Mask-Dilated AI Inpainter
+ * Completely eliminates color-bleeding, rainbow glitches, scanline banding and grid artifacts.
+ * Dilates the mask to engulf all anti-aliased edges and diffuses pure background seamlessly.
  */
 function perfectInpaint(ctx, maskCtx, width, height, bbox) {
-  const pad = 18;
+  const pad = Math.max(30, Math.round(Math.max(bbox.maxX - bbox.minX, bbox.maxY - bbox.minY) * 0.2));
   const x0 = Math.max(0, bbox.minX - pad);
   const x1 = Math.min(width - 1, bbox.maxX + pad);
   const y0 = Math.max(0, bbox.minY - pad);
@@ -20,19 +20,20 @@ function perfectInpaint(ctx, maskCtx, width, height, bbox) {
   const rw = x1 - x0 + 1;
   const rh = y1 - y0 + 1;
 
-  if (rw <= 0 || rh <= 0) return;
+  if (rw <= 2 || rh <= 2) return;
 
-  const imgData = ctx.getImageData(0, 0, width, height);
-  const maskData = maskCtx.getImageData(0, 0, width, height);
+  const imgData = ctx.getImageData(x0, y0, rw, rh);
+  const maskData = maskCtx.getImageData(x0, y0, rw, rh);
   const img = imgData.data;
   const mask = maskData.data;
 
+  // 1. Build initial binary mask
   const isMask = new Uint8Array(rw * rh);
   let maskCount = 0;
 
   for (let y = 0; y < rh; y++) {
     for (let x = 0; x < rw; x++) {
-      const idx = ((y0 + y) * width + (x0 + x)) * 4;
+      const idx = (y * rw + x) * 4;
       if (mask[idx + 3] > 20 || mask[idx] > 20) {
         isMask[y * rw + x] = 1;
         maskCount++;
@@ -42,83 +43,138 @@ function perfectInpaint(ctx, maskCtx, width, height, bbox) {
 
   if (maskCount === 0) return;
 
-  // Identify all boundary source pixels (unmasked pixels directly adjacent to the erased mask)
-  const boundarySources = [];
-  const searchDist = 3;
-
+  // 2. Morphological dilation of 3px: Engulfs all anti-aliased edge halos of the removed object!
+  const dilatedMask = new Uint8Array(rw * rh);
+  const dilateRad = 3;
   for (let y = 0; y < rh; y++) {
     for (let x = 0; x < rw; x++) {
-      if (isMask[y * rw + x] === 0) {
-        let isBoundary = false;
-        for (let dy = -searchDist; dy <= searchDist; dy++) {
+      if (isMask[y * rw + x] === 1) {
+        for (let dy = -dilateRad; dy <= dilateRad; dy++) {
           const ny = y + dy;
           if (ny < 0 || ny >= rh) continue;
-          for (let dx = -searchDist; dx <= searchDist; dx++) {
+          for (let dx = -dilateRad; dx <= dilateRad; dx++) {
             const nx = x + dx;
             if (nx < 0 || nx >= rw) continue;
-            if (isMask[ny * rw + nx] === 1) {
-              isBoundary = true;
-              break;
-            }
+            dilatedMask[ny * rw + nx] = 1;
           }
-          if (isBoundary) break;
         }
+      }
+    }
+  }
 
-        if (isBoundary) {
-          const srcIdx = ((y0 + y) * width + (x0 + x)) * 4;
-          boundarySources.push({
+  // 3. Extract pure background boundary pixels outside dilated perimeter
+  const boundaryList = [];
+  for (let y = 0; y < rh; y++) {
+    for (let x = 0; x < rw; x++) {
+      if (dilatedMask[y * rw + x] === 0) {
+        let near = false;
+        if (x > 0 && dilatedMask[y * rw + (x - 1)] === 1) near = true;
+        else if (x < rw - 1 && dilatedMask[y * rw + (x + 1)] === 1) near = true;
+        else if (y > 0 && dilatedMask[(y - 1) * rw + x] === 1) near = true;
+        else if (y < rh - 1 && dilatedMask[(y + 1) * rw + x] === 1) near = true;
+
+        if (near) {
+          const pIdx = (y * rw + x) * 4;
+          boundaryList.push({
             x, y,
-            r: img[srcIdx],
-            g: img[srcIdx + 1],
-            b: img[srcIdx + 2]
+            r: img[pIdx],
+            g: img[pIdx + 1],
+            b: img[pIdx + 2]
           });
         }
       }
     }
   }
 
-  if (boundarySources.length === 0) return;
+  if (boundaryList.length === 0) return;
 
-  // Thin out boundary sources if too dense for ultra-fast processing (< 50ms)
-  const step = boundarySources.length > 500 ? Math.ceil(boundarySources.length / 500) : 1;
-  const sampledSources = [];
-  for (let i = 0; i < boundarySources.length; i += step) {
-    sampledSources.push(boundarySources[i]);
+  // 4. Compute boundary average color and standard deviation (for subtle photo grain)
+  let avgR = 0, avgG = 0, avgB = 0;
+  for (let i = 0; i < boundaryList.length; i++) {
+    avgR += boundaryList[i].r;
+    avgG += boundaryList[i].g;
+    avgB += boundaryList[i].b;
+  }
+  avgR /= boundaryList.length;
+  avgG /= boundaryList.length;
+  avgB /= boundaryList.length;
+
+  let varSum = 0;
+  for (let i = 0; i < boundaryList.length; i++) {
+    const diff = boundaryList[i].r - avgR;
+    varSum += diff * diff;
+  }
+  const stdDev = Math.min(3, Math.sqrt(varSum / boundaryList.length));
+
+  // 5. Build seed points for smooth initial gradient (uniformly distributed, no scanline banding)
+  const maxSeeds = 90;
+  const seedStep = Math.max(1, Math.floor(boundaryList.length / maxSeeds));
+  const seeds = [];
+  for (let i = 0; i < boundaryList.length; i += seedStep) {
+    seeds.push(boundaryList[i]);
   }
 
-  // Synthesize background for all masked pixels using inverse distance weighting
+  const rGrid = new Float32Array(rw * rh);
+  const gGrid = new Float32Array(rw * rh);
+  const bGrid = new Float32Array(rw * rh);
+
   for (let y = 0; y < rh; y++) {
     for (let x = 0; x < rw; x++) {
-      if (isMask[y * rw + x] === 1) {
-        let rSum = 0, gSum = 0, bSum = 0, wSum = 0;
-
-        for (let i = 0; i < sampledSources.length; i++) {
-          const b = sampledSources[i];
-          const distSq = (x - b.x) * (x - b.x) + (y - b.y) * (y - b.y);
-          if (distSq === 0) continue;
-          
-          // Inverse cube distance for smooth natural gradient blending
-          const w = 1 / (distSq * Math.sqrt(distSq));
-          rSum += b.r * w;
-          gSum += b.g * w;
-          bSum += b.b * w;
-          wSum += w;
+      const idx = y * rw + x;
+      const pIdx = idx * 4;
+      if (dilatedMask[idx] === 0) {
+        rGrid[idx] = img[pIdx];
+        gGrid[idx] = img[pIdx + 1];
+        bGrid[idx] = img[pIdx + 2];
+      } else {
+        let rW = 0, gW = 0, bW = 0, totW = 0;
+        for (let s = 0; s < seeds.length; s++) {
+          const sd = seeds[s];
+          const distSq = (x - sd.x) * (x - sd.x) + (y - sd.y) * (y - sd.y) + 4;
+          const w = 1 / distSq;
+          rW += sd.r * w;
+          gW += sd.g * w;
+          bW += sd.b * w;
+          totW += w;
         }
+        rGrid[idx] = totW > 0 ? (rW / totW) : avgR;
+        gGrid[idx] = totW > 0 ? (gW / totW) : avgG;
+        bGrid[idx] = totW > 0 ? (bW / totW) : avgB;
+      }
+    }
+  }
 
-        const targetIdx = ((y0 + y) * width + (x0 + x)) * 4;
-        if (wSum > 0) {
-          // Subtle natural grain matching camera sensors
-          const grain = (Math.random() - 0.5) * 3;
-          img[targetIdx] = Math.min(255, Math.max(0, Math.round(rSum / wSum + grain)));
-          img[targetIdx + 1] = Math.min(255, Math.max(0, Math.round(gSum / wSum + grain)));
-          img[targetIdx + 2] = Math.min(255, Math.max(0, Math.round(bSum / wSum + grain)));
-          img[targetIdx + 3] = 255;
+  // 6. Laplace Harmonic Diffusion: 45 iterations for flawless C-inf gradient smoothness
+  for (let it = 0; it < 45; it++) {
+    for (let y = 1; y < rh - 1; y++) {
+      const yRow = y * rw;
+      for (let x = 1; x < rw - 1; x++) {
+        const idx = yRow + x;
+        if (dilatedMask[idx] === 1) {
+          rGrid[idx] = 0.25 * (rGrid[idx - 1] + rGrid[idx + 1] + rGrid[idx - rw] + rGrid[idx + rw]);
+          gGrid[idx] = 0.25 * (gGrid[idx - 1] + gGrid[idx + 1] + gGrid[idx - rw] + gGrid[idx + rw]);
+          bGrid[idx] = 0.25 * (bGrid[idx - 1] + bGrid[idx + 1] + bGrid[idx - rw] + bGrid[idx + rw]);
         }
       }
     }
   }
 
-  ctx.putImageData(imgData, 0, 0);
+  // 7. Write back to image buffer with matching natural grain
+  for (let y = 0; y < rh; y++) {
+    for (let x = 0; x < rw; x++) {
+      const idx = y * rw + x;
+      if (dilatedMask[idx] === 1) {
+        const pIdx = idx * 4;
+        const grain = stdDev > 0.4 ? (Math.random() - 0.5) * stdDev : 0;
+        img[pIdx] = Math.min(255, Math.max(0, Math.round(rGrid[idx] + grain)));
+        img[pIdx + 1] = Math.min(255, Math.max(0, Math.round(gGrid[idx] + grain)));
+        img[pIdx + 2] = Math.min(255, Math.max(0, Math.round(bGrid[idx] + grain)));
+        img[pIdx + 3] = 255;
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, x0, y0);
 }
 
 /**
@@ -476,10 +532,8 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
   const updateCursorPosition = (clientX, clientY) => {
     const ring = cursorRingRef.current;
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!ring || !canvas || !container || !imageFile) return;
+    if (!ring || !canvas || !imageFile) return;
 
-    const contRect = container.getBoundingClientRect();
     const canRect = canvas.getBoundingClientRect();
 
     // Check if pointer is inside canvas area
@@ -495,23 +549,22 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       return;
     }
 
-    const scale = canRect.width / canvas.width;
     const currentSize = activeTool === 'markup' ? markupSize : brushSize;
-    const screenRadius = Math.max(3, Math.round((currentSize / 2) * scale));
-    const diameter = screenRadius * 2;
 
     ring.style.display = 'block';
-    ring.style.left = `${clientX - contRect.left}px`;
-    ring.style.top = `${clientY - contRect.top}px`;
-    ring.style.width = `${diameter}px`;
-    ring.style.height = `${diameter}px`;
+    ring.style.left = `${clientX - canRect.left}px`;
+    ring.style.top = `${clientY - canRect.top}px`;
+    ring.style.width = `${currentSize}px`;
+    ring.style.height = `${currentSize}px`;
     ring.style.borderColor = activeTool === 'markup' ? markupColor : '#ec4899';
-    ring.style.backgroundColor = activeTool === 'markup' ? 'rgba(255,255,255,0.08)' : 'rgba(236, 72, 153, 0.15)';
+    ring.style.backgroundColor = activeTool === 'markup' ? 'rgba(255,255,255,0.08)' : 'rgba(236, 72, 153, 0.18)';
   };
 
   // Pointer Down
   const handlePointerDown = (e) => {
     if (!imageFile || isProcessing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     e.preventDefault();
     isPointerDownRef.current = true;
     setIsDrawing(true);
@@ -519,6 +572,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     const coords = getCanvasCoords(e);
     const { x, y } = coords;
     lastPointRef.current = { x, y };
+
+    const canRect = canvas.getBoundingClientRect();
+    const currentSize = activeTool === 'markup' ? markupSize : brushSize;
+    const canvasScale = canRect.width > 0 ? (canvas.width / canRect.width) : 1;
+    const canvasBrushSize = Math.max(1, Math.round(currentSize * canvasScale));
+    const r = Math.max(1, Math.round(canvasBrushSize / 2));
 
     // Handle Clone Source Picking
     if (activeTool === 'ai-erase' && brushMode === 'clone-stamp' && isPickingCloneSource) {
@@ -531,7 +590,6 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       return;
     }
 
-    const r = Math.round(brushSize / 2);
     strokeBBoxRef.current = { minX: x - r, maxX: x + r, minY: y - r, maxY: y + r };
 
     if (activeTool === 'ai-erase') {
@@ -541,7 +599,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
           const maskCtx = maskCanvas.getContext('2d');
           maskCtx.save();
           if (brushHardness === 'soft') {
-            maskCtx.shadowBlur = Math.round(brushSize * 0.25);
+            maskCtx.shadowBlur = Math.round(canvasBrushSize * 0.25);
             maskCtx.shadowColor = 'rgba(236, 72, 153, 0.8)';
           } else {
             maskCtx.shadowBlur = 0; // Solid crisp dot, zero blurry spread
@@ -554,7 +612,6 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         }
       } else if (brushMode === 'spot-heal') {
         // 1-Tap Spot Healer: solid single dot
-        const canvas = canvasRef.current;
         const maskCanvas = maskCanvasRef.current;
         if (canvas && maskCanvas) {
           const maskCtx = maskCanvas.getContext('2d');
@@ -577,27 +634,18 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
       } else if (brushMode === 'clone-stamp') {
         cloneDragStartRef.current = { x, y };
       } else if (brushMode === 'skin-smooth') {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, r);
-        }
+        applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, r);
       } else if (brushMode === 'dodge-burn') {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          applyLocalDodgeBurn(canvas.getContext('2d'), x, y, r, dodgeBurnType === 'burn');
-        }
+        applyLocalDodgeBurn(canvas.getContext('2d'), x, y, r, dodgeBurnType === 'burn');
       }
     } else if (activeTool === 'markup') {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.strokeStyle = markupColor;
-        ctx.lineWidth = markupSize;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-      }
+      const ctx = canvas.getContext('2d');
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.strokeStyle = markupColor;
+      ctx.lineWidth = canvasBrushSize;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
     }
   };
 
@@ -608,10 +656,17 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
     updateCursorPosition(clientX, clientY);
 
     if (!isPointerDownRef.current || !imageFile || isProcessing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     e.preventDefault();
 
+    const canRect = canvas.getBoundingClientRect();
+    const currentSize = activeTool === 'markup' ? markupSize : brushSize;
+    const canvasScale = canRect.width > 0 ? (canvas.width / canRect.width) : 1;
+    const canvasBrushSize = Math.max(1, Math.round(currentSize * canvasScale));
+    const r = Math.max(1, Math.round(canvasBrushSize / 2));
+
     const { x, y } = getCanvasCoords(e);
-    const r = brushSize / 2;
     const bbox = strokeBBoxRef.current;
     bbox.minX = Math.min(bbox.minX, x - r);
     bbox.maxX = Math.max(bbox.maxX, x + r);
@@ -625,14 +680,14 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
           const maskCtx = maskCanvas.getContext('2d');
           maskCtx.save();
           if (brushHardness === 'soft') {
-            maskCtx.shadowBlur = Math.round(brushSize * 0.25);
+            maskCtx.shadowBlur = Math.round(canvasBrushSize * 0.25);
             maskCtx.shadowColor = 'rgba(236, 72, 153, 0.8)';
           } else {
             maskCtx.shadowBlur = 0; // Solid crisp stroke, zero blurry spread
           }
           maskCtx.fillStyle = 'rgba(236, 72, 153, 0.88)';
           maskCtx.strokeStyle = 'rgba(236, 72, 153, 0.88)';
-          maskCtx.lineWidth = brushSize;
+          maskCtx.lineWidth = canvasBrushSize;
           maskCtx.lineCap = 'round';
           maskCtx.lineJoin = 'round';
 
@@ -651,56 +706,48 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         lastPointRef.current = { x, y };
       } else if (brushMode === 'clone-stamp') {
         if (!cloneSource || !cloneDragStartRef.current || !lastPointRef.current) return;
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          const step = Math.max(3, r / 3);
-          const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
-          const steps = Math.max(1, Math.ceil(dist / step));
+        const ctx = canvas.getContext('2d');
+        const step = Math.max(3, r / 3);
+        const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
+        const steps = Math.max(1, Math.ceil(dist / step));
 
-          for (let s = 1; s <= steps; s++) {
-            const px = lastPointRef.current.x + (x - lastPointRef.current.x) * (s / steps);
-            const py = lastPointRef.current.y + (y - lastPointRef.current.y) * (s / steps);
-            const dx = px - cloneDragStartRef.current.x;
-            const dy = py - cloneDragStartRef.current.y;
-            const srcX = cloneSource.x + dx;
-            const srcY = cloneSource.y + dy;
+        for (let s = 1; s <= steps; s++) {
+          const px = lastPointRef.current.x + (x - lastPointRef.current.x) * (s / steps);
+          const py = lastPointRef.current.y + (y - lastPointRef.current.y) * (s / steps);
+          const dx = px - cloneDragStartRef.current.x;
+          const dy = py - cloneDragStartRef.current.y;
+          const srcX = cloneSource.x + dx;
+          const srcY = cloneSource.y + dy;
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(px, py, r, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.drawImage(canvas, srcX - r, srcY - r, brushSize, brushSize, px - r, py - r, brushSize, brushSize);
-            ctx.restore();
-          }
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(canvas, srcX - r, srcY - r, canvasBrushSize, canvasBrushSize, px - r, py - r, canvasBrushSize, canvasBrushSize);
+          ctx.restore();
         }
         lastPointRef.current = { x, y };
       } else if (brushMode === 'skin-smooth') {
-        const canvas = canvasRef.current;
-        if (canvas && lastPointRef.current) {
+        if (lastPointRef.current) {
           const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
-          if (dist >= Math.max(6, brushSize / 4)) {
+          if (dist >= Math.max(6, canvasBrushSize / 4)) {
             applyLocalSkinSmoothing(canvas.getContext('2d'), x, y, r);
             lastPointRef.current = { x, y };
           }
         }
       } else if (brushMode === 'dodge-burn') {
-        const canvas = canvasRef.current;
-        if (canvas && lastPointRef.current) {
+        if (lastPointRef.current) {
           const dist = Math.hypot(x - lastPointRef.current.x, y - lastPointRef.current.y);
-          if (dist >= Math.max(6, brushSize / 4)) {
+          if (dist >= Math.max(6, canvasBrushSize / 4)) {
             applyLocalDodgeBurn(canvas.getContext('2d'), x, y, r, dodgeBurnType === 'burn');
             lastPointRef.current = { x, y };
           }
         }
       }
     } else if (activeTool === 'markup') {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
+      const ctx = canvas.getContext('2d');
+      ctx.lineTo(x, y);
+      ctx.stroke();
     }
   };
 
@@ -1310,11 +1357,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
         />
 
         {/* TOP BAR: Title, Windows Photos Toolbar, Undo/Redo & Download */}
-        <div style={{ padding: '10px 16px', background: 'rgba(255, 255, 255, 0.06)', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', zIndex: 10 }}>
+        <div style={{ padding: '10px 16px', background: 'linear-gradient(180deg, rgba(22, 27, 40, 0.95) 0%, rgba(14, 18, 28, 0.92) 100%)', backdropFilter: 'blur(24px) saturate(190%)', WebkitBackdropFilter: 'blur(24px) saturate(190%)', borderBottom: '1px solid rgba(255, 255, 255, 0.16)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', zIndex: 10 }}>
           
           {/* Logo & Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)', border: '1px solid rgba(255, 255, 255, 0.35)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.6), 0 6px 18px rgba(236,72,153,0.35)' }}>
               <Wand2 size={20} />
             </div>
             <div>
@@ -1327,9 +1374,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Windows 10/11 Pro Photos Style Tools Bar (Matching Image 5) */}
+          {/* Windows 10/11 Pro Photos Style Tools Bar (Apple iOS 26 Liquid Glass) */}
           {imageFile && (
-            <div className="tools-modal-scroll" style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+            <div className="tools-modal-scroll" style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', padding: '4px 6px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.20)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.35), 0 4px 16px rgba(0,0,0,0.3)', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
               
               {/* 1. AI Generative Erase (Primary Highlighted Star Feature!) */}
               <button
@@ -1338,22 +1385,23 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="AI Object Eraser / Generative Erase (Brush to remove unwanted objects)"
                 style={{
-                  minHeight: '36px',
+                  minHeight: '34px',
                   padding: '6px 14px',
-                  borderRadius: '9px',
-                  border: 'none',
+                  borderRadius: '9999px',
+                  border: activeTool === 'ai-erase' ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid transparent',
                   backgroundColor: activeTool === 'ai-erase' ? '#ec4899' : 'transparent',
-                  color: activeTool === 'ai-erase' ? '#ffffff' : '#0f172a',
+                  color: activeTool === 'ai-erase' ? '#ffffff' : 'rgba(255, 255, 255, 0.75)',
                   fontSize: '11.5px',
                   fontWeight: '900',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  boxShadow: activeTool === 'ai-erase' ? '0 2px 10px rgba(236,72,153,0.3)' : 'none'
+                  boxShadow: activeTool === 'ai-erase' ? 'inset 0 1.5px 1.5px rgba(255,255,255,0.7), 0 4px 16px rgba(236,72,153,0.45)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <Eraser size={16} />
+                <Eraser size={15} />
                 <span>AI Brush Studio</span>
               </button>
 
@@ -1364,18 +1412,20 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Crop & Rotate"
                 style={{
-                  minHeight: '36px',
+                  minHeight: '34px',
                   padding: '6px 12px',
-                  borderRadius: '9px',
-                  border: 'none',
-                  backgroundColor: activeTool === 'crop' ? '#0f172a' : 'transparent',
-                  color: activeTool === 'crop' ? '#ffffff' : '#475569',
+                  borderRadius: '9999px',
+                  border: activeTool === 'crop' ? '1px solid rgba(255, 255, 255, 0.35)' : '1px solid transparent',
+                  backgroundColor: activeTool === 'crop' ? 'rgba(255, 255, 255, 0.20)' : 'transparent',
+                  color: activeTool === 'crop' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                   fontSize: '11px',
                   fontWeight: '900',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px'
+                  gap: '5px',
+                  boxShadow: activeTool === 'crop' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <Crop size={15} />
@@ -1389,18 +1439,20 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Brightness & Contrast"
                 style={{
-                  minHeight: '36px',
+                  minHeight: '34px',
                   padding: '6px 12px',
-                  borderRadius: '9px',
-                  border: 'none',
-                  backgroundColor: activeTool === 'adjust' ? '#0f172a' : 'transparent',
-                  color: activeTool === 'adjust' ? '#ffffff' : '#475569',
+                  borderRadius: '9999px',
+                  border: activeTool === 'adjust' ? '1px solid rgba(255, 255, 255, 0.35)' : '1px solid transparent',
+                  backgroundColor: activeTool === 'adjust' ? 'rgba(255, 255, 255, 0.20)' : 'transparent',
+                  color: activeTool === 'adjust' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                   fontSize: '11px',
                   fontWeight: '900',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px'
+                  gap: '5px',
+                  boxShadow: activeTool === 'adjust' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <Sun size={15} />
@@ -1414,18 +1466,20 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Color Filters"
                 style={{
-                  minHeight: '36px',
+                  minHeight: '34px',
                   padding: '6px 12px',
-                  borderRadius: '9px',
-                  border: 'none',
-                  backgroundColor: activeTool === 'filter' ? '#0f172a' : 'transparent',
-                  color: activeTool === 'filter' ? '#ffffff' : '#475569',
+                  borderRadius: '9999px',
+                  border: activeTool === 'filter' ? '1px solid rgba(255, 255, 255, 0.35)' : '1px solid transparent',
+                  backgroundColor: activeTool === 'filter' ? 'rgba(255, 255, 255, 0.20)' : 'transparent',
+                  color: activeTool === 'filter' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                   fontSize: '11px',
                   fontWeight: '900',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px'
+                  gap: '5px',
+                  boxShadow: activeTool === 'filter' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <Paintbrush size={15} />
@@ -1439,18 +1493,20 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Pen & Drawing"
                 style={{
-                  minHeight: '36px',
+                  minHeight: '34px',
                   padding: '6px 12px',
-                  borderRadius: '9px',
-                  border: 'none',
-                  backgroundColor: activeTool === 'markup' ? '#0f172a' : 'transparent',
-                  color: activeTool === 'markup' ? '#ffffff' : '#475569',
+                  borderRadius: '9999px',
+                  border: activeTool === 'markup' ? '1px solid rgba(255, 255, 255, 0.35)' : '1px solid transparent',
+                  backgroundColor: activeTool === 'markup' ? 'rgba(255, 255, 255, 0.20)' : 'transparent',
+                  color: activeTool === 'markup' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                   fontSize: '11px',
                   fontWeight: '900',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px'
+                  gap: '5px',
+                  boxShadow: activeTool === 'markup' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <Edit2 size={15} />
@@ -1464,18 +1520,20 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 className="touch-btn"
                 title="Background Blur"
                 style={{
-                  minHeight: '36px',
+                  minHeight: '34px',
                   padding: '6px 12px',
-                  borderRadius: '9px',
-                  border: 'none',
-                  backgroundColor: activeTool === 'blur' ? '#0f172a' : 'transparent',
-                  color: activeTool === 'blur' ? '#ffffff' : '#475569',
+                  borderRadius: '9999px',
+                  border: activeTool === 'blur' ? '1px solid rgba(255, 255, 255, 0.35)' : '1px solid transparent',
+                  backgroundColor: activeTool === 'blur' ? 'rgba(255, 255, 255, 0.20)' : 'transparent',
+                  color: activeTool === 'blur' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                   fontSize: '11px',
                   fontWeight: '900',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px'
+                  gap: '5px',
+                  boxShadow: activeTool === 'blur' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <SlidersHorizontal size={15} />
@@ -1497,14 +1555,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   style={{
                     width: '36px',
                     height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#f1f5f9',
-                    color: historyIndex > 0 ? '#0f172a' : '#cbd5e1',
-                    border: '1px solid #e2e8f0',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                    color: historyIndex > 0 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.20)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: historyIndex > 0 ? 'pointer' : 'not-allowed'
+                    cursor: historyIndex > 0 ? 'pointer' : 'not-allowed',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)'
                   }}
                 >
                   <RotateCcw size={16} />
@@ -1519,14 +1578,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   style={{
                     width: '36px',
                     height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#f1f5f9',
-                    color: historyIndex < historyStack.length - 1 ? '#0f172a' : '#cbd5e1',
-                    border: '1px solid #e2e8f0',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                    color: historyIndex < historyStack.length - 1 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.20)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: historyIndex < historyStack.length - 1 ? 'pointer' : 'not-allowed'
+                    cursor: historyIndex < historyStack.length - 1 ? 'pointer' : 'not-allowed',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)'
                   }}
                 >
                   <RotateCw size={16} />
@@ -1540,31 +1600,32 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   style={{
                     width: '36px',
                     height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#f1f5f9',
-                    color: '#64748b',
-                    border: '1px solid #e2e8f0',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                    color: 'rgba(255, 255, 255, 0.75)',
+                    border: '1px solid rgba(255, 255, 255, 0.20)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)'
                   }}
                 >
                   <RefreshCw size={16} />
                 </button>
 
                 {/* Format Selector: JPG (Default) / PNG */}
-                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.08)', padding: '2px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.20)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.25)' }}>
                   <button
                     type="button"
                     onClick={() => setDownloadFormat('jpg')}
                     title="Download as JPG (Standard photo format)"
                     style={{
-                      padding: '4px 8px',
-                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '9999px',
                       border: 'none',
-                      backgroundColor: downloadFormat === 'jpg' ? '#0f172a' : 'transparent',
-                      color: downloadFormat === 'jpg' ? '#ffffff' : '#64748b',
+                      backgroundColor: downloadFormat === 'jpg' ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+                      color: downloadFormat === 'jpg' ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
                       fontSize: '10.5px',
                       fontWeight: '900',
                       cursor: 'pointer'
@@ -1577,11 +1638,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     onClick={() => setDownloadFormat('png')}
                     title="Download as PNG (Lossless format)"
                     style={{
-                      padding: '4px 8px',
-                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '9999px',
                       border: 'none',
-                      backgroundColor: downloadFormat === 'png' ? '#0f172a' : 'transparent',
-                      color: downloadFormat === 'png' ? '#ffffff' : '#64748b',
+                      backgroundColor: downloadFormat === 'png' ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+                      color: downloadFormat === 'png' ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
                       fontSize: '10.5px',
                       fontWeight: '900',
                       cursor: 'pointer'
@@ -1600,7 +1661,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   style={{
                     minHeight: '36px',
                     padding: '0 16px',
-                    borderRadius: '10px',
+                    borderRadius: '9999px',
                     backgroundColor: '#0f172a',
                     color: '#ffffff',
                     border: 'none',
@@ -1691,8 +1752,8 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
               <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#94a3b8', fontWeight: '800', maxWidth: '460px' }}>
                 Supports all formats: JPG, JPEG, PNG, WEBP, AVIF, HEIC, GIF, BMP, SVG, TIFF, RAW. Directly open in full resolution, erase objects, and download in JPG!
               </p>
-              <span className="touch-btn" style={{ padding: '12px 28px', borderRadius: '14px', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)', color: '#0b0f19', fontWeight: '900', fontSize: '13px', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: 'inset 0 1px 1px #ffffff, 0 8px 24px rgba(0,0,0,0.35)' }}>
-                Select Image From Device
+              <span className="touch-btn" style={{ padding: '12px 32px', borderRadius: '9999px', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.06) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', color: '#ffffff', fontWeight: '900', fontSize: '13.5px', border: '1px solid rgba(255, 255, 255, 0.35)', boxShadow: 'inset 0 1.5px 1.5px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1), 0 10px 30px rgba(0,0,0,0.45)', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <Upload size={16} /> Select Image From Device
               </span>
             </div>
           ) : (
@@ -1752,6 +1813,29 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     display: activeTool === 'ai-erase' ? 'block' : 'none'
                   }}
                 />
+
+                {/* Interactive Live Brush Ring Cursor Preview (Photoshop & Windows Photos Style with Solid Center Dot) */}
+                <div
+                  ref={cursorRingRef}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    transform: 'translate(-50%, -50%)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: '2px solid #ec4899',
+                    boxShadow: '0 0 6px rgba(0,0,0,0.8), inset 0 0 4px rgba(236,72,153,0.3)',
+                    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+                    pointerEvents: 'none',
+                    zIndex: 60,
+                    display: 'none',
+                    willChange: 'left, top, width, height'
+                  }}
+                >
+                  <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#ffffff', boxShadow: '0 0 2px #000000' }} />
+                </div>
 
                 {/* Interactive Pro Crop Box Overlay */}
                 {activeTool === 'crop' && (
@@ -1925,29 +2009,6 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 )}
               </div>
 
-              {/* Interactive Live Brush Ring Cursor Preview (Photoshop & Windows Photos Style with Solid Center Dot) */}
-              <div
-                ref={cursorRingRef}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  transform: 'translate(-50%, -50%)',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  border: '2px solid #ec4899',
-                  boxShadow: '0 0 6px rgba(0,0,0,0.8), inset 0 0 4px rgba(236,72,153,0.3)',
-                  backgroundColor: 'rgba(236, 72, 153, 0.15)',
-                  pointerEvents: 'none',
-                  zIndex: 60,
-                  display: 'none',
-                  willChange: 'left, top, width, height'
-                }}
-              >
-                <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#ffffff', boxShadow: '0 0 2px #000000' }} />
-              </div>
-
               {/* Clone Source Target Marker */}
               {cloneSource && brushMode === 'clone-stamp' && (
                 <div
@@ -2075,9 +2136,9 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
         </div>
 
-        {/* BOTTOM PRO SUB-TOOLBAR: Interactive Controls for Active Tool */}
+        {/* BOTTOM PRO SUB-TOOLBAR: Interactive Controls for Active Tool (Apple iOS 26 Liquid Glass) */}
         {imageFile && (
-          <div style={{ padding: '10px 16px', backgroundColor: '#ffffff', borderTop: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10 }}>
+          <div style={{ padding: '12px 16px', background: 'linear-gradient(180deg, rgba(22, 27, 40, 0.95) 0%, rgba(10, 13, 22, 0.98) 100%)', backdropFilter: 'blur(28px) saturate(190%)', WebkitBackdropFilter: 'blur(28px) saturate(190%)', borderTop: '1px solid rgba(255, 255, 255, 0.16)', boxShadow: 'inset 0 1.5px 1.5px rgba(255, 255, 255, 0.25), 0 -8px 30px rgba(0, 0, 0, 0.5)', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10 }}>
             
             {/* SUB-TOOL: AI Erase & Premium Brush Suite */}
             {activeTool === 'ai-erase' && (
@@ -2086,7 +2147,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 {/* ROW 1: Premium Brush Modes Pills */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                   <div className="tools-modal-scroll" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
-                    <span style={{ fontSize: '10.5px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '10.5px', fontWeight: '900', color: 'rgba(255, 255, 255, 0.65)', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px', flexShrink: 0 }}>
                       Brush Tool:
                     </span>
 
@@ -2096,17 +2157,19 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={() => { setBrushMode('generative-erase'); setIsPickingCloneSource(false); }}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: brushMode === 'generative-erase' ? 'none' : '1px solid #e2e8f0',
-                        backgroundColor: brushMode === 'generative-erase' ? '#ec4899' : '#f8fafc',
-                        color: brushMode === 'generative-erase' ? '#ffffff' : '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        border: brushMode === 'generative-erase' ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushMode === 'generative-erase' ? '#ec4899' : 'rgba(255, 255, 255, 0.08)',
+                        color: '#ffffff',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '5px',
+                        boxShadow: brushMode === 'generative-erase' ? 'inset 0 1.5px 1.5px rgba(255,255,255,0.7), 0 4px 16px rgba(236,72,153,0.45)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       <Sparkles size={13} />
@@ -2119,17 +2182,19 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={() => { setBrushMode('spot-heal'); setIsPickingCloneSource(false); }}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: brushMode === 'spot-heal' ? 'none' : '1px solid #e2e8f0',
-                        backgroundColor: brushMode === 'spot-heal' ? '#0f172a' : '#f8fafc',
-                        color: brushMode === 'spot-heal' ? '#ffffff' : '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        border: brushMode === 'spot-heal' ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushMode === 'spot-heal' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+                        color: brushMode === 'spot-heal' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '5px',
+                        boxShadow: brushMode === 'spot-heal' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       <Target size={13} />
@@ -2145,17 +2210,19 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       }}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: brushMode === 'clone-stamp' ? 'none' : '1px solid #e2e8f0',
-                        backgroundColor: brushMode === 'clone-stamp' ? '#0f172a' : '#f8fafc',
-                        color: brushMode === 'clone-stamp' ? '#ffffff' : '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        border: brushMode === 'clone-stamp' ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushMode === 'clone-stamp' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+                        color: brushMode === 'clone-stamp' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '5px',
+                        boxShadow: brushMode === 'clone-stamp' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       <Copy size={13} />
@@ -2168,17 +2235,19 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={() => { setBrushMode('skin-smooth'); setIsPickingCloneSource(false); }}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: brushMode === 'skin-smooth' ? 'none' : '1px solid #e2e8f0',
-                        backgroundColor: brushMode === 'skin-smooth' ? '#0f172a' : '#f8fafc',
-                        color: brushMode === 'skin-smooth' ? '#ffffff' : '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        border: brushMode === 'skin-smooth' ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushMode === 'skin-smooth' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+                        color: brushMode === 'skin-smooth' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '5px',
+                        boxShadow: brushMode === 'skin-smooth' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       <Circle size={13} />
@@ -2191,17 +2260,19 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={() => { setBrushMode('dodge-burn'); setIsPickingCloneSource(false); }}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: brushMode === 'dodge-burn' ? 'none' : '1px solid #e2e8f0',
-                        backgroundColor: brushMode === 'dodge-burn' ? '#0f172a' : '#f8fafc',
-                        color: brushMode === 'dodge-burn' ? '#ffffff' : '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        border: brushMode === 'dodge-burn' ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushMode === 'dodge-burn' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+                        color: brushMode === 'dodge-burn' ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '5px'
+                        gap: '5px',
+                        boxShadow: brushMode === 'dodge-burn' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       <Flame size={13} />
@@ -2212,17 +2283,17 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                   {/* Mode Specific Quick Options */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {brushMode === 'generative-erase' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '3px 8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '900' }}>Mode:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(255, 255, 255, 0.08)', padding: '3px 8px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.18)' }}>
+                        <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.65)', fontWeight: '900' }}>Mode:</span>
                         <button
                           type="button"
                           onClick={() => setAutoEraseOnRelease(true)}
                           style={{
-                            padding: '3px 8px',
-                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
                             border: 'none',
                             backgroundColor: autoEraseOnRelease ? '#ec4899' : 'transparent',
-                            color: autoEraseOnRelease ? '#ffffff' : '#64748b',
+                            color: autoEraseOnRelease ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                             fontSize: '10px',
                             fontWeight: '900',
                             cursor: 'pointer'
@@ -2234,11 +2305,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                           type="button"
                           onClick={() => setAutoEraseOnRelease(false)}
                           style={{
-                            padding: '3px 8px',
-                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
                             border: 'none',
-                            backgroundColor: !autoEraseOnRelease ? '#0f172a' : 'transparent',
-                            color: !autoEraseOnRelease ? '#ffffff' : '#64748b',
+                            backgroundColor: !autoEraseOnRelease ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+                            color: !autoEraseOnRelease ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                             fontSize: '10px',
                             fontWeight: '900',
                             cursor: 'pointer'
@@ -2254,17 +2325,18 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                         type="button"
                         onClick={() => setIsPickingCloneSource(true)}
                         style={{
-                          padding: '5px 12px',
-                          borderRadius: '8px',
-                          border: isPickingCloneSource ? '2px solid #38bdf8' : '1px solid #cbd5e1',
-                          backgroundColor: isPickingCloneSource ? '#0284c7' : '#f8fafc',
-                          color: isPickingCloneSource ? '#ffffff' : '#0f172a',
+                          padding: '5px 14px',
+                          borderRadius: '9999px',
+                          border: isPickingCloneSource ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.22)',
+                          backgroundColor: isPickingCloneSource ? 'rgba(2, 132, 199, 0.8)' : 'rgba(255, 255, 255, 0.10)',
+                          color: '#ffffff',
                           fontSize: '10.5px',
                           fontWeight: '900',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '5px'
+                          gap: '5px',
+                          boxShadow: isPickingCloneSource ? '0 0 12px rgba(56,189,248,0.5)' : 'none'
                         }}
                       >
                         <Target size={13} />
@@ -2273,16 +2345,16 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     )}
 
                     {brushMode === 'dodge-burn' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px 6px', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(255, 255, 255, 0.08)', padding: '3px 6px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.18)' }}>
                         <button
                           type="button"
                           onClick={() => setDodgeBurnType('dodge')}
                           style={{
-                            padding: '3px 8px',
-                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
                             border: 'none',
                             backgroundColor: dodgeBurnType === 'dodge' ? '#f59e0b' : 'transparent',
-                            color: dodgeBurnType === 'dodge' ? '#ffffff' : '#64748b',
+                            color: dodgeBurnType === 'dodge' ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                             fontSize: '10px',
                             fontWeight: '900',
                             cursor: 'pointer'
@@ -2294,11 +2366,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                           type="button"
                           onClick={() => setDodgeBurnType('burn')}
                           style={{
-                            padding: '3px 8px',
-                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
                             border: 'none',
-                            backgroundColor: dodgeBurnType === 'burn' ? '#0f172a' : 'transparent',
-                            color: dodgeBurnType === 'burn' ? '#ffffff' : '#64748b',
+                            backgroundColor: dodgeBurnType === 'burn' ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+                            color: dodgeBurnType === 'burn' ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                             fontSize: '10px',
                             fontWeight: '900',
                             cursor: 'pointer'
@@ -2315,11 +2387,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={() => fileInputRef.current?.click()}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: '#f1f5f9',
-                        color: '#0f172a',
-                        border: '1px solid #cbd5e1',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                        color: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.22)',
+                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)',
                         fontSize: '10.5px',
                         fontWeight: '900',
                         cursor: 'pointer'
@@ -2331,11 +2404,11 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 </div>
 
                 {/* ROW 2: Complete Brush Size & Feathering Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', backgroundColor: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '8px 14px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.16)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)' }}>
                   
                   {/* Continuous Slider with Steppers */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px', maxWidth: '420px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '900', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       Size:
                     </span>
 
@@ -2343,7 +2416,7 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     <button
                       type="button"
                       onClick={() => setBrushSize(prev => Math.max(4, prev - 4))}
-                      style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', cursor: 'pointer' }}
+                      style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', cursor: 'pointer', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)' }}
                       title="Decrease Size (-4px)"
                     >
                       <Minus size={13} />
@@ -2363,21 +2436,21 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     <button
                       type="button"
                       onClick={() => setBrushSize(prev => Math.min(160, prev + 4))}
-                      style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a', cursor: 'pointer' }}
+                      style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', cursor: 'pointer', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)' }}
                       title="Increase Size (+4px)"
                     >
                       <Plus size={13} />
                     </button>
 
                     {/* Exact Size Badge */}
-                    <div style={{ minWidth: '42px', height: '26px', padding: '0 6px', borderRadius: '6px', backgroundColor: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: '900', color: '#ffffff' }}>
+                    <div style={{ minWidth: '44px', height: '26px', padding: '0 8px', borderRadius: '9999px', backgroundColor: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10.5px', fontWeight: '900', color: '#ffffff', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5), 0 2px 8px rgba(236,72,153,0.4)' }}>
                       {brushSize}px
                     </div>
                   </div>
 
                   {/* Quick Preset Size Chips */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', marginRight: '2px' }}>Presets:</span>
+                    <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.65)', fontWeight: '900', marginRight: '2px' }}>Presets:</span>
                     {sizePresets.map(preset => (
                       <button
                         key={preset.val}
@@ -2385,14 +2458,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                         onClick={() => setBrushSize(preset.val)}
                         title={preset.title}
                         style={{
-                          padding: '4px 9px',
-                          borderRadius: '6px',
-                          border: brushSize === preset.val ? '1.5px solid #ec4899' : '1px solid #cbd5e1',
-                          backgroundColor: brushSize === preset.val ? '#fdf2f8' : '#ffffff',
-                          color: brushSize === preset.val ? '#ec4899' : '#334155',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          border: brushSize === preset.val ? '1px solid #ec4899' : '1px solid rgba(255, 255, 255, 0.18)',
+                          backgroundColor: brushSize === preset.val ? 'rgba(236, 72, 153, 0.3)' : 'rgba(255, 255, 255, 0.08)',
+                          color: brushSize === preset.val ? '#ffffff' : 'rgba(255, 255, 255, 0.75)',
                           fontSize: '10.5px',
                           fontWeight: brushSize === preset.val ? '900' : '800',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          boxShadow: brushSize === preset.val ? '0 0 10px rgba(236,72,153,0.4)' : 'none'
                         }}
                       >
                         {preset.label}
@@ -2402,19 +2476,20 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
                   {/* Brush Hardness / Solid vs Soft */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', marginRight: '4px' }}>Edge:</span>
+                    <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.65)', fontWeight: '900', marginRight: '4px' }}>Edge:</span>
                     <button
                       type="button"
                       onClick={() => setBrushHardness('hard')}
                       style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        border: brushHardness === 'hard' ? 'none' : '1px solid #cbd5e1',
-                        backgroundColor: brushHardness === 'hard' ? '#0f172a' : '#ffffff',
-                        color: brushHardness === 'hard' ? '#ffffff' : '#334155',
+                        padding: '4px 12px',
+                        borderRadius: '9999px',
+                        border: brushHardness === 'hard' ? '1px solid rgba(255, 255, 255, 0.45)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushHardness === 'hard' ? 'rgba(255, 255, 255, 0.24)' : 'rgba(255, 255, 255, 0.06)',
+                        color: brushHardness === 'hard' ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                         fontSize: '10.5px',
                         fontWeight: '900',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        boxShadow: brushHardness === 'hard' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none'
                       }}
                     >
                       ● Solid (Crisp Dot)
@@ -2423,14 +2498,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       type="button"
                       onClick={() => setBrushHardness('soft')}
                       style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        border: brushHardness === 'soft' ? 'none' : '1px solid #cbd5e1',
-                        backgroundColor: brushHardness === 'soft' ? '#0f172a' : '#ffffff',
-                        color: brushHardness === 'soft' ? '#ffffff' : '#334155',
+                        padding: '4px 12px',
+                        borderRadius: '9999px',
+                        border: brushHardness === 'soft' ? '1px solid rgba(255, 255, 255, 0.45)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: brushHardness === 'soft' ? 'rgba(255, 255, 255, 0.24)' : 'rgba(255, 255, 255, 0.06)',
+                        color: brushHardness === 'soft' ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                         fontSize: '10.5px',
                         fontWeight: '900',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        boxShadow: brushHardness === 'soft' ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none'
                       }}
                     >
                       Soft (Feathered)
@@ -2454,18 +2530,18 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={applyCrop}
                       className="touch-btn"
                       style={{
-                        padding: '7px 16px',
-                        borderRadius: '8px',
-                        backgroundColor: '#10b981',
+                        padding: '7px 18px',
+                        borderRadius: '9999px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                         color: '#ffffff',
-                        border: 'none',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
                         fontSize: '11.5px',
                         fontWeight: '900',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
-                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
+                        boxShadow: 'inset 0 1.5px 1.5px rgba(255,255,255,0.6), 0 4px 16px rgba(16, 185, 129, 0.45)'
                       }}
                     >
                       <Scissors size={14} />
@@ -2477,11 +2553,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={resetCropBox}
                       className="touch-btn"
                       style={{
-                        padding: '7px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: '#f1f5f9',
-                        color: '#334155',
-                        border: '1px solid #cbd5e1',
+                        padding: '7px 14px',
+                        borderRadius: '9999px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.10)',
+                        color: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.20)',
+                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
@@ -2502,11 +2579,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={handleRotate}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.10)',
                         color: '#ffffff',
-                        border: 'none',
+                        border: '1px solid rgba(255, 255, 255, 0.20)',
+                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer',
@@ -2523,11 +2601,12 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={handleFlipH}
                       className="touch-btn"
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: '#0f172a',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.10)',
                         color: '#ffffff',
-                        border: 'none',
+                        border: '1px solid rgba(255, 255, 255, 0.20)',
+                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3)',
                         fontSize: '11px',
                         fontWeight: '900',
                         cursor: 'pointer'
@@ -2539,8 +2618,8 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                 </div>
 
                 {/* Row 2: Aspect Ratio Presets */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', backgroundColor: '#f8fafc', padding: '6px 10px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', backgroundColor: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '6px 12px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.16)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)' }}>
+                  <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.65)', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px' }}>
                     Aspect Ratio:
                   </span>
                   {[
@@ -2557,14 +2636,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                       onClick={() => applyAspectPreset(key)}
                       className="touch-btn"
                       style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        border: cropAspect === key ? '1.5px solid #0f172a' : '1px solid #cbd5e1',
-                        backgroundColor: cropAspect === key ? '#0f172a' : '#ffffff',
-                        color: cropAspect === key ? '#ffffff' : '#334155',
+                        padding: '4px 12px',
+                        borderRadius: '9999px',
+                        border: cropAspect === key ? '1px solid rgba(255, 255, 255, 0.45)' : '1px solid rgba(255, 255, 255, 0.15)',
+                        backgroundColor: cropAspect === key ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                        color: cropAspect === key ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
                         fontSize: '10.5px',
                         fontWeight: cropAspect === key ? '900' : '800',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        boxShadow: cropAspect === key ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none'
                       }}
                     >
                       {label}
@@ -2576,45 +2656,45 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
             {/* SUB-TOOL: Adjustments */}
             {activeTool === 'adjust' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '8px 14px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.16)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900' }}>Brightness</span>
+                  <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '900' }}>Brightness</span>
                   <input
                     type="range"
                     min="-50"
                     max="50"
                     value={adjustments.brightness}
                     onChange={(e) => setAdjustments(prev => ({ ...prev, brightness: parseInt(e.target.value, 10) }))}
-                    style={{ width: '80px', accentColor: '#0f172a' }}
+                    style={{ width: '80px', accentColor: '#38bdf8' }}
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900' }}>Contrast</span>
+                  <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '900' }}>Contrast</span>
                   <input
                     type="range"
                     min="-50"
                     max="50"
                     value={adjustments.contrast}
                     onChange={(e) => setAdjustments(prev => ({ ...prev, contrast: parseInt(e.target.value, 10) }))}
-                    style={{ width: '80px', accentColor: '#0f172a' }}
+                    style={{ width: '80px', accentColor: '#38bdf8' }}
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '900' }}>Saturation</span>
+                  <span style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '900' }}>Saturation</span>
                   <input
                     type="range"
                     min="-50"
                     max="50"
                     value={adjustments.saturation}
                     onChange={(e) => setAdjustments(prev => ({ ...prev, saturation: parseInt(e.target.value, 10) }))}
-                    style={{ width: '80px', accentColor: '#0f172a' }}
+                    style={{ width: '80px', accentColor: '#38bdf8' }}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={applyAdjustmentsToCanvas}
                   className="touch-btn"
-                  style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: '#0f172a', color: '#ffffff', border: 'none', fontSize: '11px', fontWeight: '900', cursor: 'pointer', marginLeft: 'auto' }}
+                  style={{ padding: '7px 18px', borderRadius: '9999px', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.35)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: '900', cursor: 'pointer', marginLeft: 'auto' }}
                 >
                   Apply Adjustments
                 </button>
@@ -2631,14 +2711,15 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
                     onClick={() => applyFilterPreset(f)}
                     className="touch-btn"
                     style={{
-                      padding: '7px 12px',
-                      borderRadius: '8px',
-                      border: activeFilter === f ? 'none' : '1px solid #e2e8f0',
-                      backgroundColor: activeFilter === f ? '#0f172a' : '#f8fafc',
-                      color: activeFilter === f ? '#ffffff' : '#0f172a',
+                      padding: '7px 14px',
+                      borderRadius: '9999px',
+                      border: activeFilter === f ? '1px solid rgba(255, 255, 255, 0.45)' : '1px solid rgba(255, 255, 255, 0.16)',
+                      backgroundColor: activeFilter === f ? 'rgba(255, 255, 255, 0.24)' : 'rgba(255, 255, 255, 0.06)',
+                      color: activeFilter === f ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
                       fontSize: '11px',
                       fontWeight: '900',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      boxShadow: activeFilter === f ? 'inset 0 1px 1px rgba(255,255,255,0.5)' : 'none'
                     }}
                   >
                     {f.toUpperCase()}
@@ -2649,47 +2730,48 @@ export default function PhotoEditorModal({ isOpen, onClose }) {
 
             {/* SUB-TOOL: Markup / Pen */}
             {activeTool === 'markup' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: '100%' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '900' }}>Color:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '8px 14px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.16)' }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '900' }}>Color:</span>
                 {['#ef4444', '#3b82f6', '#10b981', '#facc15', '#ffffff', '#0f172a'].map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setMarkupColor(c)}
                     style={{
-                      width: '24px',
-                      height: '24px',
+                      width: '26px',
+                      height: '26px',
                       borderRadius: '50%',
                       backgroundColor: c,
-                      border: markupColor === c ? '2.5px solid #0f172a' : '1.5px solid #cbd5e1',
+                      border: markupColor === c ? '2.5px solid #ffffff' : '1.5px solid rgba(255, 255, 255, 0.3)',
+                      boxShadow: markupColor === c ? '0 0 8px rgba(255,255,255,0.6)' : 'none',
                       cursor: 'pointer'
                     }}
                   />
                 ))}
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '900', marginLeft: '8px' }}>Size:</span>
+                <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '900', marginLeft: '8px' }}>Size:</span>
                 <input
                   type="range"
                   min="2"
                   max="40"
                   value={markupSize}
                   onChange={(e) => setMarkupSize(parseInt(e.target.value, 10))}
-                  style={{ width: '80px', accentColor: '#0f172a' }}
+                  style={{ width: '80px', accentColor: '#ec4899' }}
                 />
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a' }}>{markupSize}px</span>
+                <span style={{ fontSize: '11px', fontWeight: '900', color: '#ffffff' }}>{markupSize}px</span>
               </div>
             )}
 
             {/* SUB-TOOL: Background Blur */}
             {activeTool === 'blur' && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '8px 14px', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.16)' }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '800' }}>
                   Applies depth-of-field portrait blur around the center subject.
                 </span>
                 <button
                   type="button"
                   onClick={applyBackgroundBlur}
                   className="touch-btn"
-                  style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: '#0f172a', color: '#ffffff', border: 'none', fontSize: '11.5px', fontWeight: '900', cursor: 'pointer' }}
+                  style={{ padding: '8px 18px', borderRadius: '9999px', background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.35)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5)', fontSize: '11.5px', fontWeight: '900', cursor: 'pointer' }}
                 >
                   Apply Portrait Blur
                 </button>
