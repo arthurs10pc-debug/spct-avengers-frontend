@@ -10,9 +10,12 @@ import {
   Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
   Palette, ArrowRight, FileType, Sliders, Wand2, Eraser,
   Wifi, Battery, Signal, LayoutGrid, SlidersHorizontal,
-  MessageSquare, Star, HelpCircle, Heart
+  MessageSquare, Star, HelpCircle, Heart,
+  Coins, Fuel, Share2, QrCode
 } from 'lucide-react';
 import PhotoEditorModal from './components/PhotoEditorModal';
+import GujaratRatesModal from './components/GujaratRatesModal';
+import CrossDeviceDropModal from './components/CrossDeviceDropModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
   : "https://spct-avengers-backend.onrender.com";
@@ -1975,6 +1978,15 @@ export default function App() {
   // Google Keep Style Notes & 3x Daily Email Reminder State
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showPhotoEditModal, setShowPhotoEditModal] = useState(false);
+  const [showRatesModal, setShowRatesModal] = useState(false);
+  const [showDropModal, setShowDropModal] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return !!urlParams.get('dropRoom');
+    }
+    return false;
+  });
+  const [photoStudioInitialImage, setPhotoStudioInitialImage] = useState(null);
   const DEFAULT_USER_NOTES = [
     {
       id: "note_1793366315731",
@@ -5176,6 +5188,66 @@ export default function App() {
               </div>
             </div>
 
+            {/* Tile 7: Gujarat & Ahmedabad Live Rates (Gold, Silver, Petrol, Diesel, CNG) */}
+            <div 
+              className="liquid-glass-card nordic-card touch-btn"
+              onClick={() => setShowRatesModal(true)}
+              title="Open Gujarat & Ahmedabad Live Rates (Gold, Silver, Fuel)"
+            >
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow amber" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#f59e0b' }}>
+                  <Coins size={24} />
+                </div>
+                <span className="liquid-glass-badge nordic-card-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                  Gold • Fuel
+                </span>
+              </div>
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Gujarat Live Rates</span>
+                <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#f59e0b' }}>
+                  Gold 24K • Fuel
+                </span>
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
+                  Real-time Ahmedabad 24K/22K Hallmark Gold, 999 Silver, Petrol, Diesel & cost calculators.
+                </p>
+              </div>
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn" style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#f59e0b' }}>
+                  Check Rates ➔
+                </button>
+              </div>
+            </div>
+
+            {/* Tile 8: Instant QR Cross-Device Drop (Mobile ↔ Laptop Instant Transfer) */}
+            <div 
+              className="liquid-glass-card nordic-card touch-btn"
+              onClick={() => setShowDropModal(true)}
+              title="Open Instant QR Cross-Device Drop (Mobile ↔ Laptop)"
+            >
+              <div className="liquid-glass-card-top nordic-card-top">
+                <div className="liquid-glass-icon-orb nordic-card-icon-wrap blue-glow" style={{ background: 'linear-gradient(135deg, rgba(0, 245, 155, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%)', color: '#00f59b' }}>
+                  <Share2 size={24} />
+                </div>
+                <span className="liquid-glass-badge nordic-card-badge" style={{ backgroundColor: 'rgba(0, 245, 155, 0.15)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)' }}>
+                  P2P Drop
+                </span>
+              </div>
+              <div className="liquid-glass-card-body nordic-card-body">
+                <span className="liquid-glass-card-title nordic-card-title">Instant QR Drop</span>
+                <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#00f59b' }}>
+                  Mobile ↔ Laptop
+                </span>
+                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
+                  Instant photo, screenshot, note & file transfer between phone and PC via camera QR scan.
+                </p>
+              </div>
+              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                <button type="button" className="liquid-glass-card-btn nordic-card-btn" style={{ borderColor: 'rgba(0, 245, 155, 0.4)', color: '#00f59b' }}>
+                  Open Drop ➔
+                </button>
+              </div>
+            </div>
+
           </section>
 
           {/* Traffic Alert Banner (If Triggered or Active Monitoring) */}
@@ -5771,7 +5843,29 @@ export default function App() {
       {/* Photo Studio / AI Object Eraser Modal */}
       <PhotoEditorModal 
         isOpen={showPhotoEditModal} 
-        onClose={() => setShowPhotoEditModal(false)} 
+        onClose={() => {
+          setShowPhotoEditModal(false);
+          setPhotoStudioInitialImage(null);
+        }} 
+        initialImage={photoStudioInitialImage}
+      />
+
+      {/* Gujarat & Ahmedabad Live Rates Modal (Gold, Silver, Petrol, Diesel, CNG) */}
+      <GujaratRatesModal
+        isOpen={showRatesModal}
+        onClose={() => setShowRatesModal(false)}
+        backendUrl={BACKEND_URL}
+      />
+
+      {/* Instant QR Cross-Device Drop Modal (Mobile ↔ Laptop Instant Transfer) */}
+      <CrossDeviceDropModal
+        isOpen={showDropModal}
+        onClose={() => setShowDropModal(false)}
+        socket={socketRef.current}
+        onOpenInPhotoStudio={(imgData) => {
+          setPhotoStudioInitialImage(imgData);
+          setShowPhotoEditModal(true);
+        }}
       />
 
       {showNotesModal && (

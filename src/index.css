@@ -2259,8 +2259,15 @@ html, body {
 .nordic-grid,
 .liquid-glass-grid {
   display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
   gap: 20px !important;
+}
+
+@media (min-width: 1200px) {
+  .nordic-grid,
+  .liquid-glass-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
 }
 
 .nordic-card,
@@ -2979,6 +2986,19 @@ html, body {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
     padding: 0 !important;
+  }
+
+  /* Cross-Device Drop Mobile Responsiveness */
+  .drop-pairing-top-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .drop-modal-container,
+  .rates-modal-container {
+    max-height: 95vh !important;
+    padding: 0 !important;
+    border-radius: 20px !important;
   }
 
   .instagram-reel-card {

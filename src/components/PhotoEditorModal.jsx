@@ -274,9 +274,20 @@ function applyLocalDodgeBurn(ctx, cx, cy, radius, isBurn = false) {
   ctx.putImageData(imgData, x0, y0);
 }
 
-export default function PhotoEditorModal({ isOpen, onClose }) {
+export default function PhotoEditorModal({ isOpen, onClose, initialImage }) {
   const [imageFile, setImageFile] = useState(null);
   const [imageName, setImageName] = useState('photo');
+
+  useEffect(() => {
+    if (initialImage) {
+      const img = new window.Image();
+      img.onload = () => {
+        setImageFile(img);
+        setImageName('dropped_photo');
+      };
+      img.src = initialImage;
+    }
+  }, [initialImage]);
   const [activeTool, setActiveTool] = useState('ai-erase'); // 'ai-erase' | 'crop' | 'adjust' | 'filter' | 'markup' | 'blur'
   
   // Premium Brush Modes & Settings
