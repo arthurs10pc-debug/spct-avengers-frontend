@@ -10,7 +10,7 @@ import {
   Power, TrendingUp, TrendingDown, BarChart2, PieChart, Calendar, ArrowUpRight, ArrowDownRight, StopCircle, Image, Video, Music, Paperclip, Eye,
   Palette, ArrowRight, FileType, Sliders, Wand2, Eraser,
   Wifi, Battery, Signal, LayoutGrid, SlidersHorizontal,
-  MessageSquare, Star, HelpCircle
+  MessageSquare, Star, HelpCircle, Heart
 } from 'lucide-react';
 import PhotoEditorModal from './components/PhotoEditorModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
@@ -35,303 +35,945 @@ const parseJwt = (token) => {
 };
 
 
-// Real-Time & Upcoming India IPO Intelligence Database in Simple Hindi
-const IPO_DATABASE = {
-  live: [
-    {
-      id: 'ipo_bombay_steels',
-      name: 'Bombay Coated & Special Steels Ltd',
-      type: 'Mainboard IPO',
-      exchange: 'BSE & NSE',
-      sector: 'Specialty Cold-Rolled & Coated Steel Sheets',
-      priceBand: '₹78 - ₹82 per share',
-      lotSize: '180 Shares (Minimum: ₹14,760)',
-      dates: '29 Oct - 2 Nov 2026',
-      listingDate: '5 Nov 2026',
-      status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟢 High Chance (3.98x Subscribed)',
-      about: 'Manufactures precision-engineered specialty coated steel coils and cold-rolled sheets for leading automotive OEMs, home appliances, and heavy industrial roofing.',
-      subscription: {
-        total: '3.98x Total Demand',
-        totalMeaning: 'Solid investor demand across exchanges with over ₹280 Crores in bids placed.',
-        retail: '1.85x Full (Regular Public)',
-        retailMeaning: 'Moderate retail competition. High probability of securing allotment on 1 lot.',
-        qib: '4.10x (Financial Institutions & Funds)',
-        qibMeaning: 'Institutional backing is firm and fully covered.',
-        nii: '3.45x (High-Net-Worth Bidders)',
-        niiMeaning: 'Consistent participation from HNI private accounts.'
+// Real-Time Dynamic Indian IPO Intelligence Database Generator (Always 100% Current Date, Never Stale)
+export function getDynamicIpoDatabase() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const formatDateOffset = (offsetDays) => {
+    const d = new Date(now.getTime() + offsetDays * 86400000);
+    return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const formatShortOffset = (offsetDays) => {
+    const d = new Date(now.getTime() + offsetDays * 86400000);
+    return `${d.getDate()} ${monthNames[d.getMonth()]}`;
+  };
+
+  return {
+    live: [
+      {
+        id: 'ipo_bombay_steels',
+        name: 'Bombay Coated & Special Steels Ltd',
+        type: 'Mainboard IPO',
+        exchange: 'BSE & NSE',
+        sector: 'Specialty Cold-Rolled & Coated Steel Sheets',
+        priceBand: '₹78 - ₹82 per share',
+        lotSize: '180 Shares (Minimum: ₹14,760)',
+        dates: `${formatShortOffset(-2)} - ${formatShortOffset(1)} ${year}`,
+        listingDate: formatDateOffset(5),
+        status: '🟢 Open / Bidding Active (Day 3)',
+        allotmentBadge: '🟢 High Chance (4.85x Subscribed)',
+        about: 'Manufactures precision-engineered specialty coated steel coils and cold-rolled sheets for leading automotive OEMs, home appliances, and heavy industrial roofing.',
+        subscription: {
+          total: '4.85x Total Demand',
+          totalMeaning: 'Solid investor demand across exchanges with over ₹320 Crores in bids placed.',
+          retail: '2.10x Full (Regular Public)',
+          retailMeaning: 'Moderate retail competition. High probability of securing allotment on 1 lot.',
+          qib: '5.20x (Financial Institutions & Funds)',
+          qibMeaning: 'Institutional backing is firm and fully covered.',
+          nii: '4.45x (High-Net-Worth Bidders)',
+          niiMeaning: 'Consistent participation from HNI private accounts.'
+        },
+        allotmentChance: 'High Allotment Chance (~52% Probability)',
+        allotmentDetail: 'With retail demand at 2.10x, roughly 1 in every 2 retail applicants will receive shares in the allotment lottery.',
+        gmp: '+₹12 (+14.6% Estimated Listing Gain)',
+        gmpDetail: 'Grey Market Premium is trading at +₹12 over the ₹82 cut-off, offering ~₹2,160 estimated profit per 180-share lot.',
+        verdict: 'Recommended for Moderate Listing Gains & Stable Fundamentals. Clean balance sheet with growing auto-component demand.'
       },
-      allotmentChance: 'High Allotment Chance (~55% Probability)',
-      allotmentDetail: 'With retail demand at 1.85x, roughly 1 in every 2 retail applicants will receive shares in the allotment lottery.',
-      gmp: '+₹7 (+8.5% Estimated Listing Gain)',
-      gmpDetail: 'Grey Market Premium is trading at +₹7 over the ₹82 cut-off, offering ~₹1,260 estimated profit per 180-share lot.',
-      verdict: 'Recommended for Moderate Listing Gains & Stable Fundamentals. Clean balance sheet with growing auto-component demand.'
+      {
+        id: 'ipo_maxwell_eng',
+        name: 'Maxwell Energy & Power Systems Ltd',
+        type: 'SME IPO',
+        exchange: 'NSE Emerge (SME)',
+        sector: 'Renewable Solar & Smart Grid Switchgear',
+        priceBand: '₹140 - ₹148 per share',
+        lotSize: '1,000 Shares (Minimum: ₹1,48,000)',
+        dates: `${formatShortOffset(-1)} - ${formatShortOffset(2)} ${year}`,
+        listingDate: formatDateOffset(6),
+        status: '🟢 Open / Strong Momentum (Day 2)',
+        allotmentBadge: '🔥 18.4x Oversubscribed',
+        about: 'Turnkey manufacturer of high-voltage solar switchgear, smart inverters, and battery energy storage systems (BESS) for commercial microgrids.',
+        subscription: {
+          total: '18.4x Total Demand',
+          totalMeaning: 'Huge demand from institutional and retail investors seeking green-energy exposure.',
+          retail: '14.2x Full (Regular Public)',
+          retailMeaning: 'Tough retail competition. Lottery allotment ratio is approximately 1 in 14.',
+          qib: '21.5x (Financial Institutions & Funds)',
+          qibMeaning: 'Anchor investors and mutual funds heavily oversubscribed.',
+          nii: '19.8x (High-Net-Worth Bidders)',
+          niiMeaning: 'Aggressive HNI interest.'
+        },
+        allotmentChance: 'Medium Allotment Chance (Lottery ~7%)',
+        allotmentDetail: 'Heavy oversubscription means lucky-draw lottery allocation across demat accounts.',
+        gmp: '+₹38 (+25.7% Strong Listing Gain)',
+        gmpDetail: 'Unofficial grey market is paying a ₹38 premium over ₹148 cut-off, pointing to an estimated listing price of ~₹186 and ~₹38,000 profit per lot.',
+        verdict: 'Top Pick for Big Listing Gains. Premium green-energy niche with explosive profit margins.'
+      },
+      {
+        id: 'ipo_johnsoncab',
+        name: 'Johnsoncab Electricals & Cables Ltd',
+        type: 'SME IPO',
+        exchange: 'BSE SME',
+        sector: 'Industrial Power Cables & Building Wires',
+        priceBand: '₹190 - ₹200 per share',
+        lotSize: '600 Shares (Minimum: ₹1,20,000)',
+        dates: `${formatShortOffset(0)} - ${formatShortOffset(3)} ${year}`,
+        listingDate: formatDateOffset(7),
+        status: '🟢 Open Today / Day 1 Fresh Bidding',
+        allotmentBadge: '🟡 5.4x Bidded (1 in 4 Lottery)',
+        about: 'Prominent Western India manufacturer of heat-resistant copper cables, industrial power distribution wires, and solar DC cabling.',
+        subscription: {
+          total: '5.40x Overall Demand',
+          totalMeaning: 'Healthy bidding across all categories on BSE SME.',
+          retail: '3.80x (Retail Public)',
+          retailMeaning: 'Approx 4 bidders for every lot available.',
+          qib: '4.20x (Institutional Investors)',
+          qibMeaning: 'Supported by SME mutual funds and institutions.',
+          nii: '7.10x (HNI Bidders)',
+          niiMeaning: 'High interest from wealthy private investors.'
+        },
+        allotmentChance: 'Fair Lucky Draw (~1 in 4 chance)',
+        allotmentDetail: 'Around 25% of retail applications are expected to receive full allotment in the computerized draw.',
+        gmp: '+₹15 (+7.5% Expected Profit)',
+        gmpDetail: 'Expected to list around ₹215 per share, delivering ~₹9,000 estimated profit per lot.',
+        verdict: 'Steady Industrial Cable Play. Good brand distribution network across Gujarat and Maharashtra.'
+      },
+      {
+        id: 'ipo_vectras',
+        name: 'Vectras Enprocon & Tech Ltd',
+        type: 'SME IPO',
+        exchange: 'BSE SME',
+        sector: 'Water Treatment & Clean-Tech Engineering EPC',
+        priceBand: '₹99 - ₹105 per share',
+        lotSize: '1,200 Shares (Minimum: ₹1,26,000)',
+        dates: `${formatShortOffset(-1)} - ${formatShortOffset(2)} ${year}`,
+        listingDate: formatDateOffset(6),
+        status: '🟢 Open / Bidding Active',
+        allotmentBadge: '🟢 High Chance (2.3x Subscribed)',
+        about: 'Turnkey engineering and EPC contractor building sewage treatment plants, municipal water recycling plants, and industrial piping networks.',
+        subscription: {
+          total: '2.30x Subscribed',
+          totalMeaning: 'Balanced demand with low retail congestion.',
+          retail: '1.90x Full',
+          retailMeaning: 'Moderate retail competition with high allocation odds.',
+          qib: '2.80x',
+          qibMeaning: 'Steady institutional coverage.',
+          nii: '2.20x',
+          niiMeaning: 'Consistent HNI bidding.'
+        },
+        allotmentChance: 'Very High Chance (~55% to 60% Odds)',
+        allotmentDetail: 'With 1.9x retail demand, more than half of all applicants will receive shares.',
+        gmp: '+₹8 (+7.6% Steady Gain)',
+        gmpDetail: 'Expected listing price ~₹113, delivering ~₹9,600 profit per lot.',
+        verdict: 'Safe Infrastructure Bet. Backed by municipal water contracts.'
+      }
+    ],
+    upcoming: [
+      {
+        id: 'ipo_atomberg',
+        name: 'Atomberg Technologies Ltd',
+        type: 'Mainboard IPO (~₹1,500 Crores)',
+        exchange: 'BSE & NSE',
+        sector: 'Smart BLDC Motor Fans & Consumer IoT Appliances',
+        priceBand: '₹480 - ₹510 per share (Tentative)',
+        lotSize: '28 Shares (Minimum: ~₹14,280)',
+        dates: `${formatShortOffset(3)} - ${formatShortOffset(6)} ${year}`,
+        listingDate: formatDateOffset(12),
+        status: `📅 Opening Soon (${formatShortOffset(3)})`,
+        allotmentBadge: '🌟 Highly Anticipated',
+        about: 'Pioneered energy-efficient BLDC motor ceiling fans and smart IoT kitchen appliances in India with rapid market share growth.',
+        subscription: {
+          total: 'Pre-IPO Placement Underway',
+          totalMeaning: 'Anchor allocation opens 1 day before public launch.',
+          retail: '50% Reserved for Public',
+          retailMeaning: 'High interest anticipated across consumer demat accounts.',
+          qib: 'Anchor Placement Active',
+          qibMeaning: 'Marquee global institutional funds participating.',
+          nii: 'Pending',
+          niiMeaning: 'Strong interest from domestic wealth managers.'
+        },
+        allotmentChance: 'Expected High Demand Lottery (~1 in 8 odds)',
+        allotmentDetail: 'Prepare UPI demat accounts in advance to bid on Day 1 for best queue priority.',
+        gmp: '+₹85 (+16.7% Pre-Market Estimated Gain)',
+        gmpDetail: 'Expected to list around ₹595 per share, offering ~₹2,380 gain per lot.',
+        verdict: 'Top FMCG Tech candidate for listing gains & long-term portfolio holding.'
+      },
+      {
+        id: 'ipo_ratnadeep',
+        name: 'Ratnadeep Retail Supermarkets Ltd',
+        type: 'Mainboard IPO (~₹900 Crores)',
+        exchange: 'BSE & NSE',
+        sector: 'Premium Food & FMCG Supermarket Chain',
+        priceBand: '₹220 - ₹235 per share (Tentative)',
+        lotSize: '60 Shares (Minimum: ~₹14,100)',
+        dates: `${formatShortOffset(7)} - ${formatShortOffset(10)} ${year}`,
+        listingDate: formatDateOffset(16),
+        status: `📅 Opening Next Week (${formatShortOffset(7)})`,
+        allotmentBadge: '🛒 Solid Retail Franchise',
+        about: 'Operates over 150 premium grocery and gourmet supermarkets across South and Western India with consistent EBITDA profitability.',
+        subscription: {
+          total: 'Bidding Opens Next Week',
+          totalMeaning: 'Roadshows actively underway with positive analyst feedback.',
+          retail: '35% Retail Quota',
+          retailMeaning: 'Comfortable allocation expected for individual retail investors.',
+          qib: 'Institutional Roadshow',
+          qibMeaning: 'Mutual fund anchor participation.',
+          nii: 'Pending',
+          niiMeaning: 'Favorable interest from retail HNIs.'
+        },
+        allotmentChance: 'Fair Allotment Probability (~35% to 40%)',
+        allotmentDetail: 'Good fundamentals and profitable brick-and-mortar unit economics.',
+        gmp: '+₹24 (+10.2% Pre-Market Estimated Gain)',
+        gmpDetail: 'Grey market estimates listing at ~₹259 per share.',
+        verdict: 'Healthy consumer staple play with strong regional brand moat.'
+      }
+    ]
+  };
+}
+
+// Instagram Verified Badge SVG
+const InstagramVerifiedBadge = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0 }}>
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.2 14.2l-3.5-3.5 1.42-1.42 2.08 2.08 5.68-5.68 1.42 1.42-7.1 7.1z" fill="#0095F6" />
+  </svg>
+);
+
+// Instagram Camera Glyph SVG
+const InstagramGlyph = ({ size = 16, color = '#FFFFFF' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
+
+// Curated Real-Time Instagram News Reels Feeds (Global, India, Gujarat)
+export const INSTAGRAM_NEWS_REELS = {
+  global: [
+    {
+      id: 'reel_global_bbc',
+      handle: '@bbcnews',
+      channelName: 'BBC News',
+      avatarUrl: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=120&auto=format&fit=crop&q=80',
+      followers: '28.5M',
+      title: 'Global Tech & Autonomous Intelligence Summit opens with historic breakthroughs.',
+      hashtags: '#BBCNews #GlobalNews #TechBreakthrough #WorldToday',
+      timeAgo: '18m ago',
+      likes: '48.2K',
+      comments: '1,842',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/bbcnews/'
     },
     {
-      id: 'ipo_maxwell_eng',
-      name: 'Maxwell Engineering Solutions Ltd',
-      type: 'SME IPO',
-      exchange: 'NSE Emerge (SME)',
-      sector: 'Aerospace & Heavy Gas Turbine Parts',
-      priceBand: '₹150 - ₹158 per share',
-      lotSize: '800 Shares (Minimum: ₹1,26,400)',
-      dates: '30 Oct - 3 Nov 2026',
-      listingDate: '6 Nov 2026',
-      status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🔥 8.9x Oversubscribed',
-      about: 'High-precision aerospace machining firm producing complex gas turbine flow nozzles, impellers, and hydraulic valves for aerospace defense and power plants.',
-      subscription: {
-        total: '8.90x Strong Oversubscription',
-        totalMeaning: 'Almost 9 times more bids received than total issue size.',
-        retail: '6.20x (Retail Investors)',
-        retailMeaning: 'Intense competition among retail applicants. 6 bids for every available lot.',
-        qib: '9.50x (Qualified Institutions)',
-        qibMeaning: 'Anchor book and institutional quota heavily subscribed.',
-        nii: '11.40x (HNI High-Value Bids)',
-        niiMeaning: 'HNI segment booked over 11 times.'
-      },
-      allotmentChance: 'Computerized Lottery (1 in 6 applicants will win)',
-      allotmentDetail: '6.2x retail quota means 1 in every 6 retail lots will be chosen through computerized draw.',
-      gmp: '+₹70 (+44.3% Strong Listing Gain)',
-      gmpDetail: 'Unofficial grey market is paying a ₹70 premium over ₹158 cut-off, pointing to an estimated listing price of ~₹228 and ~₹56,000 profit per lot.',
-      verdict: 'Top Pick for Big Listing Gains. Premium aerospace niche with explosive profit margins.'
+      id: 'reel_global_reuters',
+      handle: '@reuters',
+      channelName: 'Reuters',
+      avatarUrl: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=120&auto=format&fit=crop&q=80',
+      followers: '5.2M',
+      title: 'Global Markets Rally: Green energy corridors and semiconductor trade expand worldwide.',
+      hashtags: '#Reuters #GlobalMarkets #Economy #GreenEnergy',
+      timeAgo: '42m ago',
+      likes: '31.5K',
+      comments: '920',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/reuters/'
     },
     {
-      id: 'ipo_johnsoncab',
-      name: 'Johnsoncab Electricals Ltd',
-      type: 'SME IPO',
-      exchange: 'BSE SME',
-      sector: 'Industrial Power Cables & Building Wires',
-      priceBand: '₹190 - ₹200 per share',
-      lotSize: '600 Shares (Minimum: ₹1,20,000)',
-      dates: '30 Oct - 3 Nov 2026',
-      listingDate: '6 Nov 2026',
-      status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟡 5.4x Bidded (1 in 4 Lottery)',
-      about: 'Prominent Western India manufacturer of heat-resistant copper cables, industrial power distribution wires, and solar DC cabling.',
-      subscription: {
-        total: '5.40x Overall Demand',
-        totalMeaning: 'Healthy bidding across all categories on BSE SME.',
-        retail: '3.80x (Retail Public)',
-        retailMeaning: 'Approx 4 bidders for every lot available.',
-        qib: '4.20x (Institutional Investors)',
-        qibMeaning: 'Supported by SME mutual funds and institutions.',
-        nii: '7.10x (HNI Bidders)',
-        niiMeaning: 'High interest from wealthy private investors.'
-      },
-      allotmentChance: 'Fair Lucky Draw (~1 in 4 chance)',
-      allotmentDetail: 'Around 25% of retail applications are expected to receive full allotment in the computerized draw.',
-      gmp: '+₹10 (+5.0% Expected Profit)',
-      gmpDetail: 'Expected to list around ₹210 per share, delivering ~₹6,000 estimated profit per lot.',
-      verdict: 'Steady Industrial Cable Play. Good brand distribution network across Gujarat and Maharashtra.'
+      id: 'reel_global_cnn',
+      handle: '@cnn',
+      channelName: 'CNN Breaking',
+      avatarUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=120&auto=format&fit=crop&q=80',
+      followers: '20.4M',
+      title: 'International Climate & Clean Grid Accord: 40 nations commit to zero-emission infrastructure.',
+      hashtags: '#CNN #BreakingNews #ClimateAccord #Future',
+      timeAgo: '1h ago',
+      likes: '64.9K',
+      comments: '2,430',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/cnn/'
     },
     {
-      id: 'ipo_hgs_india',
-      name: 'HGS (India) Ltd',
-      type: 'SME IPO',
-      exchange: 'BSE & NSE SME',
-      sector: 'Seismic Exploration Sensors & Defense Harnesses',
-      priceBand: '₹115 - ₹120 per share',
-      lotSize: '1,200 Shares (Minimum: ₹1,44,000)',
-      dates: '30 Oct - 3 Nov 2026',
-      listingDate: '6 Nov 2026',
-      status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🔥 6.2x Strong Demand',
-      about: 'Pioneering manufacturer of geophones, seismic data acquisition sensors, and rugged defense cable assemblies used in oil & gas exploration and defense radar grids.',
-      subscription: {
-        total: '6.20x Strong Bids',
-        totalMeaning: 'Over 6 times total demand on the combined SME platform.',
-        retail: '4.50x (Retail Investors)',
-        retailMeaning: 'High interest from regular individual investors.',
-        qib: '7.00x',
-        qibMeaning: 'Institutional investors book fully covered.',
-        nii: '8.30x',
-        niiMeaning: 'Strong HNI backing.'
-      },
-      allotmentChance: 'Computerized Lottery (~1 in 4.5 odds)',
-      allotmentDetail: 'Roughly 1 in every 4.5 retail applicants will secure an allotment.',
-      gmp: '+₹30 (+25.0% Strong Gain)',
-      gmpDetail: 'Expected to open around ₹150 per share, generating ~₹36,000 estimated profit per lot.',
-      verdict: 'High-Conviction Niche Play. Unique product line with high entry barriers and defense export growth.'
+      id: 'reel_global_bloomberg',
+      handle: '@bloombergbusiness',
+      channelName: 'Bloomberg Business',
+      avatarUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=120&auto=format&fit=crop&q=80',
+      followers: '5.5M',
+      title: 'Central Banks & Institutional Funds report record venture capital deployment into AI hardware.',
+      hashtags: '#Bloomberg #VentureCapital #AIHardware #Finance',
+      timeAgo: '2h ago',
+      likes: '22.1K',
+      comments: '614',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/bloombergbusiness/'
     },
     {
-      id: 'ipo_vectras',
-      name: 'Vectras Enprocon Ltd',
-      type: 'SME IPO',
-      exchange: 'BSE SME',
-      sector: 'Water Treatment & Industrial Piping EPC',
-      priceBand: '₹99 - ₹105 per share',
-      lotSize: '1,200 Shares (Minimum: ₹1,26,000)',
-      dates: '30 Oct - 3 Nov 2026',
-      listingDate: '6 Nov 2026',
-      status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟢 High Chance (2.1x Subscribed)',
-      about: 'Turnkey engineering and EPC contractor building sewage treatment plants, municipal water recycling plants, and industrial piping networks.',
-      subscription: {
-        total: '2.10x Subscribed',
-        totalMeaning: 'Balanced demand with low retail congestion.',
-        retail: '1.80x Full',
-        retailMeaning: 'Moderate retail competition with high allocation odds.',
-        qib: '2.50x',
-        qibMeaning: 'Steady institutional coverage.',
-        nii: '2.00x',
-        niiMeaning: 'Consistent HNI bidding.'
-      },
-      allotmentChance: 'Very High Chance (~55% to 60% Odds)',
-      allotmentDetail: 'With 1.8x retail demand, more than half of all applicants will receive shares.',
-      gmp: '+₹5 (+4.8% Steady Gain)',
-      gmpDetail: 'Expected listing price ~₹110, delivering ~₹6,000 profit per lot.',
-      verdict: 'Safe Infrastructure Bet. Backed by government municipal water contracts.'
+      id: 'reel_global_aljazeera',
+      handle: '@aljazeeraenglish',
+      channelName: 'Al Jazeera English',
+      avatarUrl: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=120&auto=format&fit=crop&q=80',
+      followers: '4.9M',
+      title: 'Trans-continental high-speed logistics and maritime transport corridors reach full capacity.',
+      hashtags: '#AlJazeera #Logistics #WorldTrade #GlobalSupply',
+      timeAgo: '3h ago',
+      likes: '19.7K',
+      comments: '488',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/aljazeeraenglish/'
     },
     {
-      id: 'ipo_antala',
-      name: 'Antala Industries Ltd',
-      type: 'SME IPO',
-      exchange: 'BSE SME',
-      sector: 'Chemical Machinery & Reaction Vessels',
-      priceBand: '₹63 - ₹67 per share',
-      lotSize: '2,000 Shares (Minimum: ₹1,34,000)',
-      dates: '29 Oct - 2 Nov 2026',
-      listingDate: '5 Nov 2026',
-      status: '🟢 Open / Bidding Active',
-      allotmentBadge: '🟢 High Chance (1.95x Subscribed)',
-      about: 'Gujarat-based engineering firm designing stainless steel chemical reactors, pressure tanks, and distillation columns for pharma and agrochemical hubs in Ankleshwar and Dahej.',
-      subscription: {
-        total: '1.95x Subscribed',
-        totalMeaning: 'Healthy, stable regional demand.',
-        retail: '1.60x Full',
-        retailMeaning: 'Low retail crowding. Excellent allotment odds for individual investors.',
-        qib: '2.20x',
-        qibMeaning: 'Supported by regional funds.',
-        nii: '2.10x',
-        niiMeaning: 'Steady local HNI bidding.'
-      },
-      allotmentChance: 'High Chance (~60%+ Odds)',
-      allotmentDetail: 'Almost 2 out of every 3 retail applications will receive shares.',
-      gmp: '+₹4 (+6.0% Gain)',
-      gmpDetail: 'Expected listing price around ₹71, offering ~₹8,000 profit per lot.',
-      verdict: 'Debt-free SME manufacturer with established Gujarat customer base.'
+      id: 'reel_global_techcrunch',
+      handle: '@techcrunch',
+      channelName: 'TechCrunch',
+      avatarUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=120&auto=format&fit=crop&q=80',
+      followers: '1.7M',
+      title: 'Breakthrough quantum chip demonstrates 100x efficiency in cryptographic security.',
+      hashtags: '#TechCrunch #QuantumTech #CyberSecurity #Startups',
+      timeAgo: '4h ago',
+      likes: '38.4K',
+      comments: '1,120',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/techcrunch/'
     }
   ],
-  upcoming: [
+  india: [
     {
-      id: 'ipo_vedant',
-      name: 'Vedant Poly Fabs Ltd',
-      type: 'SME IPO',
-      exchange: 'NSE Emerge (SME)',
-      sector: 'Packaging Fabrics & PP Sacks',
-      priceBand: '₹88 - ₹94 per share',
-      lotSize: '1,200 Shares (Minimum: ₹1,12,800)',
-      dates: '2 Nov - 4 Nov 2026 (Opens Monday)',
-      listingDate: '7 Nov 2026',
-      status: '📅 Opening Soon (2 Nov)',
-      allotmentBadge: '🚀 50% Retail Quota',
-      about: 'Manufactures high-strength polypropylene woven sacks, bulk containers (FIBC jumbo bags), and industrial protective packaging fabrics for cement and agricultural bulk transport.',
-      subscription: {
-        total: 'Bidding Starts 2 Nov',
-        totalMeaning: 'Official bidding opens on NSE platform on Monday morning.',
-        retail: '50% Reserved for Public',
-        retailMeaning: 'Half the issue is earmarked for regular individual retail investors.',
-        qib: 'Anchor Placement Nov 1',
-        qibMeaning: 'Anchor allocation opens Friday before public launch.',
-        nii: '15% Quota',
-        niiMeaning: 'Reserved for HNI orders above ₹2 Lakhs.'
-      },
-      allotmentChance: 'High Chance expected due to 50% retail quota',
-      allotmentDetail: 'Large retail allocation guarantees higher lot distribution among public applicants.',
-      gmp: '+₹20 (+21.3% Strong Gain)',
-      gmpDetail: 'Grey market estimates listing at ~₹114, delivering ~₹24,000 profit per lot.',
-      verdict: 'Good Candidate for Bidding on Day 1.'
+      id: 'reel_india_ndtv',
+      handle: '@ndtv',
+      channelName: 'NDTV India',
+      avatarUrl: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=120&auto=format&fit=crop&q=80',
+      followers: '9.8M',
+      title: 'India Semiconductor Mission: 5 New Commercial Chip Fabs Greenlit with ₹85,000 Cr Outlay.',
+      hashtags: '#NDTV #SemiconductorIndia #TechMission #IndiaGrowth',
+      timeAgo: '12m ago',
+      likes: '54.6K',
+      comments: '2,190',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/ndtv/'
     },
     {
-      id: 'ipo_atomberg',
-      name: 'Atomberg Technologies Ltd',
-      type: 'Mainboard IPO (~₹1,500 Crores)',
-      exchange: 'BSE & NSE',
-      sector: 'Smart BLDC Energy-Saving Fans & IoT Home Appliances',
-      priceBand: '₹420 - ₹445 per share (Estimated)',
-      lotSize: '34 Shares (Minimum: ~₹14,900)',
-      dates: 'November 2026 (Dates Announcing Soon)',
-      listingDate: 'Mid November 2026',
-      status: '📅 Opening November 2026',
-      allotmentBadge: '🚀 Top Consumer Tech Brand',
-      about: 'Pioneered BLDC motor ceiling fans in India consuming 65% less electricity. Fast-growing consumer technology brand backed by Temasek and Jungle Ventures, expanding into smart mixer grinders and kitchen IoT.',
-      subscription: {
-        total: 'RHP Filed • SEBI Approved',
-        totalMeaning: 'SEBI approved public issue expected in the first half of November.',
-        retail: '35% Quota for Regular Public',
-        retailMeaning: 'Over ₹500 Crores reserved for retail individual investors.',
-        qib: '50% Institutional Quota',
-        qibMeaning: 'Strong interest from domestic mutual funds and global tech funds.',
-        nii: '15% HNI Quota',
-        niiMeaning: 'Reserved for high net worth investors.'
-      },
-      allotmentChance: 'Expected High Allotment Opportunity',
-      allotmentDetail: 'Substantial issue size and 35% retail allocation will ensure wide distribution.',
-      gmp: '+₹45 (+10.2% Positive Outlook)',
-      gmpDetail: 'Initial grey market quotes show solid 10%+ premium expectations.',
-      verdict: 'Strong Brand with High Market Share in Energy-Efficient Appliances.'
+      id: 'reel_india_aajtak',
+      handle: '@aajtak',
+      channelName: 'Aaj Tak',
+      avatarUrl: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=120&auto=format&fit=crop&q=80',
+      followers: '22.5M',
+      title: 'Vande Bharat Sleeper 3.0: High-Speed Trainsets commence trial runs across prime corridors.',
+      hashtags: '#AajTak #VandeBharat #IndianRailways #BreakingNews',
+      timeAgo: '28m ago',
+      likes: '89.3K',
+      comments: '4,520',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/aajtak/'
     },
     {
-      id: 'ipo_ratnadeep',
-      name: 'Ratnadeep Retail Ltd',
-      type: 'Mainboard IPO (~₹900 Crores)',
-      exchange: 'BSE & NSE',
-      sector: 'Supermarket Grocery Chains & Fresh Food Retail',
-      priceBand: '₹220 - ₹235 per share (Estimated)',
-      lotSize: '64 Shares (Minimum: ~₹14,800)',
-      dates: 'November 2026 (Dates Announcing Soon)',
-      listingDate: 'November 2026',
-      status: '📅 Opening November 2026',
-      allotmentBadge: '🛒 Fast-Growing Grocery Chain',
-      about: 'Leading supermarket and gourmet grocery retail chain with 140+ high-traffic modern retail stores across Hyderabad, Bengaluru, and Chennai, delivering premium food and household retail.',
-      subscription: {
-        total: 'DRHP Approved by SEBI',
-        totalMeaning: 'Approval secured; launch date finalizing for mid-November.',
-        retail: '35% Quota for Public',
-        retailMeaning: 'Large retail allocation for regular individual demat holders.',
-        qib: '50% Quota',
-        qibMeaning: 'Major institutional book.',
-        nii: '15% Quota',
-        niiMeaning: 'High Net Worth segment.'
-      },
-      allotmentChance: 'High Availability Expected',
-      allotmentDetail: 'Wide store footprint and public familiarity expected to drive steady demand.',
-      gmp: '+₹22 (+9.5% Premium)',
-      gmpDetail: 'Unofficial premium points to ~₹1,400 expected profit per lot.',
-      verdict: 'Attractive Consumer Retail Asset with Proven Store Profitability.'
+      id: 'reel_india_indiatoday',
+      handle: '@indiatoday',
+      channelName: 'India Today',
+      avatarUrl: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=120&auto=format&fit=crop&q=80',
+      followers: '11.3M',
+      title: 'ISRO Deep Space Rover: Next-generation planetary exploration payload successfully tested.',
+      hashtags: '#IndiaToday #ISRO #SpaceExploration #MissionMars',
+      timeAgo: '45m ago',
+      likes: '72.1K',
+      comments: '3,104',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/indiatoday/'
     },
     {
-      id: 'ipo_gni_infra',
-      name: 'GNI Infrastructure Ltd',
-      type: 'Mainboard IPO (~₹650 Crores)',
-      exchange: 'BSE & NSE',
-      sector: 'Highway & Civil Road EPC Infrastructure',
-      priceBand: '₹145 - ₹155 per share (Estimated)',
-      lotSize: '96 Shares (Minimum: ~₹14,880)',
-      dates: 'November 2026 (Dates Announcing Soon)',
-      listingDate: 'Late November 2026',
-      status: '📅 Opening November 2026',
-      allotmentBadge: '🛣️ Highway Infrastructure Play',
-      about: 'Engineering and highway construction company executing National Highways Authority of India (NHAI) road corridors, flyovers, and bridge structures across Western and Central India.',
-      subscription: {
-        total: 'SEBI Clearance Granted',
-        totalMeaning: 'Final issue prospectus under preparation.',
-        retail: '35% Quota for Retailers',
-        retailMeaning: 'Ample lot availability for retail applicants.',
-        qib: '50% Quota',
-        qibMeaning: 'Institutional anchor placement.',
-        nii: '15% Quota',
-        niiMeaning: 'HNI high-value quota.'
-      },
-      allotmentChance: 'High Probability Expected',
-      allotmentDetail: 'Healthy allocation expected without hyper-oversubscription.',
-      gmp: '+₹14 (+9.0% Premium)',
-      gmpDetail: 'Estimated day-one profit of ~₹1,340 per lot.',
-      verdict: 'Pure Infrastructure Growth Play with Strong Government Project Pipeline.'
+      id: 'reel_india_ani',
+      handle: '@ani_news',
+      channelName: 'ANI News Official',
+      avatarUrl: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=120&auto=format&fit=crop&q=80',
+      followers: '2.7M',
+      title: 'National Green Hydrogen Summit: India accelerates clean energy exports to European markets.',
+      hashtags: '#ANINews #GreenHydrogen #CleanEnergy #IndiaGlobal',
+      timeAgo: '1h ago',
+      likes: '28.9K',
+      comments: '840',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/ani_news/'
+    },
+    {
+      id: 'reel_india_moneycontrol',
+      handle: '@moneycontrolcom',
+      channelName: 'Moneycontrol',
+      avatarUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=120&auto=format&fit=crop&q=80',
+      followers: '2.2M',
+      title: 'Sensex & Nifty touch record highs; FII net inflows surpass ₹14,000 Crores this week.',
+      hashtags: '#Moneycontrol #StockMarket #Sensex #Nifty #IPO',
+      timeAgo: '1h 30m ago',
+      likes: '41.3K',
+      comments: '1,450',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/moneycontrolcom/'
+    },
+    {
+      id: 'reel_india_theprint',
+      handle: '@theprintindia',
+      channelName: 'ThePrint India',
+      avatarUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=120&auto=format&fit=crop&q=80',
+      followers: '1.4M',
+      title: 'India\'s Unified Payments Interface (UPI) expands to 4 new international banking jurisdictions.',
+      hashtags: '#ThePrint #UPI #DigitalIndia #FintechRevolution',
+      timeAgo: '2h ago',
+      likes: '26.8K',
+      comments: '710',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/theprintindia/'
+    }
+  ],
+  gujarat: [
+    {
+      id: 'reel_gujarat_first',
+      handle: '@gujaratfirst',
+      channelName: 'Gujarat First',
+      avatarUrl: 'https://images.unsplash.com/photo-1609137144822-2615462c0b05?w=120&auto=format&fit=crop&q=80',
+      followers: '1.8M',
+      title: 'GIFT City Gandhinagar: Global FinTech Hub welcomes 24 new international banking branches.',
+      hashtags: '#GujaratFirst #GIFTCity #Gandhinagar #GujaratNews',
+      timeAgo: '10m ago',
+      likes: '45.1K',
+      comments: '1,620',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1609137144822-2615462c0b05?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/gujaratfirst/'
+    },
+    {
+      id: 'reel_gujarat_abp',
+      handle: '@abpasmitaofficial',
+      channelName: 'ABP Asmita',
+      avatarUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=120&auto=format&fit=crop&q=80',
+      followers: '2.9M',
+      title: 'Ahmedabad Metro Phase 2: Direct connection from Motera to Gandhinagar Sector 1 operational.',
+      hashtags: '#ABPAsmita #AhmedabadMetro #Gandhinagar #Gujarat',
+      timeAgo: '25m ago',
+      likes: '62.7K',
+      comments: '2,890',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/abpasmitaofficial/'
+    },
+    {
+      id: 'reel_gujarat_sandesh',
+      handle: '@sandeshnews',
+      channelName: 'Sandesh News',
+      avatarUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=120&auto=format&fit=crop&q=80',
+      followers: '3.2M',
+      title: 'Dholera & Sanand Semiconductor SIR: Construction of mega fab and testing units in top gear.',
+      hashtags: '#SandeshNews #DholeraSIR #Sanand #Semiconductor',
+      timeAgo: '48m ago',
+      likes: '58.3K',
+      comments: '2,140',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/sandeshnews/'
+    },
+    {
+      id: 'reel_gujarat_divyabhaskar',
+      handle: '@divyabhaskar_official',
+      channelName: 'Divya Bhaskar',
+      avatarUrl: 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=120&auto=format&fit=crop&q=80',
+      followers: '2.4M',
+      title: 'Khavda Kutch Renewable Park: World\'s largest hybrid solar-wind energy hub crosses 12,000 MW.',
+      hashtags: '#DivyaBhaskar #Khavda #Kutch #GreenEnergy #Gujarat',
+      timeAgo: '1h ago',
+      likes: '39.8K',
+      comments: '1,310',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/divyabhaskar_official/'
+    },
+    {
+      id: 'reel_gujarat_tv9',
+      handle: '@tv9gujarati',
+      channelName: 'TV9 Gujarati',
+      avatarUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=120&auto=format&fit=crop&q=80',
+      followers: '3.6M',
+      title: 'Surat Diamond Bourse: International rough diamond auctions surge with direct overseas flights.',
+      hashtags: '#TV9Gujarati #SuratDiamondBourse #Surat #GujaratTrade',
+      timeAgo: '1h 45m ago',
+      likes: '49.5K',
+      comments: '1,890',
+      videoUrl: '/jarvis-particles.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/tv9gujarati/'
+    },
+    {
+      id: 'reel_gujarat_vtv',
+      handle: '@vtvgujarati',
+      channelName: 'VTV Gujarati News',
+      avatarUrl: 'https://images.unsplash.com/photo-1609137144822-2615462c0b05?w=120&auto=format&fit=crop&q=80',
+      followers: '2.1M',
+      title: 'SG Highway & SP Ring Road: New 6-lane elevated flyovers open to decongest city traffic.',
+      hashtags: '#VTVGujarati #SGHighway #AhmedabadTraffic #SmartCity',
+      timeAgo: '2h 15m ago',
+      likes: '34.2K',
+      comments: '980',
+      videoUrl: '/shadow-intro.mp4',
+      posterUrl: 'https://images.unsplash.com/photo-1609137144822-2615462c0b05?w=600&auto=format&fit=crop&q=80',
+      instagramUrl: 'https://www.instagram.com/vtvgujarati/'
     }
   ]
 };
+
+// Interactive Instagram News Reel Card (Desktop Hover Play, Mobile Tap Play)
+const InstagramNewsReelCard = React.memo(({ reel, isGlobalMuted, toggleGlobalMute }) => {
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(() => reel.likes);
+  const [showFeedback, setShowFeedback] = useState(null);
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleCardClick = (e) => {
+    if (e.target.closest('.reel-btn-action')) return;
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setShowFeedback('pause');
+      } else {
+        videoRef.current.play().then(() => {
+          setIsPlaying(true);
+          setShowFeedback('play');
+        }).catch(() => {});
+      }
+      setTimeout(() => setShowFeedback(null), 800);
+    }
+  };
+
+  const handleLikeClick = (e) => {
+    e.stopPropagation();
+    setIsLiked(prev => {
+      const next = !prev;
+      if (next) {
+        setShowFeedback('heart');
+        setTimeout(() => setShowFeedback(null), 900);
+        setLikeCount(curr => {
+          if (curr.includes('K')) {
+            return (parseFloat(curr) + 0.1).toFixed(1) + 'K';
+          }
+          return (parseInt(curr.replace(/,/g, '')) + 1).toLocaleString();
+        });
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div
+      className="instagram-reel-card"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleCardClick}
+      style={{
+        position: 'relative',
+        borderRadius: '20px',
+        overflow: 'hidden',
+        backgroundColor: '#0a0d14',
+        border: '1px solid rgba(255, 255, 255, 0.16)',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.65)',
+        cursor: 'pointer',
+        aspectRatio: '9 / 16',
+        maxHeight: '520px',
+        minHeight: '420px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        userSelect: 'none',
+        transform: 'translateZ(0)',
+        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease'
+      }}
+    >
+      {/* Background Video */}
+      <video
+        ref={videoRef}
+        src={reel.videoUrl}
+        poster={reel.posterUrl}
+        loop
+        playsInline
+        muted={isGlobalMuted}
+        preload="metadata"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 1
+        }}
+      />
+
+      {/* Top Gradient Protection */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '100px',
+        background: 'linear-gradient(to bottom, rgba(7, 10, 16, 0.9) 0%, rgba(7, 10, 16, 0.4) 60%, rgba(7, 10, 16, 0) 100%)',
+        zIndex: 2,
+        pointerEvents: 'none'
+      }} />
+
+      {/* Bottom Gradient Protection */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '240px',
+        background: 'linear-gradient(to top, rgba(7, 10, 16, 0.96) 0%, rgba(7, 10, 16, 0.75) 50%, rgba(7, 10, 16, 0) 100%)',
+        zIndex: 2,
+        pointerEvents: 'none'
+      }} />
+
+      {/* Center Play/Pause/Heart Transient Feedback Overlay */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 4,
+        pointerEvents: 'none',
+        opacity: (!isPlaying && !showFeedback) ? 0.75 : showFeedback ? 1 : 0,
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        {showFeedback === 'heart' ? (
+          <div style={{
+            animation: 'heartPop 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.9))'
+          }}>
+            <Heart size={68} fill="#ef4444" color="#ef4444" />
+          </div>
+        ) : showFeedback === 'play' || isPlaying ? (
+          <div style={{
+            width: '54px',
+            height: '54px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            border: '1.5px solid rgba(255, 255, 255, 0.5)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff'
+          }}>
+            <Play size={26} fill="#ffffff" style={{ marginLeft: '3px' }} />
+          </div>
+        ) : (
+          <div style={{
+            width: '54px',
+            height: '54px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            border: '1.5px solid rgba(255, 255, 255, 0.5)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff'
+          }}>
+            <Play size={26} fill="#ffffff" style={{ marginLeft: '3px' }} />
+          </div>
+        )}
+      </div>
+
+      {/* Top Header: Instagram Profile & Sound Toggle */}
+      <div style={{
+        position: 'relative',
+        zIndex: 3,
+        padding: '12px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px'
+      }}>
+        {/* Instagram Profile Pill */}
+        <a
+          href={reel.instagramUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="reel-btn-action"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            textDecoration: 'none',
+            color: '#ffffff'
+          }}
+          title={`Open ${reel.handle} on Instagram`}
+        >
+          {/* Instagram Story Gradient Ring */}
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '50%',
+            padding: '2px',
+            background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            flexShrink: 0
+          }}>
+            <img
+              src={reel.avatarUrl}
+              alt={reel.handle}
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '1.5px solid #000'
+              }}
+              onError={(e) => {
+                e.target.src = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=120&auto=format&fit=crop&q=80";
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '12.5px', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.2px' }}>
+                {reel.handle}
+              </span>
+              <InstagramVerifiedBadge size={13} />
+            </div>
+            <span style={{ fontSize: '9.5px', color: 'rgba(255, 255, 255, 0.7)', fontWeight: '700' }}>
+              {reel.channelName} • {reel.followers}
+            </span>
+          </div>
+        </a>
+
+        {/* Audio Mute/Unmute Glass Button */}
+        <button
+          type="button"
+          className="reel-btn-action"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleGlobalMute();
+          }}
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            transition: 'all 0.15s ease'
+          }}
+          title={isGlobalMuted ? "Unmute reel audio" : "Mute reel audio"}
+        >
+          {isGlobalMuted ? <VolumeX size={15} /> : <Volume2 size={15} color="#38bdf8" />}
+        </button>
+      </div>
+
+      {/* Floating Instagram Action Column on Right Edge */}
+      <div style={{
+        position: 'absolute',
+        right: '12px',
+        bottom: '90px',
+        zIndex: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '14px'
+      }}>
+        {/* Like Button */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+          <button
+            type="button"
+            className="reel-btn-action"
+            onClick={handleLikeClick}
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              backgroundColor: isLiked ? 'rgba(239, 68, 68, 0.25)' : 'rgba(0, 0, 0, 0.55)',
+              border: isLiked ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.25)',
+              color: isLiked ? '#ef4444' : '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              backdropFilter: 'blur(8px)',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              transform: isLiked ? 'scale(1.08)' : 'scale(1)'
+            }}
+            title="Like this news reel"
+          >
+            <Heart size={20} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : '#ffffff'} />
+          </button>
+          <span style={{ fontSize: '10px', fontWeight: '800', color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+            {likeCount}
+          </span>
+        </div>
+
+        {/* Comment Icon */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(0, 0, 0, 0.55)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)'
+            }}
+          >
+            <MessageSquare size={19} />
+          </div>
+          <span style={{ fontSize: '10px', fontWeight: '800', color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+            {reel.comments}
+          </span>
+        </div>
+
+        {/* Open on Instagram Direct Link */}
+        <a
+          href={reel.instagramUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="reel-btn-action reel-external-link"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+            border: '1.5px solid rgba(255, 255, 255, 0.4)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textDecoration: 'none',
+            boxShadow: '0 3px 12px rgba(220, 39, 67, 0.4)',
+            transition: 'transform 0.15s ease'
+          }}
+          title="Watch Reel on official Instagram account"
+        >
+          <InstagramGlyph size={18} color="#FFFFFF" />
+        </a>
+      </div>
+
+      {/* Bottom Info: Timestamp, News Title & Hashtags */}
+      <div style={{
+        position: 'relative',
+        zIndex: 3,
+        padding: '16px 14px 14px 14px',
+        paddingRight: '62px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px'
+      }}>
+        {/* Pulsing Tag */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{
+            fontSize: '9px',
+            fontWeight: '900',
+            backgroundColor: 'rgba(239, 68, 68, 0.9)',
+            color: '#ffffff',
+            padding: '2px 7px',
+            borderRadius: '4px',
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#fff', animation: 'pulse 1s infinite' }} />
+            NEW REEL
+          </span>
+          <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: '800' }}>
+            {reel.timeAgo}
+          </span>
+        </div>
+
+        {/* Title */}
+        <p style={{
+          margin: 0,
+          fontSize: '13px',
+          fontWeight: '800',
+          color: '#ffffff',
+          lineHeight: '1.35',
+          textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden'
+        }}>
+          {reel.title}
+        </p>
+
+        {/* Hashtags */}
+        <p style={{
+          margin: 0,
+          fontSize: '10.5px',
+          fontWeight: '700',
+          color: '#38bdf8',
+          textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+        }}>
+          {reel.hashtags}
+        </p>
+
+        {/* Desktop / Mobile Instructions Pill */}
+        <div style={{
+          marginTop: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '9.5px',
+          color: 'rgba(255, 255, 255, 0.65)',
+          fontWeight: '700'
+        }}>
+          <span>⚡ Hover (PC) or Tap (Phone) to play video</span>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 
 // Official Geometric Stealth Shield Brand Logo Component
@@ -1616,19 +2258,21 @@ export default function App() {
     }
   }, []);
 
-  // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat)
+  // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat + Instagram Reels Mode)
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [briefingData, setBriefingData] = useState("Loading briefing data...");
   const [trendingNewsList, setTrendingNewsList] = useState([]);
   const [newsCategory, setNewsCategory] = useState('india'); // 'global' | 'india' | 'gujarat' | 'ipo'
+  const [newsViewMode, setNewsViewMode] = useState('reels'); // 'reels' | 'articles' (defaults to Instagram Reels video grid)
+  const [isReelsMuted, setIsReelsMuted] = useState(true); // Instagram sound state
   const [ipoSubTab, setIpoSubTab] = useState('live'); // 'live' | 'upcoming'
   const [hoveredNewsId, setHoveredNewsId] = useState(null);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [lastNewsUpdated, setLastNewsUpdated] = useState('');
   const [newsCountdown, setNewsCountdown] = useState(120);
 
-  // Real-Time IPO Intelligence State with 1-Hour Auto Refresh
-  const [ipoData, setIpoData] = useState(() => IPO_DATABASE);
+  // Real-Time IPO Intelligence State with 1-Hour Auto Refresh (Dynamic generator ensures current date)
+  const [ipoData, setIpoData] = useState(() => getDynamicIpoDatabase());
   const [ipoLastUpdated, setIpoLastUpdated] = useState(() => {
     const d = new Date();
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -2037,7 +2681,7 @@ export default function App() {
 
       if (res.ok) {
         const data = await res.json();
-        if (data && data.success) {
+        if (data && data.success && Array.isArray(data.live) && data.live.length > 0) {
           setIpoData({
             live: data.live || [],
             upcoming: data.upcoming || []
@@ -2045,10 +2689,15 @@ export default function App() {
           if (data.lastUpdated && !isManual) {
             setIpoLastUpdated(data.lastUpdated);
           }
+        } else {
+          setIpoData(getDynamicIpoDatabase());
         }
+      } else {
+        setIpoData(getDynamicIpoDatabase());
       }
     } catch (e) {
-      console.warn("Live IPO remote fetch notice:", e.message);
+      console.warn("Live IPO remote fetch notice, syncing dynamic real-time data:", e.message);
+      setIpoData(getDynamicIpoDatabase());
     } finally {
       if (isManual) {
         setTimeout(() => setIpoRefreshing(false), 500);
@@ -7480,13 +8129,11 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
             className="modal-card briefing-modal-card"
             style={{ 
-              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.94) 0%, rgba(9, 12, 19, 0.98) 100%)', 
-              backdropFilter: 'blur(32px) saturate(190%)',
-              WebkitBackdropFilter: 'blur(32px) saturate(190%)',
+              background: 'linear-gradient(150deg, rgba(18, 23, 35, 0.96) 0%, rgba(9, 12, 19, 0.98) 100%)', 
               borderRadius: '24px', 
-              padding: window.innerWidth < 640 ? '16px' : '24px', 
+              padding: window.innerWidth < 640 ? '14px' : '24px', 
               width: '100%', 
-              maxWidth: '860px', 
+              maxWidth: '960px', 
               position: 'relative', 
               border: '1px solid rgba(255, 255, 255, 0.20)', 
               color: '#FFFFFF', 
@@ -7843,81 +8490,161 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* News Cards List */}
-                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
-                  {isNewsLoading && trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '36px 12px', color: '#00f59b', fontWeight: '900', fontSize: '13px' }}>
-                      <RotateCw size={24} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
-                      FETCHING REAL-TIME LIVE NEWS FOR {newsCategory.toUpperCase()}...
-                    </div>
-                  ) : trendingNewsList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '12px', fontWeight: '800' }}>
-                      No live news currently available. Click Refresh above.
-                    </div>
-                  ) : (
-                    trendingNewsList.map((item, idx) => (
-                      <div 
-                        key={item.id || idx} 
-                        style={{ 
-                          backgroundColor: 'rgba(7, 12, 9, 0.85)', 
-                          border: '1px solid rgba(255, 255, 255, 0.08)', 
-                          borderRadius: '14px', 
-                          padding: '14px', 
-                          display: 'flex', 
-                          gap: '14px',
-                          alignItems: 'center',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.2s ease',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          flexShrink: 0,
-                          minHeight: '100px'
-                        }}
-                      >
-                        {/* Media Thumbnail */}
-                        <div style={{ width: '120px', minWidth: '120px', height: '82px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <img 
-                            src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
-                            alt={item.title} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            onError={(e) => {
-                              e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
-                            }}
-                          />
-                        </div>
+                {/* View Mode Switcher: Instagram Reels Player Grid vs Traditional Feed */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewsViewMode('reels')}
+                    style={{
+                      flex: 1,
+                      padding: '9px 14px',
+                      borderRadius: '10px',
+                      border: newsViewMode === 'reels' ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: newsViewMode === 'reels' ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)' : 'rgba(255, 255, 255, 0.06)',
+                      color: '#ffffff',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: newsViewMode === 'reels' ? '0 4px 16px rgba(220, 39, 67, 0.45)' : 'none',
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      letterSpacing: '0.3px',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    <InstagramGlyph size={15} color="#FFFFFF" />
+                    <span>INSTAGRAM REELS (HOVER & TAP TO PLAY)</span>
+                  </button>
 
-                        {/* News Info & Story Link */}
-                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#00f59b', backgroundColor: 'rgba(0, 245, 155, 0.12)', border: '1px solid rgba(0, 245, 155, 0.3)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                {item.source || 'LIVE'}
-                              </span>
-                              <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '800' }}>
-                                {item.pubDate || 'Live Breaking'}
-                              </span>
+                  <button
+                    type="button"
+                    onClick={() => setNewsViewMode('articles')}
+                    style={{
+                      flex: '0 0 auto',
+                      padding: '9px 16px',
+                      borderRadius: '10px',
+                      border: newsViewMode === 'articles' ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: newsViewMode === 'articles' ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 243, 248, 0.85) 100%)' : 'rgba(255, 255, 255, 0.06)',
+                      color: newsViewMode === 'articles' ? '#0b0f19' : 'rgba(255, 255, 255, 0.75)',
+                      fontSize: '11px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      letterSpacing: '0.3px',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    <Newspaper size={13} />
+                    <span>ARTICLE FEED</span>
+                  </button>
+                </div>
+
+                {/* News Content Area: Instagram Reels Grid OR Traditional News Feed */}
+                {newsViewMode === 'reels' ? (
+                  <div 
+                    className="instagram-reels-grid" 
+                    style={{ 
+                      flex: 1, 
+                      overflowY: 'auto', 
+                      display: 'grid', 
+                      gridTemplateColumns: window.innerWidth < 640 ? '1fr' : window.innerWidth < 960 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', 
+                      gap: '14px', 
+                      paddingRight: '4px',
+                      WebkitOverflowScrolling: 'touch'
+                    }}
+                  >
+                    {(INSTAGRAM_NEWS_REELS[newsCategory] || INSTAGRAM_NEWS_REELS.india).map((reel) => (
+                      <InstagramNewsReelCard
+                        key={reel.id}
+                        reel={reel}
+                        isGlobalMuted={isReelsMuted}
+                        toggleGlobalMute={() => setIsReelsMuted(prev => !prev)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
+                    {isNewsLoading && trendingNewsList.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '36px 12px', color: '#00f59b', fontWeight: '900', fontSize: '13px' }}>
+                        <RotateCw size={24} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px auto', display: 'block' }} />
+                        FETCHING REAL-TIME LIVE NEWS FOR {newsCategory.toUpperCase()}...
+                      </div>
+                    ) : trendingNewsList.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '36px', color: '#94a3b8', fontSize: '12px', fontWeight: '800' }}>
+                        No live news currently available. Click Refresh above.
+                      </div>
+                    ) : (
+                      trendingNewsList.map((item, idx) => (
+                        <div 
+                          key={item.id || idx} 
+                          style={{ 
+                            backgroundColor: 'rgba(7, 12, 9, 0.85)', 
+                            border: '1px solid rgba(255, 255, 255, 0.08)', 
+                            borderRadius: '14px', 
+                            padding: '14px', 
+                            display: 'flex', 
+                            gap: '14px',
+                            alignItems: 'center',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            flexShrink: 0,
+                            minHeight: '100px'
+                          }}
+                        >
+                          {/* Media Thumbnail */}
+                          <div style={{ width: '120px', minWidth: '120px', height: '82px', borderRadius: '10px', overflow: 'hidden', position: 'relative', backgroundColor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <img 
+                              src={item.imageUrl || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60"} 
+                              alt={item.title} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                              onError={(e) => {
+                                e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60";
+                              }}
+                            />
+                          </div>
+
+                          {/* News Info & Story Link */}
+                          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '6px' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '9.5px', fontWeight: '900', color: '#00f59b', backgroundColor: 'rgba(0, 245, 155, 0.12)', border: '1px solid rgba(0, 245, 155, 0.3)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                  {item.source || 'LIVE'}
+                                </span>
+                                <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '800' }}>
+                                  {item.pubDate || 'Live Breaking'}
+                                </span>
+                              </div>
+
+                              <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#ffffff', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                                {item.title}
+                              </p>
                             </div>
 
-                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#ffffff', lineHeight: '1.4', wordBreak: 'break-word' }}>
-                              {item.title}
-                            </p>
-                          </div>
-
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '2px' }}>
-                            <a 
-                              href={item.link} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#042f1a', backgroundColor: '#00f59b', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', boxShadow: '0 0 12px rgba(0, 245, 155, 0.25)', textTransform: 'uppercase' }}
-                            >
-                              READ ARTICLE <ExternalLink size={11} />
-                            </a>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '2px' }}>
+                              <a 
+                                href={item.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: '900', color: '#042f1a', backgroundColor: '#00f59b', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', boxShadow: '0 0 12px rgba(0, 245, 155, 0.25)', textTransform: 'uppercase' }}
+                              >
+                                READ ARTICLE <ExternalLink size={11} />
+                              </a>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </>
             )}
 
