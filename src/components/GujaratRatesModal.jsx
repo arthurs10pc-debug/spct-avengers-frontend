@@ -42,18 +42,18 @@ export default function GujaratRatesModal({ isOpen, onClose, backendUrl }) {
 
   if (!isOpen) return null;
 
-  // Fallback defaults if offline
+  // Fallback defaults if offline (Source: Ahmedabad Bullion Association / Groww)
   const goldRates = ratesData?.gold?.rates || [
-    { karat: '24 Karat', purity: '99.9% Pure Gold', price10g: 77540, price1g: 7754, changeToday: '+₹90', trend: 'up', badge: 'BIS 999 Fine Gold' },
-    { karat: '22 Karat', purity: '91.6% Hallmark Jewelry Gold', price10g: 70012, price1g: 7001, changeToday: '+₹83', trend: 'up', badge: 'BIS 916 Hallmark' },
-    { karat: '18 Karat', purity: '75.0% Diamond Jewelry Gold', price10g: 56992, price1g: 5699, changeToday: '+₹68', trend: 'up', badge: 'BIS 750 Hallmark' }
+    { karat: '24 Karat', purity: '99.9% Pure Gold', price10g: 130740, price1g: 13074, changeToday: '-₹257/g', trend: 'down', badge: 'BIS 999 Fine Gold' },
+    { karat: '22 Karat', purity: '91.6% Hallmark Jewelry Gold', price10g: 119850, price1g: 11985, changeToday: '-₹235/g', trend: 'down', badge: 'BIS 916 Hallmark' },
+    { karat: '18 Karat', purity: '75.0% Diamond Jewelry Gold', price10g: 98060, price1g: 9806, changeToday: '-₹192/g', trend: 'down', badge: 'BIS 750 Hallmark' }
   ];
 
   const silverData = ratesData?.silver || {
-    price1kg: 91980,
-    price10g: 920,
-    price100g: 9200,
-    changeToday: '+₹180',
+    price1kg: 194000,
+    price10g: 1940,
+    price100g: 19400,
+    changeToday: '+₹1,200',
     trend: 'up',
     badge: '999 Pure Silver'
   };
