@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, Clock, ChevronDown, Check, Plus, Edit2, Trash2, 
-  RotateCw, AlertTriangle, Zap, Volume2, Shield 
+  RotateCw, AlertTriangle, Zap, Volume2, Shield, Moon 
 } from 'lucide-react';
 
 export default function WatcherModal({
@@ -21,7 +21,8 @@ export default function WatcherModal({
   setShowPermissionsModal,
   userProfile,
   socketRef,
-  backendUrl
+  backendUrl,
+  onTriggerTestAlert
 }) {
   const getCurrentTimeString = () => {
     const now = new Date();
@@ -35,6 +36,26 @@ export default function WatcherModal({
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
   const [pushFeedbackMessage, setPushFeedbackMessage] = useState('');
   const sortedReminders = [...(remindersList || [])].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const formatTimeTo12Hour = (timeStr) => {
+    if (!timeStr) return '';
+    try {
+      const [h, m] = timeStr.split(':').map(Number);
+      const period = h >= 12 ? 'PM' : 'AM';
+      const adjustedH = h % 12 === 0 ? 12 : h % 12;
+      return `${String(adjustedH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+    } catch {
+      return timeStr;
+    }
+  };
+
+  const handleTriggerTest = () => {
+    if (onTriggerTestAlert) {
+      onTriggerTestAlert();
+    } else if (setActiveAlertTask) {
+      setActiveAlertTask("Demo Reminder: Team Review Meeting");
+    }
+  };
+
 
   if (!isOpen) return null;
 
@@ -266,7 +287,7 @@ export default function WatcherModal({
             <div style={{ position: 'relative', borderTop: '1px solid rgba(255, 255, 255, 0.15)', paddingTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <button 
                 type="button"
-                onClick={triggerTestWatcherAlert}
+                onClick={handleTriggerTest}
                 title="Instantly Test Watcher Alert (Sound, Modal & Notification)"
                 style={{ flex: '1 1 120px', background: 'rgba(255, 255, 255, 0.12)',
               border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}

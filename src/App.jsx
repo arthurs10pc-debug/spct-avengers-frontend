@@ -2009,6 +2009,185 @@ export default function App() {
     triggerReminderVisualAndVoiceRef.current = triggerReminderVisualAndVoice;
   }, [triggerReminderVisualAndVoice]);
 
+  // Watcher Time-Hit Checker & Live Countdown Timer
+  useEffect(() => {
+    if (!watcherActive) return;
+
+    const checkWatcherTime = () => {
+      const now = new Date();
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentSeconds = now.getSeconds();
+      const currentTotalSec = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+      const currentTotalMin = currentHours * 60 + currentMinutes;
+      const currentTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
+
+      // Snoozed alerts check
+      Object.keys(snoozedAlerts || {}).forEach((taskKey) => {
+        if (snoozedAlerts[taskKey] === currentTimeStr) {
+          setActiveAlertTask(taskKey);
+          if (!isMuted) startJailerFluteAlarm();
+          setSnoozedAlerts(prev => {
+            const copy = { ...prev };
+            delete copy[taskKey];
+            return copy;
+          });
+        }
+      });
+
+      // Daily Auto-Reset: When a new day begins, uncheck all reminders fresh
+      try {
+        const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
+        if (lastActiveDate && lastActiveDate !== todayDate) {
+          localStorage.setItem('jarvis_last_active_date', todayDate);
+          triggeredKeysRef.current.clear();
+          setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
+        } else if (!lastActiveDate) {
+          localStorage.setItem('jarvis_last_active_date', todayDate);
+        }
+      } catch (e) {}
+
+      // 1. Calculate next upcoming reminder today or tomorrow morning
+      let nearestFutureDiffSec = Infinity;
+      let upcomingTime = null;
+      let upcomingTitle = null;
+
+      (remindersList || []).forEach((rem) => {
+        if (rem && rem.time) {
+          const [h, m] = rem.time.split(':').map(Number);
+          const remTotalSec = h * 3600 + m * 60;
+          const diff = remTotalSec - currentTotalSec;
+          if (diff > 0 && diff < nearestFutureDiffSec) {
+            nearestFutureDiffSec = diff;
+            upcomingTime = rem.time;
+            upcomingTitle = rem.task;
+          }
+        }
+      });
+
+      if (!remindersList || remindersList.length === 0) {
+        setRemindersList(DEFAULT_REMINDERS);
+        setNextRemTimeStr('14:28');
+        setNextRemTitle('Daily Focus & Routine');
+        setNextCountdownStr('-00:00');
+      } else if (nearestFutureDiffSec !== Infinity && nearestFutureDiffSec > 0) {
+        setNextRemTimeStr(upcomingTime);
+        setNextRemTitle(upcomingTitle);
+        const remH = Math.floor(nearestFutureDiffSec / 3600);
+        const remM = Math.floor((nearestFutureDiffSec % 3600) / 60);
+        const remS = nearestFutureDiffSec % 60;
+        if (remH > 0) {
+          setNextCountdownStr(`-${remH}h ${remM}m`);
+        } else if (remM > 0) {
+          setNextCountdownStr(`-${remM}m`);
+        } else {
+          setNextCountdownStr(`-${remS}s`);
+        }
+      } else {
+        // All reminders for today have completed; continuously count down to tomorrow's first reminder
+        const sortedByTime = [...(remindersList || [])].filter(r => r && r.time).sort((a, b) => a.time.localeCompare(b.time));
+        const firstRemTomorrow = sortedByTime[0] || { time: '09:00', task: 'Morning Routine' };
+        setNextRemTimeStr(firstRemTomorrow.time);
+        setNextRemTitle(firstRemTomorrow.task);
+        const [fh, fm] = (firstRemTomorrow.time || '09:00').split(':').map(Number);
+        const secUntilMidnight = (24 * 3600) - currentTotalSec;
+        const secAfterMidnight = fh * 3600 + fm * 60;
+        const totalTomSec = secUntilMidnight + secAfterMidnight;
+        const tomH = Math.floor(totalTomSec / 3600);
+        const tomM = Math.floor((totalTomSec % 3600) / 60);
+        if (tomH > 0) {
+          setNextCountdownStr(`-${tomH}h ${remM}m`);
+        } else {
+          setNextCountdownStr(`-${tomM}m`);
+        }
+      }
+
+      // 2. Synchronize: Triggered reminders marked completed, future ones pending
+      let needsListSync = false;
+      const updatedList = (remindersList || []).map((rem) => {
+        if (!rem || !rem.time) return rem;
+        const [h, m] = rem.time.split(':').map(Number);
+        const remMin = h * 60 + m;
+        const shouldBeTicked = currentTotalMin >= remMin;
+        if (rem.completed !== shouldBeTicked) {
+          needsListSync = true;
+          return { ...rem, completed: shouldBeTicked };
+        }
+        return rem;
+      });
+
+      if (needsListSync) {
+        setRemindersList(updatedList);
+      }
+
+      // 3. Trigger alert when a reminder time hits right now
+      (remindersList || []).forEach((rem, idx) => {
+        if (!rem || !rem.task || !rem.time) return;
+
+        const [rH, rM] = rem.time.split(':').map(Number);
+        const remTotalMin = rH * 60 + rM;
+        const reminderUniqueKey = `${rem.task}_${rem.time}_${todayDate}`;
+
+        const isHitNow = (currentTotalMin === remTotalMin);
+
+        if (isHitNow && !triggeredKeysRef.current.has(reminderUniqueKey)) {
+          triggeredKeysRef.current.add(reminderUniqueKey);
+          setActiveAlertTask(rem.task);
+          setActiveAlertKey(reminderUniqueKey);
+          setCurrentAlertTaskId(idx);
+          if (!isMuted) {
+            startJailerFluteAlarm();
+          }
+
+          showSystemNotification("Shadow Watcher Alert", {
+            body: `Scheduled Reminder: ${rem.task} at ${rem.time}`,
+            icon: "/shadow-logo.png?v=3"
+          });
+        }
+      });
+    };
+
+    checkWatcherTime();
+
+    if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
+    watcherIntervalRef.current = setInterval(checkWatcherTime, 1000);
+
+    return () => {
+      if (watcherIntervalRef.current) clearInterval(watcherIntervalRef.current);
+    };
+  }, [watcherActive, remindersList, snoozedAlerts, startJailerFluteAlarm, isMuted, showSystemNotification]);
+
+  // Test Watcher Alert Handler (Instant Verification of Sound, Modal & Notification)
+  const triggerTestWatcherAlert = useCallback(() => {
+    setActiveAlertTask("Demo Reminder: Team Review Meeting");
+    setActiveAlertKey(`test_alert_${Date.now()}`);
+    if (!isMuted) {
+      startJailerFluteAlarm();
+    }
+    showSystemNotification("Shadow Watcher Alert", {
+      body: "Scheduled Reminder: Team Review Meeting due now!",
+      icon: "/shadow-logo.png?v=3"
+    });
+  }, [isMuted, startJailerFluteAlarm, showSystemNotification]);
+
+  const handleManualResetToday = useCallback(() => {
+    triggeredKeysRef.current.clear();
+    setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
+    alert("All permanent reminders have been reset and are active for today!");
+  }, []);
+
+  const handleToggleReminderCompleted = useCallback((targetIndex) => {
+    setRemindersList(prev => {
+      const copy = [...prev];
+      if (copy[targetIndex]) {
+        copy[targetIndex] = { ...copy[targetIndex], completed: !copy[targetIndex].completed };
+      }
+      return copy;
+    });
+  }, []);
+
+
   // Service Worker and URL Query String Listener for Native Web Push Click
   useEffect(() => {
     // 1. Check URL parameters for ?reminder=...
@@ -3517,6 +3696,7 @@ export default function App() {
         userProfile={userProfile}
         socketRef={socketRef}
         backendUrl={BACKEND_URL}
+        onTriggerTestAlert={triggerTestWatcherAlert}
       />
 
       {/* Permanent Watcher & Routines Modal */}
