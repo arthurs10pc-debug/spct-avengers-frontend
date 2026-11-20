@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   X, Clock, ChevronDown, Check, Plus, Edit2, Trash2, 
-  RotateCw, AlertTriangle, Zap, Volume2, Shield, Moon 
+  RotateCw, AlertTriangle, Zap, Volume2, Shield, Moon,
+  Music, RotateCcw
 } from 'lucide-react';
 
 export default function WatcherModal({
@@ -22,7 +23,9 @@ export default function WatcherModal({
   userProfile,
   socketRef,
   backendUrl,
-  onTriggerTestAlert
+  onTriggerTestAlert,
+  onToggleCompleted,
+  onResetToday
 }) {
   const getCurrentTimeString = () => {
     const now = new Date();
@@ -255,25 +258,36 @@ export default function WatcherModal({
                       </div>
 
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
-                        {/* Only triggered reminders get the green checkmark badge */}
-                        {rem.completed && (
-                          <div 
-                            title="Triggered for Today" 
-                            style={{ 
-                              width: '24px', 
-                              height: '24px', 
-                              borderRadius: '6px', 
-                              backgroundColor: 'rgba(34, 197, 94, 0.2)', 
-                              border: '1px solid rgba(34, 197, 94, 0.4)', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              color: '#4ade80' 
-                            }}
-                          >
-                            <Check size={14} />
-                          </div>
-                        )}
+                        {/* Interactive toggle completion button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onToggleCompleted) {
+                              onToggleCompleted(originalIndex);
+                            } else {
+                              const updated = [...remindersList];
+                              updated[originalIndex] = { ...updated[originalIndex], completed: !updated[originalIndex].completed };
+                              setRemindersList(updated);
+                              try { localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(updated)); } catch (e) {}
+                            }
+                          }}
+                          title={rem.completed ? "Mark Pending / Active (Click to Re-arm)" : "Mark Done / Completed"}
+                          style={{ 
+                            width: '26px', 
+                            height: '26px', 
+                            borderRadius: '7px', 
+                            backgroundColor: rem.completed ? 'rgba(34, 197, 94, 0.25)' : 'rgba(255, 255, 255, 0.08)', 
+                            border: rem.completed ? '1px solid rgba(34, 197, 94, 0.55)' : '1px solid rgba(255, 255, 255, 0.25)', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            color: rem.completed ? '#4ade80' : 'rgba(255, 255, 255, 0.4)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Check size={14} strokeWidth={rem.completed ? 3 : 2} />
+                        </button>
                         <button onClick={() => handleEditReminder(originalIndex)} style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Edit Reminder"><Edit2 size={13} /></button>
                         <button onClick={() => handleDeleteReminder(originalIndex)} style={{ background: 'rgba(239, 68, 68, 0.25)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '6px', borderRadius: '6px', cursor: 'pointer' }} title="Delete Reminder"><Trash2 size={13} /></button>
                       </div>
@@ -281,6 +295,38 @@ export default function WatcherModal({
                   );
                 })
               )}
+            </div>
+
+            {/* Custom Ringtone Active Banner */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: 'rgba(59, 130, 246, 0.12)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              marginBottom: '10px'
+            }}>
+              <span style={{ fontSize: '11px', color: '#93C5FD', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Music size={13} /> Custom Alarm Music Active
+              </span>
+              <button
+                type="button"
+                onClick={handleTriggerTest}
+                style={{
+                  background: 'rgba(59, 130, 246, 0.25)',
+                  border: '1px solid rgba(59, 130, 246, 0.5)',
+                  color: '#FFFFFF',
+                  borderRadius: '5px',
+                  padding: '3px 8px',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  cursor: 'pointer'
+                }}
+              >
+                ▶ Test Music
+              </button>
             </div>
 
             {/* Watcher Modal Action Controls */}
@@ -293,6 +339,17 @@ export default function WatcherModal({
               border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
               >
                 <Zap size={12} /> Test Alert Now
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  if (onResetToday) onResetToday();
+                }}
+                title="Reset all reminders for today"
+                style={{ background: 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(255, 255, 255, 0.22)', color: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <RotateCcw size={12} /> Reset Today
               </button>
 
               <button 

@@ -1130,11 +1130,11 @@ export default function App() {
   });
 
   const DEFAULT_REMINDERS = [
-    { task: "task 1", time: "10:58", completed: true },
-    { task: "task 2", time: "11:58", completed: true },
-    { task: "task 3", time: "12:58", completed: true },
-    { task: "task 4", time: "14:28", completed: true },
-    { task: "task 5", time: "15:28", completed: true },
+    { task: "task 1", time: "10:58", completed: false },
+    { task: "task 2", time: "11:58", completed: false },
+    { task: "task 3", time: "12:58", completed: false },
+    { task: "task 4", time: "14:28", completed: false },
+    { task: "task 5", time: "15:28", completed: false },
     { task: "task 6", time: "16:58", completed: false },
     { task: "task 7", time: "18:13", completed: false },
     { task: "task 8", time: "19:28", completed: false }
@@ -1310,12 +1310,26 @@ export default function App() {
 
   // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat + Instagram Reels Mode)
   const watcherIntervalRef = useRef(null);
-  const triggeredKeysRef = useRef(new Set());
+  const triggeredKeysRef = useRef(new Set((() => {
+    try {
+      const now = new Date();
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const savedDate = localStorage.getItem('jarvis_last_active_date');
+      if (savedDate === todayDate) {
+        const stored = localStorage.getItem('jarvis_triggered_today');
+        return stored ? JSON.parse(stored) : [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  })()));
   const recognitionRef = useRef(null);
   const socketRef = useRef(null);
   const googleBtnRef = useRef(null);
   const liveTrafficCheckRef = useRef(null);
   const audioCtxRef = useRef(null);
+  const alarmAudioRef = useRef(null);
   const alarmIntervalRef = useRef(null);
   const triggeredMinuteRef = useRef('');
 
@@ -1908,56 +1922,123 @@ export default function App() {
     }
   }, [isMuted]);
 
+  // Pre-unlock audio on user's first interaction anywhere on page (essential for mobile & browser autoplay rules)
+  useEffect(() => {
+    const unlockAudio = () => {
+      try {
+        if (alarmAudioRef.current) {
+          const p = alarmAudioRef.current.play();
+          if (p !== undefined) {
+            p.then(() => {
+              alarmAudioRef.current.pause();
+              alarmAudioRef.current.currentTime = 0;
+            }).catch(() => {});
+          }
+        }
+      } catch (e) {}
+      try {
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume().catch(() => {});
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('click', unlockAudio, { once: true, passive: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
+
   // Pure Music / Sound Alarm Only - Plays Continuously in a loop until user clicks "Got It / Dismiss"
   const isAlarmPlayingRef = useRef(false);
 
   const startJailerFluteAlarm = useCallback(() => {
     if (isMuted) return;
     isAlarmPlayingRef.current = true;
-    if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
 
-    const playFluteTune = () => {
-      if (!isAlarmPlayingRef.current || isMuted) return;
-      try {
-        if (!audioCtxRef.current) {
-          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    // 1. Play user's custom MP3 music loop
+    try {
+      if (alarmAudioRef.current) {
+        alarmAudioRef.current.loop = true;
+        alarmAudioRef.current.volume = 1.0;
+        alarmAudioRef.current.currentTime = 0;
+        const playPromise = alarmAudioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn("[Watcher Alert] MP3 play blocked by browser autoplay policy:", err);
+            playFluteFallback();
+          });
         }
-        const ctx = audioCtxRef.current;
-        if (ctx.state === 'suspended') {
-          ctx.resume();
-        }
-
-        const notes = [587.33, 659.25, 783.99, 880.00, 1046.50, 880.00, 783.99];
-        notes.forEach((freq, idx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.16);
-          
-          gain.gain.setValueAtTime(0.5, ctx.currentTime + idx * 0.16);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.16 + 0.20);
-          
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + idx * 0.16);
-          osc.stop(ctx.currentTime + idx * 0.16 + 0.21);
-        });
-      } catch (e) {
-        console.warn("Alarm sound error:", e);
+      } else {
+        playFluteFallback();
       }
-    };
+    } catch (err) {
+      console.warn("[Watcher Alert] Play error:", err);
+      playFluteFallback();
+    }
 
-    playFluteTune();
-    // Continuous loop every 1.4 seconds until user clicks "Got It"
-    alarmIntervalRef.current = setInterval(playFluteTune, 1400);
+    // 2. Mobile vibration pulse
+    try {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate([600, 300, 600, 300, 1000]);
+      }
+    } catch (e) {}
+
+    // Fallback synthesizer tone if audio file is blocked
+    function playFluteFallback() {
+      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
+      const playBeeps = () => {
+        if (!isAlarmPlayingRef.current || isMuted) return;
+        try {
+          if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          const ctx = audioCtxRef.current;
+          if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+          const notes = [587.33, 659.25, 783.99, 880.00, 1046.50, 880.00, 783.99];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.16);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime + idx * 0.16);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.16 + 0.20);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + idx * 0.16);
+            osc.stop(ctx.currentTime + idx * 0.16 + 0.21);
+          });
+        } catch (e) {}
+      };
+      playBeeps();
+      alarmIntervalRef.current = setInterval(playBeeps, 1400);
+    }
   }, [isMuted]);
 
   const stopAlarmSound = useCallback(() => {
     isAlarmPlayingRef.current = false;
+    try {
+      if (alarmAudioRef.current) {
+        alarmAudioRef.current.pause();
+        alarmAudioRef.current.currentTime = 0;
+      }
+    } catch (e) {}
     if (alarmIntervalRef.current) {
       clearInterval(alarmIntervalRef.current);
       alarmIntervalRef.current = null;
     }
+    try {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(0);
+      }
+    } catch (e) {}
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) {}
   }, []);
 
   const handleSnooze = useCallback(() => {
@@ -2041,6 +2122,7 @@ export default function App() {
         const lastActiveDate = localStorage.getItem('jarvis_last_active_date');
         if (lastActiveDate && lastActiveDate !== todayDate) {
           localStorage.setItem('jarvis_last_active_date', todayDate);
+          localStorage.removeItem('jarvis_triggered_today');
           triggeredKeysRef.current.clear();
           setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
         } else if (!lastActiveDate) {
@@ -2054,7 +2136,7 @@ export default function App() {
       let upcomingTitle = null;
 
       (remindersList || []).forEach((rem) => {
-        if (rem && rem.time) {
+        if (rem && rem.time && !rem.completed) {
           const [h, m] = rem.time.split(':').map(Number);
           const remTotalSec = h * 3600 + m * 60;
           const diff = remTotalSec - currentTotalSec;
@@ -2085,7 +2167,7 @@ export default function App() {
           setNextCountdownStr(`-${remS}s`);
         }
       } else {
-        // All reminders for today have completed; continuously count down to tomorrow's first reminder
+        // All active reminders for today have completed; continuously count down to tomorrow's first reminder
         const sortedByTime = [...(remindersList || [])].filter(r => r && r.time).sort((a, b) => a.time.localeCompare(b.time));
         const firstRemTomorrow = sortedByTime[0] || { time: '09:00', task: 'Morning Routine' };
         setNextRemTimeStr(firstRemTomorrow.time);
@@ -2097,31 +2179,13 @@ export default function App() {
         const tomH = Math.floor(totalTomSec / 3600);
         const tomM = Math.floor((totalTomSec % 3600) / 60);
         if (tomH > 0) {
-          setNextCountdownStr(`-${tomH}h ${remM}m`);
+          setNextCountdownStr(`-${tomH}h ${tomM}m`);
         } else {
           setNextCountdownStr(`-${tomM}m`);
         }
       }
 
-      // 2. Synchronize: Triggered reminders marked completed, future ones pending
-      let needsListSync = false;
-      const updatedList = (remindersList || []).map((rem) => {
-        if (!rem || !rem.time) return rem;
-        const [h, m] = rem.time.split(':').map(Number);
-        const remMin = h * 60 + m;
-        const shouldBeTicked = currentTotalMin >= remMin;
-        if (rem.completed !== shouldBeTicked) {
-          needsListSync = true;
-          return { ...rem, completed: shouldBeTicked };
-        }
-        return rem;
-      });
-
-      if (needsListSync) {
-        setRemindersList(updatedList);
-      }
-
-      // 3. Trigger alert when a reminder time hits right now
+      // 2. Trigger alert when a reminder time hits right now
       (remindersList || []).forEach((rem, idx) => {
         if (!rem || !rem.task || !rem.time) return;
 
@@ -2129,13 +2193,27 @@ export default function App() {
         const remTotalMin = rH * 60 + rM;
         const reminderUniqueKey = `${rem.task}_${rem.time}_${todayDate}`;
 
-        const isHitNow = (currentTotalMin === remTotalMin);
+        const diffMin = currentTotalMin - remTotalMin;
+        // Hit if exactly this minute, or if within 2 minutes grace period (e.g. tab was minimized / throttled) and not triggered yet today
+        const isHitNow = (diffMin === 0 || (diffMin > 0 && diffMin <= 2));
 
         if (isHitNow && !triggeredKeysRef.current.has(reminderUniqueKey)) {
           triggeredKeysRef.current.add(reminderUniqueKey);
+          try {
+            const stored = JSON.parse(localStorage.getItem('jarvis_triggered_today') || '[]');
+            if (!stored.includes(reminderUniqueKey)) {
+              stored.push(reminderUniqueKey);
+              localStorage.setItem('jarvis_triggered_today', JSON.stringify(stored));
+            }
+          } catch (e) {}
+
           setActiveAlertTask(rem.task);
           setActiveAlertKey(reminderUniqueKey);
           setCurrentAlertTaskId(idx);
+
+          // Mark reminder as completed
+          setRemindersList(prev => prev.map((r, i) => i === idx ? { ...r, completed: true } : r));
+
           if (!isMuted) {
             startJailerFluteAlarm();
           }
@@ -2173,7 +2251,16 @@ export default function App() {
 
   const handleManualResetToday = useCallback(() => {
     triggeredKeysRef.current.clear();
-    setRemindersList(prev => prev.map(rem => ({ ...rem, completed: false })));
+    try {
+      localStorage.removeItem('jarvis_triggered_today');
+    } catch (e) {}
+    setRemindersList(prev => {
+      const reset = prev.map(rem => ({ ...rem, completed: false }));
+      try {
+        localStorage.setItem('jarvis_permanent_reminders', JSON.stringify(reset));
+      } catch (e) {}
+      return reset;
+    });
     alert("All permanent reminders have been reset and are active for today!");
   }, []);
 
@@ -3699,6 +3786,17 @@ export default function App() {
         onTriggerTestAlert={triggerTestWatcherAlert}
       />
 
+      {/* Hidden Audio Element for Reminder Ringtone */}
+      <audio
+        ref={alarmAudioRef}
+        id="shadowWatcherAlarmAudio"
+        src="/reminder-alarm.mp3"
+        preload="auto"
+        loop
+        playsInline
+        style={{ display: 'none' }}
+      />
+
       {/* Permanent Watcher & Routines Modal */}
       <WatcherModal
         isOpen={showWatcherModal}
@@ -3712,6 +3810,9 @@ export default function App() {
         userProfile={userProfile}
         socketRef={socketRef}
         backendUrl={BACKEND_URL}
+        onTriggerTestAlert={triggerTestWatcherAlert}
+        onToggleCompleted={handleToggleReminderCompleted}
+        onResetToday={handleManualResetToday}
       />
 
       {/* Full-Screen Watcher Reminder Alert Modal */}

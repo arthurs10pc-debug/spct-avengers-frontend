@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Volume2, Check, Clock } from 'lucide-react';
+import { Bell, Volume2, Check, Clock, Music } from 'lucide-react';
 
 export default function ReminderAlertModal({
   activeAlertTask,
@@ -100,6 +100,23 @@ export default function ReminderAlertModal({
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#EF4444', display: 'inline-block', boxShadow: '0 0 8px #EF4444' }} />
             Watcher Reminder Alert
+          </span>
+        </div>
+
+        {/* Music Playing Indicator */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'rgba(59, 130, 246, 0.2)',
+          border: '1px solid rgba(59, 130, 246, 0.4)',
+          borderRadius: '20px',
+          padding: '4px 12px',
+          marginBottom: '10px'
+        }}>
+          <Music size={13} color="#93c5fd" />
+          <span style={{ fontSize: '11px', fontWeight: '800', color: '#93c5fd' }}>
+            Playing Reminder Music 🔔
           </span>
         </div>
 
