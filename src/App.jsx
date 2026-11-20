@@ -18,6 +18,7 @@ import DailyBhavModal from './features/dailyBhav/DailyBhavModal';
 import NotesModal from './features/notes/NotesModal';
 import ExpensesModal from './features/expenses/ExpensesModal';
 import WatcherModal from './features/watcher/WatcherModal';
+import ReminderAlertModal from './features/watcher/ReminderAlertModal';
 import ProfileModal from './features/profile/ProfileModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
@@ -42,6 +43,251 @@ const parseJwt = (token) => {
 
 
 // Real-Time Dynamic Indian IPO Intelligence Database Generator (Always 100% Current Date, Never Stale)
+const ShadowLogo = ({ size = 24, color = '#0f172a', innerColor = '#ffffff' }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 100 100" 
+    width={size} 
+    height={size} 
+    fill="none" 
+    style={{ display: 'block', flexShrink: 0 }}
+  >
+    <path d="M50 5 L90 21 V52 C90 75 72 91 50 97 C28 91 10 75 10 52 V21 L50 5 Z" fill={color} />
+    <path d="M50 12 L83 26 V50 C83 69 68 83 50 89 C32 83 17 69 17 50 V26 L50 12 Z" fill={innerColor} />
+    <path d="M30 33 H70 V47 H46 V53 H70 V71 H30 V57 H54 V51 H30 Z" fill={color} />
+    <polygon points="50,18 54,23 50,28 46,23" fill={color} />
+  </svg>
+);
+
+// Full Screen Startup Animation: High-Performance GPU-Accelerated 60/120 FPS
+// Features: Zero-Lag Letter Reveal + Rotating Light Sweep + Dynamic Shadow Retraction into 3D Bevel
+const ShadowStartupAnimation = ({ onComplete }) => {
+  const [fadingOut, setFadingOut] = useState(false);
+
+  const handleFinish = useCallback(() => {
+    if (fadingOut) return;
+    setFadingOut(true);
+    setTimeout(() => {
+      onComplete();
+    }, 320);
+  }, [fadingOut, onComplete]);
+
+  useEffect(() => {
+    // Total duration: 1.85 seconds, then smooth fade
+    const timer = setTimeout(() => {
+      handleFinish();
+    }, 1850);
+    return () => clearTimeout(timer);
+  }, [handleFinish]);
+
+  const letters = ['S', 'H', 'A', 'D', 'O', 'W'];
+
+  return (
+    <div
+      onClick={handleFinish}
+      title="Tap to skip"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        zIndex: 999999,
+        backgroundColor: '#ffffff',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: fadingOut ? 0 : 1,
+        transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        padding: '20px'
+      }}
+    >
+      <style>{`
+        @keyframes shadowLogoSweep {
+          0% {
+            opacity: 0;
+            transform: scale(0.92);
+            filter: drop-shadow(-8px 14px 10px rgba(189,195,199,0.5));
+          }
+          15% {
+            opacity: 1;
+            transform: scale(1);
+            filter: drop-shadow(-14px 22px 14px rgba(189,195,199,0.7));
+          }
+          45% {
+            filter: drop-shadow(-8px 26px 16px rgba(189,195,199,0.8)) drop-shadow(-4px 12px 10px rgba(15,23,42,0.12));
+          }
+          70% {
+            filter: drop-shadow(0px 20px 14px rgba(189,195,199,0.85)) drop-shadow(0px 10px 10px rgba(15,23,42,0.15));
+          }
+          85% {
+            transform: scale(1);
+            filter: drop-shadow(2px 5px 0px #BDC3C7) drop-shadow(4px 9px 12px rgba(15,23,42,0.2));
+          }
+          100% {
+            transform: scale(1);
+            filter: drop-shadow(2px 5px 0px #BDC3C7) drop-shadow(4px 9px 12px rgba(15,23,42,0.2));
+          }
+        }
+
+        @keyframes shadowTextSweep {
+          0% {
+            text-shadow: -4px 6px 0 #BDC3C7, -8px 12px 0 #CBD5E1;
+          }
+          30% {
+            text-shadow: -10px 18px 0 #BDC3C7, -18px 32px 0 #CBD5E1, -24px 44px 12px rgba(15,23,42,0.12);
+          }
+          55% {
+            text-shadow: -4px 20px 0 #BDC3C7, -8px 36px 0 #CBD5E1, -12px 50px 14px rgba(15,23,42,0.14);
+          }
+          75% {
+            text-shadow: 0px 16px 0 #BDC3C7, 0px 28px 0 #CBD5E1, 0px 38px 14px rgba(15,23,42,0.15);
+          }
+          88% {
+            text-shadow: 1px 3px 0 #BDC3C7, 2px 5px 0 #CBD5E1, 3px 7px 0 #CBD5E1, 4px 8px 12px rgba(15,23,42,0.18);
+          }
+          100% {
+            text-shadow: 1px 2px 0 #BDC3C7, 2px 4px 0 #CBD5E1, 3px 6px 0 #CBD5E1, 4px 8px 12px rgba(15,23,42,0.18);
+          }
+        }
+
+        @keyframes letterPop {
+          0% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.94);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .startup-logo-shield {
+          animation: shadowLogoSweep 1.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          will-change: filter, transform;
+        }
+
+        .startup-word-text {
+          animation: shadowTextSweep 1.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+          will-change: text-shadow;
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px', transform: 'translateY(-10px)' }}>
+        {/* Official Geometric Stealth Shield Brand Logo */}
+        <div className="startup-logo-shield" style={{ width: '76px', height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ShadowLogo size={76} color="#0f172a" innerColor="#ffffff" />
+        </div>
+
+        {/* Stationary Letter Placement with Staggered Snap Reveal */}
+        <div 
+          className="startup-word-text" 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(36px, 9vw, 64px)',
+            fontWeight: '900',
+            color: '#0f172a',
+            letterSpacing: 'clamp(4px, 1.2vw, 8px)',
+            fontFamily: "'Montserrat', 'Inter', -apple-system, sans-serif",
+            textTransform: 'uppercase'
+          }}
+        >
+          {letters.map((letter, idx) => (
+            <span
+              key={idx}
+              style={{
+                display: 'inline-block',
+                animation: `letterPop 0.28s cubic-bezier(0.2, 0.8, 0.3, 1) ${idx * 0.08}s both`,
+                willChange: 'transform, opacity'
+              }}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// Non-destructive intelligent expense merge (deduplicates, preserves IDs, honors deletes, orders newest first)
+const mergeExpenses = (localList = [], remoteList = [], deletedIds = []) => {
+  const deletedSet = new Set((Array.isArray(deletedIds) ? deletedIds : []).map(id => String(id)));
+  const map = new Map();
+
+  const processExp = (exp) => {
+    if (!exp) return;
+    const rawId = exp.id || `tx_${exp.date || ''}_${exp.title || ''}_${exp.amount || ''}`;
+    const id = String(rawId);
+    if (deletedSet.has(id)) return; // Exclude deleted expenses
+
+    const item = {
+      ...exp,
+      id,
+      title: String(exp.title || 'Expense').trim(),
+      amount: parseFloat(exp.amount) || 0,
+      category: exp.category || 'Food & Snacks',
+      type: exp.type || 'expense',
+      date: exp.date || new Date().toISOString().slice(0, 10),
+      createdAt: exp.createdAt || (exp.date ? new Date(exp.date).getTime() : Date.now()) || Date.now()
+    };
+
+    if (map.has(id)) {
+      const prev = map.get(id);
+      if ((item.createdAt || 0) >= (prev.createdAt || 0)) {
+        map.set(id, { ...prev, ...item });
+      }
+    } else {
+      map.set(id, item);
+    }
+  };
+
+  if (Array.isArray(localList)) localList.forEach(processExp);
+  if (Array.isArray(remoteList)) remoteList.forEach(processExp);
+
+  const merged = Array.from(map.values());
+  merged.sort((a, b) => {
+    const timeA = a.createdAt || (a.date ? new Date(a.date).getTime() : 0);
+    const timeB = b.createdAt || (b.date ? new Date(b.date).getTime() : 0);
+    return timeB - timeA;
+  });
+  return merged;
+};
+
+// Flexible month matcher for expense items across diverse date formats
+const isExpenseInMonth = (item, ymStr) => {
+  if (!item) return false;
+  if (!item.date) return true;
+  const dStr = String(item.date).trim();
+  if (dStr.startsWith(ymStr) || dStr.includes(ymStr)) return true;
+
+  try {
+    const dt = new Date(dStr);
+    if (!isNaN(dt.getTime())) {
+      const itemYm = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (itemYm === ymStr) return true;
+    }
+  } catch (e) {}
+
+  const parts = dStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    const [targetYear, targetMonth] = ymStr.split('-');
+    const mNum = parseInt(targetMonth, 10);
+    if (parts.includes(targetYear) && (parts.includes(targetMonth) || parts.includes(String(mNum)))) {
+      return true;
+    }
+  }
+  return false;
+};
+
+
 // Convert VAPID base64 string to Uint8Array for PushManager subscription
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -797,14 +1043,6 @@ export default function App() {
   // Google Keep Style Notes & 3x Daily Email Reminder State
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showPhotoEditModal, setShowPhotoEditModal] = useState(false);
-  const [showRatesModal, setShowRatesModal] = useState(false);
-  const [showDropModal, setShowDropModal] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      return !!urlParams.get('dropRoom');
-    }
-    return false;
-  });
   const [photoStudioInitialImage, setPhotoStudioInitialImage] = useState(null);
   const DEFAULT_USER_NOTES = [
     {
@@ -877,26 +1115,7 @@ export default function App() {
   const recordingTimerRef = useRef(null);
   const notesFileInputRef = useRef(null);
 
-  // Route & Interactive Map State (Strictly Gujarat/India bounded)
-  const [showRoutePanel, setShowRoutePanel] = useState(false);
-  const [fromInput, setFromInput] = useState('');
-  const [toInput, setToInput] = useState('');
-  const [fromSuggestions, setFromSuggestions] = useState([]);
-  const [toSuggestions, setToSuggestions] = useState([]);
-  const [selectedPoiCategory, setSelectedPoiCategory] = useState('all');
-  const [trafficLiveLogs, setTrafficLiveLogs] = useState([]);
-  const [trafficCongestionPoint, setTrafficCongestionPoint] = useState(null);
-  
-  const [activeRoute, setActiveRoute] = useState({ 
-    fromName: '', 
-    fromCoords: [72.5714, 23.0225], 
-    toName: '', 
-    toCoords: [72.5714, 23.0225] 
-  });
-  const [routeStatus, setRouteStatus] = useState({ isHeavy: false, message: "Please select 'From' and 'To' locations." });
-  const [isMonitoringActive, setIsMonitoringActive] = useState(false);
-  const navVehicleMarkerRef = useRef(null);
-  const navAnimationTimerRef = useRef(null);
+
 
   // Permanent Watcher State
   const [showWatcherModal, setShowWatcherModal] = useState(false);
@@ -1090,34 +1309,6 @@ export default function App() {
   }, []);
 
   // Daily Briefing & Live Google News State (3 Categories: Global, India, Gujarat + Instagram Reels Mode)
-  const [showBriefingModal, setShowBriefingModal] = useState(false);
-  const [briefingData, setBriefingData] = useState("Loading briefing data...");
-  const [trendingNewsList, setTrendingNewsList] = useState([]);
-  const [newsCategory, setNewsCategory] = useState('india'); // 'global' | 'india' | 'gujarat' | 'ipo'
-  const [newsViewMode, setNewsViewMode] = useState('reels'); // 'reels' | 'articles' (defaults to Instagram Reels video grid)
-  const [isReelsMuted, setIsReelsMuted] = useState(true); // Instagram sound state
-  const [ipoSubTab, setIpoSubTab] = useState('live'); // 'live' | 'upcoming'
-  const [hoveredNewsId, setHoveredNewsId] = useState(null);
-  const [isNewsLoading, setIsNewsLoading] = useState(false);
-  const [lastNewsUpdated, setLastNewsUpdated] = useState('');
-  const [newsCountdown, setNewsCountdown] = useState(120);
-
-  // Real-Time IPO Intelligence State with 1-Hour Auto Refresh (Dynamic generator ensures current date)
-  const [ipoData, setIpoData] = useState(() => getDynamicIpoDatabase());
-  const [ipoLastUpdated, setIpoLastUpdated] = useState(() => {
-    const d = new Date();
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-  });
-  const [ipoRefreshing, setIpoRefreshing] = useState(false);
-  const [ipoCountdown, setIpoCountdown] = useState(3600); // 1-Hour (3600s) Auto-Refresh Countdown
-  const [ipoJustRefreshed, setIpoJustRefreshed] = useState(false);
-
-  // 1-Second Traffic Real-Time Monitor State
-  const [trafficAlertBanner, setTrafficAlertBanner] = useState(null);
-  const [isSimulatedTraffic, setIsSimulatedTraffic] = useState(false);
-  const lastSpokenTrafficAlertRef = useRef(0);
-  const trafficIntervalRef = useRef(null);
-
   const watcherIntervalRef = useRef(null);
   const triggeredKeysRef = useRef(new Set());
   const recognitionRef = useRef(null);
@@ -1769,6 +1960,23 @@ export default function App() {
     }
   }, []);
 
+  const handleSnooze = useCallback(() => {
+    stopAlarmSound();
+    if (activeAlertTask) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + snoozeMinutes);
+      const snoozeH = String(now.getHours()).padStart(2, '0');
+      const snoozeM = String(now.getMinutes()).padStart(2, '0');
+      const snoozeTimeStr = `${snoozeH}:${snoozeM}`;
+
+      setSnoozedAlerts(prev => ({ ...prev, [activeAlertTask]: snoozeTimeStr }));
+    }
+    setActiveAlertTask(null);
+    setActiveAlertKey(null);
+    setCurrentAlertTaskId(null);
+    triggeredMinuteRef.current = '';
+  }, [activeAlertTask, snoozeMinutes, stopAlarmSound]);
+
   // Ensure alarm keeps playing continuously as long as activeAlertTask modal is showing
   useEffect(() => {
     if (activeAlertTask && !isMuted) {
@@ -1914,38 +2122,6 @@ export default function App() {
     const period = h >= 12 ? 'PM' : 'AM';
     const adjustedH = h % 12 === 0 ? 12 : h % 12;
     return `${String(adjustedH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
-  };
-
-  // Ultra-Accurate HTML5 GPS Geolocation
-  const handleGetCurrentLocation = (targetField) => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-          const data = await res.json();
-          const address = data.display_name || `${lat}, ${lon}`;
-          if (targetField === 'from') {
-            setFromInput(address);
-            setActiveRoute(prev => ({ ...prev, fromName: address, fromCoords: [lon, lat] }));
-          } else {
-            setToInput(address);
-            setActiveRoute(prev => ({ ...prev, toName: address, toCoords: [lon, lat] }));
-          }
-          if (isMonitoringActive) speakText("Current GPS location set successfully.");
-        } catch (e) {}
-      },
-      (error) => {
-        alert("GPS location permission error: " + error.message);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
   };
 
   // Expense Categories Constant
@@ -2433,80 +2609,7 @@ export default function App() {
     }
   };
 
-  const handleOpenBriefing = async () => {
-    setShowBriefingModal(true);
-    setNewsCountdown(60);
-    if (newsCategory === 'ipo') {
-      fetchIpoData(true);
-    } else {
-      fetchTrendingNews(newsCategory, true);
-    }
-  };
 
-  const GUJARAT_PRESETS = [
-    { name: "SG Highway, Ahmedabad", coords: [72.5115, 23.0338] },
-    { name: "Iskcon Cross Road, Ahmedabad", coords: [72.5074, 23.0290] },
-    { name: "Ashram Road, Ahmedabad", coords: [72.5699, 23.0366] },
-    { name: "Infocity, Gandhinagar", coords: [72.6276, 23.1895] },
-    { name: "Sector 21, Gandhinagar", coords: [72.6578, 23.2323] },
-    { name: "Ring Road, Surat", coords: [72.8311, 21.1702] },
-    { name: "Alkapuri, Vadodara", coords: [73.1812, 22.3107] },
-    { name: "Kalawad Road, Rajkot", coords: [70.7678, 22.2858] }
-  ];
-
-  const handleSelectFromSuggestion = (item) => {
-    setFromInput(item.display_name);
-    setActiveRoute(prev => ({ ...prev, fromName: item.display_name, fromCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
-    setFromSuggestions([]);
-  };
-
-  const handleSelectToSuggestion = (item) => {
-    setToInput(item.display_name);
-    setActiveRoute(prev => ({ ...prev, toName: item.display_name, toCoords: [parseFloat(item.lon), parseFloat(item.lat)] }));
-    setToSuggestions([]);
-  };
-
-  const handleStopRouteNavigation = () => {
-    setIsMonitoringActive(false);
-    setTrafficAlertBanner(null);
-    if (trafficIntervalRef.current) {
-      clearInterval(trafficIntervalRef.current);
-      trafficIntervalRef.current = null;
-    }
-    if (navAnimationTimerRef.current) {
-      clearInterval(navAnimationTimerRef.current);
-      navAnimationTimerRef.current = null;
-    }
-    if (navVehicleMarkerRef.current && mapInstanceRef.current) {
-      try { mapInstanceRef.current.removeLayer(navVehicleMarkerRef.current); } catch (e) {}
-      navVehicleMarkerRef.current = null;
-    }
-    if (polylineRef.current && mapInstanceRef.current) {
-      try { mapInstanceRef.current.removeLayer(polylineRef.current); } catch (e) {}
-      polylineRef.current = null;
-    }
-    if (trafficPolylineRef.current && mapInstanceRef.current) {
-      try { mapInstanceRef.current.removeLayer(trafficPolylineRef.current); } catch (e) {}
-      trafficPolylineRef.current = null;
-    }
-    if (trafficMarkerRef.current && mapInstanceRef.current) {
-      try { mapInstanceRef.current.removeLayer(trafficMarkerRef.current); } catch (e) {}
-      trafficMarkerRef.current = null;
-    }
-    setRouteStatus({ isHeavy: false, message: "Route navigation stopped. Ready for next route." });
-    speakText("Route navigation stopped.");
-  };
-
-  const handleApplyRoute = (e) => {
-    e.preventDefault();
-    if (!fromInput.trim() || !toInput.trim()) {
-      alert("Please select 'From' and 'To' locations.");
-      return;
-    }
-    setIsMonitoringActive(true);
-    setShowRoutePanel(false);
-    speakText("Route active. Real-time traffic monitoring has started.");
-  };
 
     const totalSpent = expenseList.reduce((acc, curr) => acc + (parseFloat(curr?.amount) || 0), 0);
   const remainingBudget = monthlyBudget - totalSpent;
@@ -2809,33 +2912,6 @@ export default function App() {
               </div>
             </div>
           </section>
-
-          {/* Traffic Alert Banner (If Triggered or Active Monitoring) */}
-          {(trafficAlertBanner || isMonitoringActive) && (
-            <div className="liquid-glass-glance-banner nordic-glance-banner" style={{ borderLeft: '4px solid #F59E0B' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <AlertTriangle size={20} color={trafficAlertBanner ? "#EF4444" : "#F59E0B"} />
-                <div>
-                  <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '900', color: '#1C1917' }}>
-                    {trafficAlertBanner ? `TRAFFIC ALERT: ${trafficAlertBanner.location}` : 'Live Gujarat Route Monitoring Active'}
-                  </h4>
-                  <span style={{ fontSize: '12px', color: '#78716C' }}>
-                    {trafficAlertBanner ? trafficAlertBanner.message : `Radar polling every 1s: ${activeRoute.fromName.split(',')[0]} ➔ ${activeRoute.toName.split(',')[0]}`}
-                  </span>
-                </div>
-              </div>
-              {isMonitoringActive && (
-                <button
-                  type="button"
-                  onClick={handleStopRouteNavigation}
-                  className="touch-btn"
-                  style={{ backgroundColor: '#EF4444', color: '#FFFFFF', border: 'none', padding: '7px 16px', borderRadius: '10px', fontSize: '11px', fontWeight: '900', cursor: 'pointer' }}
-                >
-                  STOP RADAR
-                </button>
-              )}
-            </div>
-          )}
 
         </div>
       </main>
@@ -3451,17 +3527,24 @@ export default function App() {
         setRemindersList={setRemindersList}
         snoozeMinutes={snoozeMinutes}
         setSnoozeMinutes={setSnoozeMinutes}
-        activeAlertTask={activeAlertTask}
-        setActiveAlertTask={setActiveAlertTask}
-        activeAlertKey={activeAlertKey}
-        setActiveAlertKey={setActiveAlertKey}
-        currentAlertTaskId={currentAlertTaskId}
-        setCurrentAlertTaskId={setCurrentAlertTaskId}
         stopAlarmSound={stopAlarmSound}
         setShowPermissionsModal={setShowPermissionsModal}
         userProfile={userProfile}
         socketRef={socketRef}
         backendUrl={BACKEND_URL}
+      />
+
+      {/* Full-Screen Watcher Reminder Alert Modal */}
+      <ReminderAlertModal
+        activeAlertTask={activeAlertTask}
+        onDismiss={() => {
+          stopAlarmSound();
+          setActiveAlertTask(null);
+          setActiveAlertKey(null);
+          setCurrentAlertTaskId(null);
+        }}
+        onSnooze={handleSnooze}
+        snoozeMinutes={snoozeMinutes}
       />
 
       {/* System Permissions Setup Modal */}
