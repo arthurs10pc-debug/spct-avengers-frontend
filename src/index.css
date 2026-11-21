@@ -3215,6 +3215,35 @@ html, body {
   position: relative;
   z-index: 1;
   margin-bottom: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.notepad-lines-container::-webkit-scrollbar {
+  width: 4px;
+}
+.notepad-lines-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notepad-lines-container::-webkit-scrollbar-thumb {
+  background: rgba(180, 83, 9, 0.28);
+  border-radius: 4px;
+}
+
+.notepad-notes-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.notepad-note-preview-item {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease;
+}
+
+.notepad-note-preview-item:hover {
+  transform: translateX(2px);
 }
 
 .notepad-note-preview {

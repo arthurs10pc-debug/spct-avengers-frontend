@@ -3192,40 +3192,78 @@ export default function App() {
                     </div>
                   </div>
                   <span className="notepad-count-pill">
-                    {notesList.filter(n => n.pinned).length > 0 && <Pin size={10} style={{ display: 'inline', marginRight: 2 }} />}
-                    {notesList.length} Notes
+                    {notesList.filter(n => n.pinned).length > 0 ? (
+                      <>
+                        <Pin size={10} style={{ display: 'inline', marginRight: 2 }} />
+                        {notesList.filter(n => n.pinned).length} Pinned ({notesList.length} Notes)
+                      </>
+                    ) : (
+                      <>{notesList.length} Notes</>
+                    )}
                   </span>
                 </div>
 
-                {/* Lined Content Preview */}
+                {/* Lined Content Preview - Displays ALL Pinned Notes */}
                 <div className="notepad-lines-container">
-                  {notesList.length > 0 ? (
-                    (() => {
-                      const pinnedOrFirst = notesList.find(n => n.pinned) || notesList[0];
+                  {(() => {
+                    const pinnedNotes = (notesList || []).filter(n => n.pinned);
+                    const displayNotes = pinnedNotes.length > 0 ? pinnedNotes : (notesList || []).slice(0, 3);
+
+                    if (displayNotes.length === 0) {
                       return (
-                        <div className="notepad-note-preview">
-                          <div className="notepad-note-title-line">
-                            <span className="notepad-pin-indicator">📌</span>
-                            <span className="notepad-preview-title">{pinnedOrFirst.title || "Quick Memo"}</span>
-                          </div>
-                          <p className="notepad-preview-body">
-                            {pinnedOrFirst.content ? pinnedOrFirst.content.slice(0, 150) + (pinnedOrFirst.content.length > 150 ? '...' : '') : 'Tap to write daily memos, tasks, or attach audio & pictures.'}
-                          </p>
-                          {pinnedOrFirst.attachments && pinnedOrFirst.attachments.length > 0 && (
-                            <span className="notepad-att-indicator">
-                              📎 {pinnedOrFirst.attachments.length} attachment{pinnedOrFirst.attachments.length > 1 ? 's' : ''} saved
-                            </span>
-                          )}
+                        <div className="notepad-empty-lines">
+                          <p className="notepad-empty-line">✍️ Quick memo, checklist & thoughts...</p>
+                          <p className="notepad-empty-line">• Voice recordings & photo attachments</p>
+                          <p className="notepad-empty-line">• Instant Gmail & Cloud Sync</p>
                         </div>
                       );
-                    })()
-                  ) : (
-                    <div className="notepad-empty-lines">
-                      <p className="notepad-empty-line">✍️ Quick memo, checklist & thoughts...</p>
-                      <p className="notepad-empty-line">• Voice recordings & photo attachments</p>
-                      <p className="notepad-empty-line">• Instant Gmail & Cloud Sync</p>
-                    </div>
-                  )}
+                    }
+
+                    return (
+                      <div className="notepad-notes-stack">
+                        {displayNotes.map((note, idx) => (
+                          <div 
+                            key={note.id || idx} 
+                            className="notepad-note-preview-item"
+                            style={{
+                              paddingBottom: idx < displayNotes.length - 1 ? '10px' : '4px',
+                              marginBottom: idx < displayNotes.length - 1 ? '10px' : '4px',
+                              borderBottom: idx < displayNotes.length - 1 ? '1px dashed rgba(180, 83, 9, 0.28)' : 'none'
+                            }}
+                          >
+                            <div className="notepad-note-title-line">
+                              <span className="notepad-pin-indicator">{note.pinned ? "📌" : "📝"}</span>
+                              <span className="notepad-preview-title">{note.title || "Untitled Note"}</span>
+                              {note.color && (
+                                <span 
+                                  style={{ 
+                                    width: '7px', 
+                                    height: '7px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: note.color, 
+                                    display: 'inline-block',
+                                    marginLeft: '5px',
+                                    flexShrink: 0,
+                                    boxShadow: `0 0 4px ${note.color}`
+                                  }} 
+                                />
+                              )}
+                            </div>
+                            {note.content && (
+                              <p className="notepad-preview-body">
+                                {note.content.length > 130 ? note.content.slice(0, 130) + '...' : note.content}
+                              </p>
+                            )}
+                            {note.attachments && note.attachments.length > 0 && (
+                              <span className="notepad-att-indicator">
+                                📎 {note.attachments.length} attachment{note.attachments.length > 1 ? 's' : ''} saved
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Bottom Quick Action Strip */}
