@@ -23,6 +23,8 @@ export default function ExpensesModal({
   const [expenseCategory, setExpenseCategory] = useState('Food & Snacks');
   const [transactionType, setTransactionType] = useState('expense');
   const [expenseTabMode, setExpenseTabMode] = useState('tracker');
+  const [isSettingBudget, setIsSettingBudget] = useState(false);
+  const [tempBudgetInput, setTempBudgetInput] = useState('');
 
   if (!isOpen) return null;
 

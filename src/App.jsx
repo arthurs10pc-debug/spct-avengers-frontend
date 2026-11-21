@@ -3014,167 +3014,234 @@ export default function App() {
             </div>
           </section>
 
-          {/* SQUARE-TYPE LIQUID GLASS TILE GRID (2-Col Square on Mobile, 3-Col on Laptop) */}
-          <section className="liquid-glass-grid nordic-grid">
-            
-            {/* Tile 1: Daily Routines & Watcher */}
-            <div 
-              className="liquid-glass-card nordic-card touch-btn"
-              onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
-              title="Open Daily Routines & Watcher"
-            >
-              <div className="liquid-glass-card-top nordic-card-top">
-                <div className="liquid-glass-icon-orb nordic-card-icon-wrap orange-glow terracotta">
-                  <Clock size={24} />
+          {/* MAIN DASHBOARD STAGE: 4-Square Grid (Left) + iOS Spiral Sticky Notepad (Right) */}
+          <section className="dashboard-main-stage">
+            {/* 4-SQUARE GRID (2x2 equal size, warm amber gold theme) */}
+            <div className="four-square-grid">
+              
+              {/* Tile 1: Daily Routines & Watcher */}
+              <div 
+                className="liquid-glass-card nordic-card touch-btn"
+                onClick={() => { setMobileActiveNav('watcher'); setShowWatcherModal(true); setCurrentTimeInput(getCurrentTimeString()); }}
+                title="Open Daily Routines & Watcher"
+                style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}
+              >
+                <div className="liquid-glass-card-top nordic-card-top">
+                  <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
+                    <Clock size={24} />
+                  </div>
+                  <span className="liquid-glass-badge nordic-card-badge highlight" style={{ backgroundColor: '#f59e0b', color: '#0b0f19', fontWeight: '900' }}>
+                    {nextCountdownStr}
+                  </span>
                 </div>
-                <span className="liquid-glass-badge nordic-card-badge highlight">
-                  {nextCountdownStr}
-                </span>
+                <div className="liquid-glass-card-body nordic-card-body">
+                  <span className="liquid-glass-card-title nordic-card-title">Watcher & Routines</span>
+                  <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24' }}>
+                    {formatTimeTo12Hour(nextRemTimeStr || '14:28')}
+                  </span>
+                  <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
+                    Upcoming target: "{nextRemTitle || 'Routine'}" with automated voice speech alerts.
+                  </p>
+                </div>
+                <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                  <button type="button" className="liquid-glass-card-btn nordic-card-btn primary" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0b0f19', fontWeight: '900' }}>
+                    Open Watcher ➔
+                  </button>
+                </div>
               </div>
-              <div className="liquid-glass-card-body nordic-card-body">
-                <span className="liquid-glass-card-title nordic-card-title">Watcher & Routines</span>
-                <span className="liquid-glass-card-stat nordic-card-stat">
-                  {formatTimeTo12Hour(nextRemTimeStr || '14:28')}
-                </span>
-                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
-                  Upcoming target: "{nextRemTitle || 'Routine'}" with automated voice speech alerts.
-                </p>
+
+              {/* Tile 2: Expenses Vault & Budget */}
+              <div 
+                className="liquid-glass-card nordic-card touch-btn"
+                onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
+                title="Open Expenses Vault & Monthly Budget"
+                style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}
+              >
+                <div className="liquid-glass-card-top nordic-card-top">
+                  <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
+                    <DollarSign size={24} />
+                  </div>
+                  <span className="liquid-glass-badge nordic-card-badge highlight" style={{ backgroundColor: '#f59e0b', color: '#0b0f19', fontWeight: '900' }}>
+                    {currentBudgetPct}% Spent
+                  </span>
+                </div>
+                <div className="liquid-glass-card-body nordic-card-body">
+                  <span className="liquid-glass-card-title nordic-card-title">Expenses Vault</span>
+                  <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24' }}>
+                    ₹{currentMonthSpent.toLocaleString('en-IN')}
+                  </span>
+                  <div className="liquid-glass-progress-bar nordic-progress-bar desktop-only">
+                    <div 
+                      className="liquid-glass-progress-fill nordic-progress-fill" 
+                      style={{ 
+                        width: `${currentBudgetPct}%`,
+                        background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
+                      }} 
+                    />
+                  </div>
+                  <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
+                    Track daily spending, view monthly reports, export CSV sheets.
+                  </p>
+                </div>
+                <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                  <button type="button" className="liquid-glass-card-btn nordic-card-btn primary" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0b0f19', fontWeight: '900' }}>
+                    Open Vault ➔
+                  </button>
+                </div>
               </div>
-              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
-                <button type="button" className="liquid-glass-card-btn nordic-card-btn primary">
-                  Open Watcher ➔
-                </button>
+
+              {/* Tile 3: Facebook Live Feed (Daily Bhav) */}
+              <div 
+                className="liquid-glass-card nordic-card touch-btn"
+                onClick={() => setShowDailyBhavModal(true)}
+                title="સોના/ચાંદીનો ભાવ - દૈનિક (Facebook Live Updates)"
+                style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}
+              >
+                <div className="liquid-glass-card-top nordic-card-top">
+                  <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
+                    <Coins size={24} />
+                  </div>
+                  <span className="liquid-glass-badge nordic-card-badge highlight" style={{ backgroundColor: '#f59e0b', color: '#0b0f19', fontWeight: '900' }}>
+                    46K LIVE
+                  </span>
+                </div>
+                <div className="liquid-glass-card-body nordic-card-body">
+                  <span className="liquid-glass-card-title nordic-card-title" style={{ fontSize: '15px' }}>
+                    સોના/ચાંદીનો ભાવ - દૈનિક
+                  </span>
+                  <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24', fontSize: '14px', fontWeight: '900' }}>
+                    Facebook Live Post
+                  </span>
+                  <p className="liquid-glass-card-desc nordic-card-desc desktop-only" style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                    ગુજરાતના સોના અને ચાંદીના રોજિંદા તાજા ભાવ. સરળ, સ્પષ્ટ અને દૈનિક ઇમેજ અપડેટ્સ.
+                  </p>
+                </div>
+                <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                  <button type="button" className="liquid-glass-card-btn nordic-card-btn primary" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0b0f19', fontWeight: '900' }}>
+                    જુઓ લાઈવ ભાવ ➔
+                  </button>
+                </div>
               </div>
+
+              {/* Tile 4: AI Photo Studio (Directly under Expenses Vault with matching size & amber color) */}
+              <div 
+                className="liquid-glass-card nordic-card touch-btn"
+                onClick={() => setShowPhotoEditModal(true)}
+                title="Open AI Photo Studio & Magic Eraser"
+                style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}
+              >
+                <div className="liquid-glass-card-top nordic-card-top">
+                  <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
+                    <Image size={24} />
+                  </div>
+                  <span className="liquid-glass-badge nordic-card-badge highlight" style={{ backgroundColor: '#f59e0b', color: '#0b0f19', fontWeight: '900' }}>
+                    AI Eraser
+                  </span>
+                </div>
+                <div className="liquid-glass-card-body nordic-card-body">
+                  <span className="liquid-glass-card-title nordic-card-title">AI Photo Studio</span>
+                  <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24' }}>
+                    Magic Studio
+                  </span>
+                  <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
+                    Inpainting object eraser, photo filters, instant crop, brightness & format conversions.
+                  </p>
+                </div>
+                <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
+                  <button type="button" className="liquid-glass-card-btn nordic-card-btn primary" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0b0f19', fontWeight: '900' }}>
+                    Open Studio ➔
+                  </button>
+                </div>
+              </div>
+
             </div>
 
-            {/* Tile 2: Expenses Vault & Budget */}
+            {/* iOS Spiral Sticky Notepad (Keep Notes) */}
             <div 
-              className="liquid-glass-card nordic-card touch-btn"
-              onClick={() => { setMobileActiveNav('expense'); setShowExpenseModal(true); }}
-              title="Open Expenses Vault & Monthly Budget"
-            >
-              <div className="liquid-glass-card-top nordic-card-top">
-                <div className="liquid-glass-icon-orb nordic-card-icon-wrap emerald-glow emerald">
-                  <DollarSign size={24} />
-                </div>
-                <span className="liquid-glass-badge nordic-card-badge">
-                  {currentBudgetPct}% Spent
-                </span>
-              </div>
-              <div className="liquid-glass-card-body nordic-card-body">
-                <span className="liquid-glass-card-title nordic-card-title">Expenses Vault</span>
-                <span className="liquid-glass-card-stat nordic-card-stat">
-                  ₹{currentMonthSpent.toLocaleString('en-IN')}
-                </span>
-                <div className="liquid-glass-progress-bar nordic-progress-bar desktop-only">
-                  <div 
-                    className="liquid-glass-progress-fill nordic-progress-fill" 
-                    style={{ 
-                      width: `${currentBudgetPct}%`
-                    }} 
-                  />
-                </div>
-                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
-                  Track daily spending, view monthly reports, export CSV sheets.
-                </p>
-              </div>
-              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
-                <button type="button" className="liquid-glass-card-btn nordic-card-btn primary">
-                  Open Vault ➔
-                </button>
-              </div>
-            </div>
-
-            {/* Tile 3: Google Keep Notes */}
-            <div 
-              className="liquid-glass-card nordic-card touch-btn"
+              className="ios-spiral-notepad touch-btn"
               onClick={() => { setMobileActiveNav('notes'); setShowNotesModal(true); }}
-              title="Open Google Keep Style Notes"
+              title="Open iOS Keep Notes"
             >
-              <div className="liquid-glass-card-top nordic-card-top">
-                <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
-                  <CheckSquare size={24} />
-                </div>
-                <span className="liquid-glass-badge nordic-card-badge highlight">
-                  {notesList.length} Notes
-                </span>
-              </div>
-              <div className="liquid-glass-card-body nordic-card-body">
-                <span className="liquid-glass-card-title nordic-card-title">Keep Notes</span>
-                <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24' }}>
-                  {notesList.filter(n => n.pinned).length} Pinned
-                </span>
-                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
-                  Fast color-coded notes, voice memos, media attachments & Gmail sync.
-                </p>
-              </div>
-              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
-                <button type="button" className="liquid-glass-card-btn nordic-card-btn primary">
-                  Open Notes ➔
-                </button>
-              </div>
-            </div>
+              {/* Scotch Tape Strip at Top (Page Stick Effect) */}
+              <div className="notepad-tape-strip" />
 
-            {/* Tile 4: AI Photo Studio */}
-            <div 
-              className="liquid-glass-card nordic-card touch-btn"
-              onClick={() => setShowPhotoEditModal(true)}
-              title="Open AI Photo Studio & Magic Eraser"
-            >
-              <div className="liquid-glass-card-top nordic-card-top">
-                <div className="liquid-glass-icon-orb nordic-card-icon-wrap rose-glow rose">
-                  <Image size={24} />
-                </div>
-                <span className="liquid-glass-badge nordic-card-badge">
-                  AI Eraser
-                </span>
+              {/* Realistic Top Wire Spiral Rings */}
+              <div className="notepad-spiral-header">
+                {[...Array(9)].map((_, i) => (
+                  <div key={i} className="notepad-spiral-coil-unit">
+                    <div className="notepad-hole" />
+                    <div className="notepad-coil" />
+                  </div>
+                ))}
               </div>
-              <div className="liquid-glass-card-body nordic-card-body">
-                <span className="liquid-glass-card-title nordic-card-title">AI Photo Studio</span>
-                <span className="liquid-glass-card-stat nordic-card-stat">
-                  Magic Studio
-                </span>
-                <p className="liquid-glass-card-desc nordic-card-desc desktop-only">
-                  Inpainting object eraser, photo filters, instant crop, brightness & format conversions.
-                </p>
-              </div>
-              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
-                <button type="button" className="liquid-glass-card-btn nordic-card-btn primary">
-                  Open Studio ➔
-                </button>
-              </div>
-            </div>
 
-            {/* Tile 5: સોના/ચાંદીનો ભાવ - દૈનિક (Facebook Live Feed & Daily Bhav) */}
-            <div 
-              className="liquid-glass-card nordic-card touch-btn"
-              onClick={() => setShowDailyBhavModal(true)}
-              title="સોના/ચાંદીનો ભાવ - દૈનિક (Facebook Live Updates)"
-              style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}
-            >
-              <div className="liquid-glass-card-top nordic-card-top">
-                <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
-                  <Coins size={24} />
+              {/* Notepad Yellow Lined Paper Page */}
+              <div className="notepad-paper-body">
+                {/* Red Margin Line */}
+                <div className="notepad-margin-line" />
+
+                {/* iOS Notes Brand Header */}
+                <div className="notepad-header-row">
+                  <div className="notepad-title-group">
+                    <div className="notepad-icon-badge">
+                      <CheckSquare size={16} />
+                    </div>
+                    <div>
+                      <h4 className="notepad-title">Keep Notes</h4>
+                      <span className="notepad-subtitle">iOS Spiral Pad</span>
+                    </div>
+                  </div>
+                  <span className="notepad-count-pill">
+                    {notesList.filter(n => n.pinned).length > 0 && <Pin size={10} style={{ display: 'inline', marginRight: 2 }} />}
+                    {notesList.length} Notes
+                  </span>
                 </div>
-                <span className="liquid-glass-badge nordic-card-badge highlight" style={{ backgroundColor: '#f59e0b', color: '#0b0f19', fontWeight: '900' }}>
-                  46K LIVE
-                </span>
-              </div>
-              <div className="liquid-glass-card-body nordic-card-body">
-                <span className="liquid-glass-card-title nordic-card-title" style={{ fontSize: '15px' }}>
-                  સોના/ચાંદીનો ભાવ - દૈનિક
-                </span>
-                <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24', fontSize: '14px', fontWeight: '900' }}>
-                  Facebook Live Post
-                </span>
-                <p className="liquid-glass-card-desc nordic-card-desc desktop-only" style={{ fontSize: '11px', lineHeight: '1.4' }}>
-                  ગુજરાતના સોના અને ચાંદીના રોજિંદા તાજા ભાવ. સરળ, સ્પષ્ટ અને દૈનિક ઇમેજ અપડેટ્સ.
-                </p>
-              </div>
-              <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
-                <button type="button" className="liquid-glass-card-btn nordic-card-btn primary" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0b0f19', fontWeight: '900' }}>
-                  જુઓ લાઈવ ભાવ ➔
-                </button>
+
+                {/* Lined Content Preview */}
+                <div className="notepad-lines-container">
+                  {notesList.length > 0 ? (
+                    (() => {
+                      const pinnedOrFirst = notesList.find(n => n.pinned) || notesList[0];
+                      return (
+                        <div className="notepad-note-preview">
+                          <div className="notepad-note-title-line">
+                            <span className="notepad-pin-indicator">📌</span>
+                            <span className="notepad-preview-title">{pinnedOrFirst.title || "Quick Memo"}</span>
+                          </div>
+                          <p className="notepad-preview-body">
+                            {pinnedOrFirst.content ? pinnedOrFirst.content.slice(0, 150) + (pinnedOrFirst.content.length > 150 ? '...' : '') : 'Tap to write daily memos, tasks, or attach audio & pictures.'}
+                          </p>
+                          {pinnedOrFirst.attachments && pinnedOrFirst.attachments.length > 0 && (
+                            <span className="notepad-att-indicator">
+                              📎 {pinnedOrFirst.attachments.length} attachment{pinnedOrFirst.attachments.length > 1 ? 's' : ''} saved
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="notepad-empty-lines">
+                      <p className="notepad-empty-line">✍️ Quick memo, checklist & thoughts...</p>
+                      <p className="notepad-empty-line">• Voice recordings & photo attachments</p>
+                      <p className="notepad-empty-line">• Instant Gmail & Cloud Sync</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Quick Action Strip */}
+                <div className="notepad-footer-row">
+                  <button 
+                    type="button" 
+                    className="notepad-open-btn"
+                    onClick={(e) => { e.stopPropagation(); setMobileActiveNav('notes'); setShowNotesModal(true); }}
+                  >
+                    <span>Open Notes</span>
+                    <span className="notepad-arrow">➔</span>
+                  </button>
+                </div>
+
+                {/* Curled / Dog-Ear Page Bottom Corner */}
+                <div className="notepad-curled-corner" />
               </div>
             </div>
           </section>
