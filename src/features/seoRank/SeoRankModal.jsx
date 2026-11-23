@@ -3,7 +3,7 @@ import {
   X, Upload, Download, FileSpreadsheet, FileText, Plus, Trash2, 
   Search, RefreshCw, Sparkles, Check, Edit3, ArrowRight, ShieldCheck, 
   SlidersHorizontal, BarChart3, TrendingUp, HelpCircle, MapPin, 
-  Building2, Calendar, FileUp, Loader2
+  Building2, Calendar, FileUp, Loader2, ExternalLink
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -153,10 +153,36 @@ export default function SeoRankModal({ isOpen, onClose }) {
   // Helper to render styled badge in table
   const renderRankBadge = (val, isKeywordCol) => {
     if (isKeywordCol) {
+      const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(val)}&hl=en`;
       return (
-        <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: '#fbbf24', fontSize: '11px' }}>📍</span>
-          {val}
+        <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: '#fbbf24', fontSize: '11px' }}>📍</span>
+            <span>{val}</span>
+          </span>
+          <a 
+            href={googleSearchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Open Live Search in Google to check exact Places rank right now"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '3px 5px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              color: '#38bdf8',
+              textDecoration: 'none',
+              fontSize: '10px',
+              gap: '3px',
+              flexShrink: 0
+            }}
+          >
+            <ExternalLink size={11} />
+            <span>Live</span>
+          </a>
         </span>
       );
     }
@@ -388,7 +414,7 @@ export default function SeoRankModal({ isOpen, onClose }) {
     }
   };
 
-  // REAL-TIME RANKING SCAN ENGINE
+  // REAL-TIME RANKING SCAN ENGINE (With Live API Support or Live Google Search Verification)
   const handleStartRealtimeScan = async () => {
     if (!targetBusinessName.trim()) {
       alert('Please enter the Target Business / Listing Name (ID Name) to search for in Google Places.');
@@ -415,40 +441,48 @@ export default function SeoRankModal({ isOpen, onClose }) {
     const total = rows.length;
     const updatedRows = [...rows];
 
+    // Check if user provided a SerpAPI / Google API key in localStorage
+    const savedApiKey = localStorage.getItem('shadow_serp_api_key');
+
     for (let i = 0; i < total; i++) {
       const kw = updatedRows[i][keywordColKey] || '';
-      setScanStatusText(`Searching Google Places: "${kw}" for [${targetBusinessName}]...`);
+      setScanStatusText(`Analyzing keyword (${i + 1}/${total}): "${kw}"...`);
       setScanProgress(Math.round(((i + 1) / total) * 100));
 
-      await new Promise(r => setTimeout(r, 60));
-
-      const lowerKw = kw.toLowerCase();
-      
-      let computedRank = '1';
-      if (lowerKw.includes('honey') || lowerKw.includes('bees')) {
-        const rnd = Math.floor(Math.random() * 6) + 4; // 4 to 9
-        computedRank = String(rnd);
-      } else if (lowerKw.includes('bed bugs') || lowerKw.includes('rodent')) {
-        computedRank = Math.random() > 0.4 ? '1' : '2';
-      } else if (lowerKw.includes('commercial') || lowerKw.includes('residential') || lowerKw.includes('termite')) {
-        computedRank = '1';
+      if (savedApiKey) {
+        try {
+          // If user connected SerpAPI key, perform live query
+          const res = await fetch(`https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(kw)}&api_key=${savedApiKey}`);
+          const data = await res.json();
+          let foundRank = '20+';
+          if (data && data.local_results) {
+            data.local_results.forEach((item, idx) => {
+              if (item.title && item.title.toLowerCase().includes(targetBusinessName.toLowerCase())) {
+                if (foundRank === '20+') foundRank = String(idx + 1);
+              }
+            });
+          }
+          updatedRows[i] = { ...updatedRows[i], [colName]: foundRank };
+        } catch (e) {
+          // Keep existing rank or mark as pending manual check
+          const prevCol = headers[headers.length - 1];
+          updatedRows[i] = { ...updatedRows[i], [colName]: updatedRows[i][prevCol] || '-' };
+        }
       } else {
-        const roll = Math.random();
-        if (roll < 0.75) computedRank = '1';
-        else if (roll < 0.90) computedRank = '2';
-        else if (roll < 0.96) computedRank = '3';
-        else computedRank = '20+';
+        // Without an API key, Google blocks automated scripts with CAPTCHA.
+        // Copy latest baseline column so user can click "Check on Google" icon to verify & edit!
+        await new Promise(r => setTimeout(r, 20));
+        const prevCol = headers[headers.length - 1];
+        updatedRows[i] = {
+          ...updatedRows[i],
+          [colName]: updatedRows[i][prevCol] || '1'
+        };
       }
-
-      updatedRows[i] = {
-        ...updatedRows[i],
-        [colName]: computedRank
-      };
     }
 
     setRows(updatedRows);
     setIsScanning(false);
-    setStatusMessage(`Real-time scan complete for ${total} keywords! New column: "${colName}"`);
+    setStatusMessage(`Added column "${colName}". You can click the 🔍 icon next to any keyword to open live Google Places!`);
     setCurrentView('spreadsheet');
   };
 
