@@ -3073,8 +3073,7 @@ a, .text-link, .hit-target {
     gap: 16px !important;
   }
 
-  .drop-modal-container,
-  .rates-modal-container {
+  .drop-modal-container {
     max-height: 95vh !important;
     padding: 0 !important;
     border-radius: 20px !important;

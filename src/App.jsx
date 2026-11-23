@@ -14,7 +14,6 @@ import {
   Coins, Fuel, Share2, QrCode
 } from 'lucide-react';
 import PhotoEditorModal from './components/PhotoEditorModal';
-import DailyBhavModal from './features/dailyBhav/DailyBhavModal';
 import NotesModal from './features/notes/NotesModal';
 import ExpensesModal from './features/expenses/ExpensesModal';
 import WatcherModal from './features/watcher/WatcherModal';
@@ -323,7 +322,6 @@ const LiveHeaderClock = React.memo(() => {
 
 export default function App() {
   const [isMuted, setIsMuted] = useState(false);
-  const [showDailyBhavModal, setShowDailyBhavModal] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [voiceFeedbackMessage, setVoiceFeedbackMessage] = useState('');
@@ -2952,31 +2950,6 @@ export default function App() {
 
           {/* Right Header Actions */}
           <div className="liquid-glass-header-actions nordic-header-actions">
-            {/* Local SEO 3-Pack Ranking Studio Button */}
-            <button 
-              type="button"
-              className="liquid-glass-icon-btn nordic-icon-btn touch-btn"
-              onClick={() => setShowSeoRankModal(true)}
-              title="Open Local SEO 3-Pack Ranking Studio (Excel & PDF)"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '0 12px',
-                width: 'auto',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(22, 163, 74, 0.12) 100%)',
-                border: '1px solid rgba(34, 197, 94, 0.4)',
-                boxShadow: '0 0 12px rgba(34, 197, 94, 0.22)',
-                cursor: 'pointer'
-              }}
-            >
-              <TrendingUp size={16} color="#4ADE80" />
-              <span style={{ fontSize: '11px', fontWeight: 900, color: '#4ADE80', letterSpacing: '0.2px' }}>
-                SEO STUDIO
-              </span>
-            </button>
-
             {/* Direct PWA Push Alert Button (ONLY PLACE TO SETUP PUSH/ALERTS) */}
             <button 
               type="button"
@@ -3117,35 +3090,35 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tile 3: Facebook Live Feed (Daily Bhav) */}
+              {/* Tile 3: Local SEO Ranking Report (Google Places 3-Pack) */}
               <div 
                 className="liquid-glass-card nordic-card touch-btn"
-                onClick={() => setShowDailyBhavModal(true)}
-                title="સોના/ચાંદીનો ભાવ - દૈનિક (Facebook Live Updates)"
+                onClick={() => setShowSeoRankModal(true)}
+                title="Open Local SEO 3-Pack Ranking Report"
                 style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}
               >
                 <div className="liquid-glass-card-top nordic-card-top">
                   <div className="liquid-glass-icon-orb nordic-card-icon-wrap amber-glow" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%)', color: '#fbbf24' }}>
-                    <Coins size={24} />
+                    <TrendingUp size={24} />
                   </div>
                   <span className="liquid-glass-badge nordic-card-badge highlight" style={{ backgroundColor: '#f59e0b', color: '#0b0f19', fontWeight: '900' }}>
-                    46K LIVE
+                    3-PACK LIVE
                   </span>
                 </div>
                 <div className="liquid-glass-card-body nordic-card-body">
                   <span className="liquid-glass-card-title nordic-card-title" style={{ fontSize: '15px' }}>
-                    સોના/ચાંદીનો ભાવ - દૈનિક
+                    Local SEO Ranking
                   </span>
                   <span className="liquid-glass-card-stat nordic-card-stat" style={{ color: '#fbbf24', fontSize: '14px', fontWeight: '900' }}>
-                    Facebook Live Post
+                    Google 3-Pack Report
                   </span>
                   <p className="liquid-glass-card-desc nordic-card-desc desktop-only" style={{ fontSize: '11px', lineHeight: '1.4' }}>
-                    ગુજરાતના સોના અને ચાંદીના રોજિંદા તાજા ભાવ. સરળ, સ્પષ્ટ અને દૈનિક ઇમેજ અપડેટ્સ.
+                    Upload Excel keywords, search real-time Google Places rank, editable live sheet & XLSX / PDF export.
                   </p>
                 </div>
                 <div className="liquid-glass-card-footer nordic-card-footer desktop-only">
                   <button type="button" className="liquid-glass-card-btn nordic-card-btn primary" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0b0f19', fontWeight: '900' }}>
-                    જુઓ લાઈવ ભાવ ➔
+                    Open SEO Tracker ➔
                   </button>
                 </div>
               </div>
@@ -3890,11 +3863,6 @@ export default function App() {
         initialImage={photoStudioInitialImage}
       />
 
-      {/* Facebook Live Feed & Daily Gold/Silver Bhav Modal */}
-      <DailyBhavModal
-        isOpen={showDailyBhavModal}
-        onClose={() => setShowDailyBhavModal(false)}
-      />
 
       {/* Google Keep Style Notes Modal */}
       <NotesModal
@@ -4156,7 +4124,7 @@ export default function App() {
         onClose={() => setShowProfileModal(false)}
         userProfile={userProfile}
         setUserProfile={setUserProfile}
-        onOpenDailyBhav={() => setShowDailyBhavModal(true)}
+        onOpenSeoRank={() => setShowSeoRankModal(true)}
         onOpenExpenses={() => setShowExpenseModal(true)}
         onOpenNotes={() => setShowNotesModal(true)}
         onOpenPhotoStudio={() => setShowPhotoEditModal(true)}

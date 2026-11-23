@@ -1,12 +1,12 @@
 import React from 'react';
-import { X, Image, Coins, DollarSign, CheckSquare } from 'lucide-react';
+import { X, Image, TrendingUp, DollarSign, CheckSquare } from 'lucide-react';
 
 export default function ProfileModal({
   isOpen,
   onClose,
   userProfile,
   setUserProfile,
-  onOpenDailyBhav,
+  onOpenSeoRank,
   onOpenExpenses,
   onOpenNotes,
   onOpenPhotoStudio,
@@ -68,10 +68,10 @@ export default function ProfileModal({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
             <button 
               type="button"
-              onClick={() => { onClose(); if (onOpenDailyBhav) onOpenDailyBhav(); }}
+              onClick={() => { onClose(); if (onOpenSeoRank) onOpenSeoRank(); }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.18)', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: '#FFFFFF', fontWeight: '800', fontSize: '11px', cursor: 'pointer' }}
             >
-              <Coins size={14} color="#f59e0b" /> દૈનિક ભાવ
+              <TrendingUp size={14} color="#f59e0b" /> SEO 3-Pack
             </button>
             <button 
               type="button"
