@@ -20,6 +20,7 @@ import ExpensesModal from './features/expenses/ExpensesModal';
 import WatcherModal from './features/watcher/WatcherModal';
 import ReminderAlertModal from './features/watcher/ReminderAlertModal';
 import ProfileModal from './features/profile/ProfileModal';
+import SeoRankModal from './features/seoRank/SeoRankModal';
 const BACKEND_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || /^192\.168\./.test(window.location.hostname) || /^10\./.test(window.location.hostname)))
   ? `http://${window.location.hostname}:5001`
   : "https://spct-avengers-backend.onrender.com";
@@ -1043,6 +1044,7 @@ export default function App() {
   // Google Keep Style Notes & 3x Daily Email Reminder State
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showPhotoEditModal, setShowPhotoEditModal] = useState(false);
+  const [showSeoRankModal, setShowSeoRankModal] = useState(false);
   const [photoStudioInitialImage, setPhotoStudioInitialImage] = useState(null);
   const DEFAULT_USER_NOTES = [
     {
@@ -2950,6 +2952,31 @@ export default function App() {
 
           {/* Right Header Actions */}
           <div className="liquid-glass-header-actions nordic-header-actions">
+            {/* Local SEO 3-Pack Ranking Studio Button */}
+            <button 
+              type="button"
+              className="liquid-glass-icon-btn nordic-icon-btn touch-btn"
+              onClick={() => setShowSeoRankModal(true)}
+              title="Open Local SEO 3-Pack Ranking Studio (Excel & PDF)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0 12px',
+                width: 'auto',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(22, 163, 74, 0.12) 100%)',
+                border: '1px solid rgba(34, 197, 94, 0.4)',
+                boxShadow: '0 0 12px rgba(34, 197, 94, 0.22)',
+                cursor: 'pointer'
+              }}
+            >
+              <TrendingUp size={16} color="#4ADE80" />
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#4ADE80', letterSpacing: '0.2px' }}>
+                SEO STUDIO
+              </span>
+            </button>
+
             {/* Direct PWA Push Alert Button (ONLY PLACE TO SETUP PUSH/ALERTS) */}
             <button 
               type="button"
@@ -3846,6 +3873,12 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Local SEO Ranking Report Studio Modal (Excel & PDF) */}
+      <SeoRankModal
+        isOpen={showSeoRankModal}
+        onClose={() => setShowSeoRankModal(false)}
+      />
 
       {/* Photo Studio / AI Object Eraser Modal */}
       <PhotoEditorModal 
