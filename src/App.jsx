@@ -3851,6 +3851,8 @@ export default function App() {
       <SeoRankModal
         isOpen={showSeoRankModal}
         onClose={() => setShowSeoRankModal(false)}
+        backendUrl={BACKEND_URL}
+        socketRef={socketRef}
       />
 
       {/* Photo Studio / AI Object Eraser Modal */}

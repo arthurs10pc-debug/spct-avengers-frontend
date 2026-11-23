@@ -3,7 +3,7 @@ import {
   X, Upload, Download, FileSpreadsheet, FileText, Plus, Trash2, 
   Search, RefreshCw, Sparkles, Check, Edit3, ArrowRight, ShieldCheck, 
   SlidersHorizontal, BarChart3, TrendingUp, HelpCircle, MapPin, 
-  Building2, Calendar, FileUp, Loader2, ExternalLink
+  Building2, Calendar, FileUp, Loader2, ExternalLink, Zap
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -59,9 +59,15 @@ function parseCSV(csvText) {
   return { headers, rows };
 }
 
-export default function SeoRankModal({ isOpen, onClose }) {
+export default function SeoRankModal({ isOpen, onClose, backendUrl, socketRef }) {
   // App view: 'setup' (Upload & Target ID name) or 'spreadsheet' (Full Excel grid)
   const [currentView, setCurrentView] = useState('setup');
+
+  const effectiveBackendUrl = backendUrl || (
+    (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+      ? `http://${window.location.hostname}:5001`
+      : 'https://spct-avengers-backend.onrender.com'
+  );
   
   // Sheet Data
   const [headers, setHeaders] = useState([]);
@@ -77,6 +83,7 @@ export default function SeoRankModal({ isOpen, onClose }) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStatusText, setScanStatusText] = useState('');
+  const [singleScanningIdx, setSingleScanningIdx] = useState(null);
 
   // Spreadsheet view state
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,38 +158,73 @@ export default function SeoRankModal({ isOpen, onClose }) {
   };
 
   // Helper to render styled badge in table
-  const renderRankBadge = (val, isKeywordCol) => {
+  const renderRankBadge = (val, isKeywordCol, rIdx) => {
     if (isKeywordCol) {
       const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(val)}&hl=en`;
+      const isCheckingSingle = singleScanningIdx === rIdx;
+
       return (
-        <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+        <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ color: '#fbbf24', fontSize: '11px' }}>📍</span>
             <span>{val}</span>
           </span>
-          <a 
-            href={googleSearchUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            title="Open Live Search in Google to check exact Places rank right now"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '3px 5px',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              color: '#38bdf8',
-              textDecoration: 'none',
-              fontSize: '10px',
-              gap: '3px',
-              flexShrink: 0
-            }}
-          >
-            <ExternalLink size={11} />
-            <span>Live</span>
-          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {rIdx !== undefined && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLiveSingleKeywordScan(rIdx);
+                }}
+                disabled={isScanning || isCheckingSingle}
+                title="Verify Live Google Places Rank for this keyword right now"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '3px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  color: '#fbbf24',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  gap: '3px',
+                  cursor: (isScanning || isCheckingSingle) ? 'wait' : 'pointer'
+                }}
+              >
+                {isCheckingSingle ? (
+                  <Loader2 size={10} className="animate-spin" />
+                ) : (
+                  <Zap size={10} />
+                )}
+                <span>Check</span>
+              </button>
+            )}
+            <a 
+              href={googleSearchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title="Open Live Search in Google to view Places section directly"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '3px 5px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                color: '#38bdf8',
+                textDecoration: 'none',
+                fontSize: '10px',
+                gap: '3px'
+              }}
+            >
+              <ExternalLink size={11} />
+              <span>Live</span>
+            </a>
+          </div>
         </span>
       );
     }
@@ -414,7 +456,7 @@ export default function SeoRankModal({ isOpen, onClose }) {
     }
   };
 
-  // REAL-TIME RANKING SCAN ENGINE (With Live API Support or Live Google Search Verification)
+  // REAL-TIME RANKING SCAN ENGINE (100% Free Headless Google Places Scraper)
   const handleStartRealtimeScan = async () => {
     if (!targetBusinessName.trim()) {
       alert('Please enter the Target Business / Listing Name (ID Name) to search for in Google Places.');
@@ -428,62 +470,144 @@ export default function SeoRankModal({ isOpen, onClose }) {
 
     const colName = newScanColumnName.trim() || `Scan ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     
-    let targetHeaders = [...headers];
-    if (!targetHeaders.includes(colName)) {
-      targetHeaders.push(colName);
-      setHeaders(targetHeaders);
+    // Add column if not already present
+    if (!headers.includes(colName)) {
+      setHeaders(prev => [...prev, colName]);
+      setRows(prev => prev.map(r => ({ ...r, [colName]: '-' })));
     }
 
+    // Switch view to spreadsheet immediately so the user can watch the live progress!
+    setCurrentView('spreadsheet');
     setIsScanning(true);
     setScanProgress(0);
+    setScanStatusText('Initializing real-time Google Places scraper...');
 
     const keywordColKey = headers[0] || 'keywords';
-    const total = rows.length;
-    const updatedRows = [...rows];
+    const keywordList = rows.map(r => String(r[keywordColKey] || '').trim()).filter(Boolean);
 
-    // Check if user provided a SerpAPI / Google API key in localStorage
-    const savedApiKey = localStorage.getItem('shadow_serp_api_key');
+    // If WebSocket is connected, use real-time streaming
+    if (socketRef?.current?.connected) {
+      const socket = socketRef.current;
+      let hasFinished = false;
 
-    for (let i = 0; i < total; i++) {
-      const kw = updatedRows[i][keywordColKey] || '';
-      setScanStatusText(`Analyzing keyword (${i + 1}/${total}): "${kw}"...`);
-      setScanProgress(Math.round(((i + 1) / total) * 100));
-
-      if (savedApiKey) {
-        try {
-          // If user connected SerpAPI key, perform live query
-          const res = await fetch(`https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(kw)}&api_key=${savedApiKey}`);
-          const data = await res.json();
-          let foundRank = '20+';
-          if (data && data.local_results) {
-            data.local_results.forEach((item, idx) => {
-              if (item.title && item.title.toLowerCase().includes(targetBusinessName.toLowerCase())) {
-                if (foundRank === '20+') foundRank = String(idx + 1);
-              }
-            });
+      const onStep = (data) => {
+        // data: { index, total, keyword, rank, matchedTitle, topPlaces, progress }
+        setRows(prevRows => {
+          const next = [...prevRows];
+          if (next[data.index]) {
+            next[data.index] = { ...next[data.index], [colName]: formatRankValue(data.rank) };
           }
-          updatedRows[i] = { ...updatedRows[i], [colName]: foundRank };
-        } catch (e) {
-          // Keep existing rank or mark as pending manual check
-          const prevCol = headers[headers.length - 1];
-          updatedRows[i] = { ...updatedRows[i], [colName]: updatedRows[i][prevCol] || '-' };
-        }
-      } else {
-        // Without an API key, Google blocks automated scripts with CAPTCHA.
-        // Copy latest baseline column so user can click "Check on Google" icon to verify & edit!
-        await new Promise(r => setTimeout(r, 20));
-        const prevCol = headers[headers.length - 1];
-        updatedRows[i] = {
-          ...updatedRows[i],
-          [colName]: updatedRows[i][prevCol] || '1'
-        };
-      }
+          return next;
+        });
+        setScanProgress(data.progress || Math.round(((data.index + 1) / data.total) * 100));
+        setScanStatusText(`Verified (${data.index + 1}/${data.total}): "${data.keyword}" → Rank #${data.rank} ${data.matchedTitle ? `(${data.matchedTitle})` : ''}`);
+      };
+
+      const onFinished = (finishData) => {
+        if (hasFinished) return;
+        hasFinished = true;
+        setIsScanning(false);
+        setScanProgress(100);
+        setStatusMessage(`✅ Real-time scan complete! ${finishData.results?.length || keywordList.length} keywords verified live.`);
+        cleanup();
+      };
+
+      const onError = (errData) => {
+        console.error('Socket scan error:', errData);
+        setStatusMessage(`Notice: ${errData.error || 'Server error'}`);
+        setIsScanning(false);
+        cleanup();
+      };
+
+      const cleanup = () => {
+        socket.off('seo_scan_step', onStep);
+        socket.off('seo_scan_finished', onFinished);
+        socket.off('seo_scan_error', onError);
+      };
+
+      socket.on('seo_scan_step', onStep);
+      socket.on('seo_scan_finished', onFinished);
+      socket.on('seo_scan_error', onError);
+
+      socket.emit('start_live_seo_scan', {
+        keywords: keywordList,
+        targetBusinessName: targetBusinessName.trim()
+      });
+      return;
     }
 
-    setRows(updatedRows);
-    setIsScanning(false);
-    setStatusMessage(`Added column "${colName}". You can click the 🔍 icon next to any keyword to open live Google Places!`);
-    setCurrentView('spreadsheet');
+    // Fallback: HTTP Post to backend live scraper
+    try {
+      setScanStatusText(`Scraping real-time Google Places for ${keywordList.length} keywords...`);
+      const res = await fetch(`${effectiveBackendUrl}/api/seo/live-rank-scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywords: keywordList,
+          targetBusinessName: targetBusinessName.trim()
+        })
+      });
+      const data = await res.json();
+      if (data && data.results) {
+        setRows(prevRows => {
+          const next = [...prevRows];
+          data.results.forEach((item, idx) => {
+            if (next[idx]) {
+              next[idx] = { ...next[idx], [colName]: formatRankValue(item.rank) };
+            }
+          });
+          return next;
+        });
+        setStatusMessage(`✅ Real-time scan complete! ${data.results.length} keywords verified live on Google Places.`);
+      } else {
+        throw new Error(data.error || 'Live scan failed');
+      }
+    } catch (err) {
+      console.error('Live scraper error:', err);
+      setStatusMessage(`Scraper error: ${err.message}. Backend must be running on port 5001.`);
+    } finally {
+      setIsScanning(false);
+      setScanProgress(100);
+    }
+  };
+
+  // Instant Single Keyword Live Verification
+  const handleLiveSingleKeywordScan = async (rowIdx) => {
+    const keywordColKey = headers[0];
+    const kw = rows[rowIdx]?.[keywordColKey];
+    if (!kw || !targetBusinessName.trim()) {
+      alert('Please enter a Target Business Name in setup first!');
+      return;
+    }
+
+    setSingleScanningIdx(rowIdx);
+    setStatusMessage(`Verifying live rank on Google Places for "${kw}"...`);
+    try {
+      const res = await fetch(`${effectiveBackendUrl}/api/seo/live-single-keyword`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: kw,
+          targetBusinessName: targetBusinessName.trim()
+        })
+      });
+      const data = await res.json();
+      if (data && data.result) {
+        const latestCol = headers[headers.length - 1];
+        const newRank = formatRankValue(data.result.rank);
+        setRows(prev => {
+          const next = [...prev];
+          next[rowIdx] = { ...next[rowIdx], [latestCol]: newRank };
+          return next;
+        });
+        setStatusMessage(`✓ Verified live: "${kw}" is Rank #${newRank} on Google Places!`);
+      }
+    } catch (e) {
+      console.error('Single scan error:', e);
+      setStatusMessage(`Error: ${e.message}`);
+    } finally {
+      setSingleScanningIdx(null);
+    }
   };
 
   // Download as Native Microsoft Excel (.xlsx)
@@ -1266,8 +1390,68 @@ export default function SeoRankModal({ isOpen, onClose }) {
                     <span>+ Add Month Column</span>
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  className="touch-btn"
+                  onClick={handleStartRealtimeScan}
+                  disabled={isScanning}
+                  style={{
+                    background: isScanning ? 'rgba(255, 255, 255, 0.05)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: isScanning ? '#94a3b8' : '#0b0f19',
+                    border: 'none',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    cursor: isScanning ? 'wait' : 'pointer',
+                    boxShadow: isScanning ? 'none' : '0 2px 10px rgba(245, 158, 11, 0.35)'
+                  }}
+                >
+                  {isScanning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  <span>{isScanning ? 'Scanning Google Places...' : '⚡ Run Live Scan'}</span>
+                </button>
               </div>
             </div>
+
+            {/* Live Real-Time Scanning Progress Banner */}
+            {isScanning && (
+              <div 
+                style={{
+                  padding: '12px 20px',
+                  background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%)',
+                  borderBottom: '1px solid rgba(245, 158, 11, 0.4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', fontWeight: 800 }}>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>{scanStatusText || 'Searching Google Places in real-time...'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ color: '#4ade80', fontWeight: 900, fontSize: '13px' }}>
+                      {scanProgress}% Live
+                    </span>
+                  </div>
+                </div>
+                <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div 
+                    style={{ 
+                      width: `${scanProgress}%`, 
+                      height: '100%', 
+                      background: 'linear-gradient(90deg, #f59e0b 0%, #10b981 100%)',
+                      transition: 'width 0.15s ease-out'
+                    }} 
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Microsoft Excel / Google Sheets Table Grid */}
             <div 
@@ -1444,7 +1628,7 @@ export default function SeoRankModal({ isOpen, onClose }) {
                               }}
                             />
                           ) : (
-                            renderRankBadge(row[keywordKey], true)
+                            renderRankBadge(row[keywordKey], true, rIdx)
                           )}
                         </td>
 
